@@ -111,7 +111,54 @@ export function mediaPanel(data, fallbackTitle) {
   };
 }
 
-export function doorPanel(owner, leaveUrl) {
+/** Photos pegged on a photo string. urls[i] is null for a photo kept on another device. */
+export function photosPanel(urls, title) {
+  const shown = urls.filter(Boolean);
+  return {
+    kind: 'photos',
+    kicker: 'Photos',
+    title,
+    body:
+      shown.length > 0
+        ? h(
+            'ul',
+            { className: 'photo-grid' },
+            shown.map((url, i) => h('li', {}, h('img', { src: url, alt: `Photo ${i + 1} of ${shown.length}`, loading: 'lazy' }))),
+          )
+        : h('p', { className: 'panel-text muted', text: 'No photos here yet.' }),
+  };
+}
+
+/** The keyboard- and screen-reader-friendly list of everything the viewer can use. */
+export function thingsPanel(items, verbs, onChoose) {
+  const sorted = [...items].sort((a, b) => a.name.localeCompare(b.name));
+  return {
+    kind: 'things',
+    kicker: 'In this room',
+    title: 'Things here',
+    body:
+      sorted.length > 0
+        ? h(
+            'ul',
+            { className: 'things-list' },
+            sorted.map((item) =>
+              h(
+                'li',
+                {},
+                h(
+                  'button',
+                  { className: 'things-item', type: 'button', dataset: { objectId: item.objectId }, onClick: () => onChoose(item) },
+                  h('span', { className: 'things-name', text: item.name }),
+                  h('span', { className: 'things-verb muted', text: verbs[item.type] ?? '' }),
+                ),
+              ),
+            ),
+          )
+        : h('p', { className: 'muted', text: "There's nothing you can use here yet." }),
+  };
+}
+
+export function doorPanel(owner, leaveUrl, onStepOutside = null) {
   return {
     kind: 'door',
     kicker: 'Front door',
@@ -119,7 +166,13 @@ export function doorPanel(owner, leaveUrl) {
     body: [
       statusLine(owner),
       h('p', { className: 'panel-text', text: `This is ${owner.displayName || owner.username}'s door. Knocking arrives with the hallway.` }),
-      h('a', { className: 'button', href: leaveUrl, dataset: { testid: 'leave-room' }, text: 'Leave the room' }),
+      h(
+        'div',
+        { className: 'panel-actions' },
+        onStepOutside &&
+          h('button', { className: 'button', type: 'button', dataset: { testid: 'step-outside' }, text: 'Step outside', onClick: onStepOutside }),
+        h('a', { className: 'button button-quiet', href: leaveUrl, dataset: { testid: 'leave-room' }, text: 'Leave the room' }),
+      ),
     ],
   };
 }

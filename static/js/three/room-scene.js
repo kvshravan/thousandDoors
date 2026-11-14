@@ -28,6 +28,7 @@ export class RoomScene {
     onInteract,
     onHoverChange,
     canInteract = () => true,
+    images = null,
     dimensions = ROOM_DIMENSIONS,
     camera = CAMERA_SETTINGS,
   }) {
@@ -38,6 +39,7 @@ export class RoomScene {
     this.onInteract = onInteract;
     this.onHoverChange = onHoverChange;
     this.canInteract = canInteract;
+    this.images = images;
     this.appearance = appearance.choice;
     this.palette = appearance.palette;
     this.lighting = appearance.lighting;
@@ -78,6 +80,7 @@ export class RoomScene {
       loader: this.loader,
       theme: this.palette,
       room: this.room,
+      images: this.images,
     });
     await this.objects.populate(this.room.objects, (fraction) => onProgress?.(0.1 + fraction * 0.85));
     if (this.loader.disposed) return;
@@ -127,6 +130,24 @@ export class RoomScene {
     this.controller?.resetView();
   }
 
+  orbitCamera(dAzimuth, dPolar) {
+    this.seatedOn = null;
+    this.controller?.orbitBy(dAzimuth, dPolar);
+  }
+
+  zoomCamera(factor) {
+    this.seatedOn = null;
+    this.controller?.zoomBy(factor);
+  }
+
+  /** Objects the viewer can use, as interaction events (for the "Things here" list). */
+  listInteractive() {
+    if (!this.objects) return [];
+    return [...this.objects.records.values()]
+      .filter((record) => record.interaction && this.canInteract(record.permission))
+      .map(describe);
+  }
+
   /** Calls an action exposed by an object's builder (see props/interactive.js). */
   runAction(objectId, action, ...args) {
     const record = this.objects?.get(objectId);
@@ -156,6 +177,14 @@ export class RoomScene {
     const on = this.interactions.withoutHighlight(() => this.objects.setLamp(objectId, !record.lampOn));
     this._dirty = true;
     return on;
+  }
+
+  /** Changes a light's saved settings ({ color, brightness, effect, on }) in place. */
+  setObjectLight(objectId, changes) {
+    if (!this.objects?.get(objectId)?.light) return null;
+    const state = this.interactions.withoutHighlight(() => this.objects.setLight(objectId, changes));
+    this._dirty = true;
+    return state;
   }
 
   // ---- Customization ----
@@ -202,6 +231,7 @@ export class RoomScene {
     this.engine.setToneMappingExposure(resolved.lighting.toneMappingExposure);
     for (const record of this.objects.records.values()) {
       record.controls?.actions?.setScene?.(resolved.choice.lighting);
+      record.controls?.actions?.setLandscape?.(resolved.choice.landscape);
     }
     this.interactions.resetHighlights();
     this.engine.requestShadowUpdate();
@@ -225,6 +255,21 @@ export class RoomScene {
     return removed;
   }
 
+  /** Rebuilds an object with some customData changed (for example { color: 'teal' }). */
+  async restyleObject(objectId, changes) {
+    const record = this.objects?.get(objectId);
+    if (!record) return null;
+    const customData = { ...record.data, ...changes };
+    for (const [key, value] of Object.entries(changes)) {
+      if (value === null || value === undefined) delete customData[key];
+    }
+    const rebuilt = await this.objects.rebuild(objectId, customData);
+    this.interactions?.resetHighlights();
+    this.engine?.requestShadowUpdate();
+    this._dirty = true;
+    return rebuilt;
+  }
+
   /** The room's current appearance and layout, in the room JSON format. */
   serialize() {
     return { appearance: { ...this.appearance }, objects: this.objects.serialize() };
@@ -241,7 +286,10 @@ export class RoomScene {
     const wanted = new Map(objects.map((object) => [object.id, object]));
     for (const id of [...this.objects.records.keys()]) {
       const object = wanted.get(id);
-      if (!object || object.catalogId !== this.objects.get(id).catalogId) this.objects.removeObject(id);
+      const record = this.objects.get(id);
+      const changed =
+        !object || object.catalogId !== record.catalogId || stableJson(object.customData) !== stableJson(record.data);
+      if (changed) this.objects.removeObject(id);
     }
     await Promise.all(
       objects.map((object) => {
@@ -294,6 +342,7 @@ export class RoomScene {
       if (object.isLight) lights += 1;
     });
     return {
+      kind: 'room',
       roomId: this.room.roomId,
       appearance: { ...this.appearance },
       meshes,
@@ -358,11 +407,19 @@ export class RoomScene {
   }
 }
 
+function stableJson(value) {
+  return JSON.stringify(value, (_key, v) =>
+    v && typeof v === 'object' && !Array.isArray(v)
+      ? Object.fromEntries(Object.keys(v).sort().map((k) => [k, v[k]]))
+      : v,
+  );
+}
+
 function describe(record) {
   return {
     objectId: record.id,
     catalogId: record.catalogId,
-    name: record.data.label ?? record.data.caption ?? record.name,
+    name: record.data.label ?? record.data.caption ?? record.data.title ?? record.name,
     type: record.interaction,
     data: record.data,
     lampOn: record.light ? record.lampOn : undefined,

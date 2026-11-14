@@ -48,9 +48,133 @@ export const THEMES = Object.freeze({
       metal: '#d3cbbf',
       metalMedium: '#7b7570',
       metalDark: '#3b3a3d',
+      metalLight: '#e6e0d8',
+      carpetBlue: 'navy',
+      fur: '#c08a5b',
       plant: 'leaf',
       _defaultMat: 'cream',
     },
+  },
+});
+
+// Colours an owner can give an item (catalogue "recolor"). Values are palette keys,
+// so wood tones follow the theme, or plain colours.
+export const ITEM_COLORS = Object.freeze({
+  woodLight: { label: 'Light wood', value: 'woodLight' },
+  woodMid: { label: 'Wood', value: 'woodMid' },
+  woodDark: { label: 'Dark wood', value: 'woodDark' },
+  cream: { label: 'Cream', value: 'cream' },
+  terracotta: { label: 'Terracotta', value: 'terracotta' },
+  coral: { label: 'Coral', value: '#e8836b' },
+  mustard: { label: 'Mustard', value: 'mustard' },
+  sage: { label: 'Sage', value: 'sage' },
+  forest: { label: 'Forest', value: '#4f7a4a' },
+  teal: { label: 'Teal', value: '#3f8a88' },
+  sky: { label: 'Sky', value: '#8cbad8' },
+  navy: { label: 'Navy', value: 'navy' },
+  lilac: { label: 'Lilac', value: '#b7a2d6' },
+  plum: { label: 'Plum', value: '#7a4a6e' },
+  dustyPink: { label: 'Dusty pink', value: 'dustyPink' },
+  charcoal: { label: 'Charcoal', value: '#3b3a3d' },
+});
+
+// Sizes an owner can pick, as uniform scale factors.
+export const ITEM_SIZES = Object.freeze({
+  small: { label: 'Small', scale: 0.8 },
+  medium: { label: 'Medium', scale: 1 },
+  large: { label: 'Large', scale: 1.25 },
+});
+
+/** The size preset nearest to a scale factor. */
+export function sizeForScale(scale) {
+  let best = 'medium';
+  for (const [name, preset] of Object.entries(ITEM_SIZES)) {
+    if (Math.abs(preset.scale - scale) < Math.abs(ITEM_SIZES[best].scale - scale)) best = name;
+  }
+  return best;
+}
+
+// Light colours an owner can pick for lamps and other glowing things. "multi" gives
+// strings of bulbs a different colour per bulb.
+export const LIGHT_COLORS = Object.freeze({
+  warm: { label: 'Warm', value: '#ffd79a' },
+  candle: { label: 'Candle', value: '#ffb35c' },
+  white: { label: 'Cool white', value: '#eef2ff' },
+  pink: { label: 'Pink', value: '#ff8fc8' },
+  red: { label: 'Red', value: '#ff5f55' },
+  green: { label: 'Green', value: '#7dffa0' },
+  teal: { label: 'Teal', value: '#5ff2e0' },
+  blue: { label: 'Blue', value: '#6aa8ff' },
+  purple: { label: 'Purple', value: '#b98cff' },
+  multi: { label: 'Rainbow', value: '#ffd79a', bulbs: ['#ff5f55', '#ffd166', '#7dffa0', '#6aa8ff', '#ff8fc8'] },
+});
+
+export const LIGHT_EFFECTS = Object.freeze({
+  steady: { label: 'Steady' },
+  pulse: { label: 'Pulse' },
+  twinkle: { label: 'Twinkle' },
+  flicker: { label: 'Flicker' },
+});
+
+export const LIGHT_BRIGHTNESS = Object.freeze({ min: 0.25, max: 1.5, step: 0.25 });
+
+/** A light's settings with defaults filled in and unknown values dropped. */
+export function resolveLightSettings(settings = {}, defaults = {}) {
+  const pick = (value, presets, fallback) => (Object.hasOwn(presets, value ?? '') ? value : fallback);
+  const brightness = Number(settings.brightness ?? defaults.brightness ?? 1);
+  return {
+    color: pick(settings.color, LIGHT_COLORS, pick(defaults.color, LIGHT_COLORS, 'warm')),
+    effect: pick(settings.effect, LIGHT_EFFECTS, pick(defaults.effect, LIGHT_EFFECTS, 'steady')),
+    brightness: Number.isFinite(brightness)
+      ? Math.min(LIGHT_BRIGHTNESS.max, Math.max(LIGHT_BRIGHTNESS.min, brightness))
+      : 1,
+  };
+}
+
+// Places a house can stand. Each sets the scenery through the window and the
+// outside view. `window` colours paint the view; `ground` and friends build the 3D scene.
+export const LANDSCAPES = Object.freeze({
+  countryside: {
+    label: 'Countryside cottage',
+    swatch: ['#8fc3e3', '#7f9e72'],
+    ground: '#7f9e72',
+    far: '#a9c09a',
+    near: '#6b8c5f',
+  },
+  beach: {
+    label: 'Beach house',
+    swatch: ['#3f8fd8', '#f3e2b8'],
+    ground: '#f3e2b8',
+    far: '#3fc1c9',
+    near: '#2a9fb0',
+  },
+  forest: {
+    label: 'Forest cabin',
+    swatch: ['#9fc7d8', '#3f6b45'],
+    ground: '#5d7f4e',
+    far: '#7d93a6',
+    near: '#2f5a3a',
+  },
+  city: {
+    label: 'City apartment',
+    swatch: ['#a6bfd6', '#5c6070'],
+    ground: '#6a6d78',
+    far: '#8a90a6',
+    near: '#4e5262',
+  },
+  snow: {
+    label: 'Snowy chalet',
+    swatch: ['#b9d3ea', '#f4f7fb'],
+    ground: '#eef3f8',
+    far: '#c9d6e6',
+    near: '#5f7f74',
+  },
+  desert: {
+    label: 'Desert adobe',
+    swatch: ['#f2b27a', '#d9a066'],
+    ground: '#e0b07a',
+    far: '#c9805a',
+    near: '#cf9a62',
   },
 });
 
@@ -104,6 +228,7 @@ export const DEFAULT_APPEARANCE = Object.freeze({
   wallpaper: 'cream',
   floor: 'oak',
   lighting: 'day',
+  landscape: 'countryside',
 });
 
 /** Combines a theme with the room's wallpaper, floor, and lighting choices. */
@@ -114,6 +239,7 @@ export function resolveAppearance(appearance = {}) {
     ['wallpaper', WALLPAPERS],
     ['floor', FLOORS],
     ['lighting', LIGHTING_MOODS],
+    ['landscape', LANDSCAPES],
   ];
   for (const [key, presets] of lookups) {
     if (!presets[choice[key]]) throw new Error(`Unknown ${key} "${choice[key]}".`);

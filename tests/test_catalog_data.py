@@ -1,5 +1,6 @@
 import json
 import re
+import struct
 from pathlib import Path
 
 import pytest
@@ -47,8 +48,12 @@ APPEARANCE_PRESETS = {
     "wallpaper": _presets("WALLPAPERS"),
     "floor": _presets("FLOORS"),
     "lighting": _presets("LIGHTING_MOODS"),
+    "landscape": _presets("LANDSCAPES"),
 }
 WINDOW_SCENES = _presets("WINDOW_SCENES")
+ITEM_COLORS = _presets("ITEM_COLORS")
+LIGHT_COLORS = _presets("LIGHT_COLORS")
+LIGHT_EFFECTS = _presets("LIGHT_EFFECTS")
 ROOM_OBJECTS = [(room_id, obj) for room_id, room in ROOMS.items() for obj in room["objects"]]
 
 
@@ -69,9 +74,13 @@ def test_catalog_item_is_valid(item):
     assert item["name"]
     assert item["category"] in {
         "furniture",
-        "decorations",
-        "personal",
-        "entertainment",
+        "seating",
+        "lighting",
+        "music",
+        "tech",
+        "decor",
+        "wall",
+        "hobbies",
         "social",
         "environment",
     }
@@ -84,18 +93,79 @@ def test_catalog_item_is_valid(item):
         assert item["builder"] in BUILDERS, f"unknown builder {item['builder']}"
     if "interaction" in item:
         assert item["interaction"] in INTERACTIONS, f"no handler for {item['interaction']}"
-    assert item["placement"] in {"floor", "surface", "wall", "fixed"}
+    assert item["placement"] in {"floor", "surface", "wall", "ceiling", "fixed"}
     if item.get("flat"):
         assert item["placement"] == "floor"
     if "thumbnail" in item:
         thumb = STATIC / "models" / item["thumbnail"]
         assert thumb.is_file(), f"missing thumbnail {thumb}"
         assert thumb.read_bytes()[:8] == b"\x89PNG\r\n\x1a\n"
+    if item.get("addable", True) and item["placement"] != "fixed":
+        assert item.get("thumbnail") or item.get("icon"), "the catalogue needs a picture"
     if "permissions" in item:
         assert item["permissions"]["interact"] in PERMISSION_LEVELS
     if "light" in item:
         assert item["light"]["intensity"] > 0
         assert len(item["light"]["position"]) == 3
+    if "recolor" in item:
+        _check_recolor(item)
+    assert all(isinstance(tag, str) and tag == tag.lower() for tag in item.get("tags", []))
+    assert isinstance(item.get("defaults", {}), dict)
+    assert isinstance(item.get("addable", True), bool)
+    assert 0.1 <= item.get("scale", 1) <= 4
+    if "mount" in item:
+        assert item["placement"] == "ceiling" and 0 <= item["mount"]["drop"] <= 1.5
+    if "light" in item:
+        for key, value in item["light"].get("defaults", {}).items():
+            assert value in {"color": LIGHT_COLORS, "effect": LIGHT_EFFECTS}[key]
+    if "text" in item:
+        assert item["text"]["field"] and 1 <= item["text"]["maxLength"] <= 40
+    if "photos" in item:
+        assert item["photos"]["field"] in {"imageUrl", "photos"}
+        assert item["placement"] == "wall"
+    if item.get("support"):
+        assert item["placement"] == "wall", "floor furniture is a support already"
+
+
+def _glb_materials(path: Path) -> set[str]:
+    data = path.read_bytes()
+    length = struct.unpack_from("<I", data, 12)[0]
+    gltf = json.loads(data[20 : 20 + length])
+    return {material.get("name") for material in gltf.get("materials", [])}
+
+
+def _check_recolor(item):
+    if item.get("model"):
+        materials = _glb_materials(STATIC / "models" / item["model"])
+        assert item["recolor"] in materials, f"{item['recolor']} not in {sorted(materials)}"
+    else:
+        # The builder must take the option, e.g. `color = 'terracotta'` in its parameters.
+        source = "".join(
+            p.read_text(encoding="utf-8") for p in (STATIC / "js/three/props").glob("*.js")
+        )
+        name = item["builder"][0].upper() + item["builder"][1:]
+        pattern = rf"function build{name}\([^)]*\b{item['recolor']} ="
+        assert re.search(pattern, source), (
+            f"builder {item['builder']} has no {item['recolor']} option"
+        )
+
+
+@pytest.mark.parametrize("room_id", sorted(ROOMS))
+def test_room_colours_and_sizes_are_known(room_id):
+    for obj in ROOMS[room_id]["objects"]:
+        entry = CATALOG_BY_ID[obj["catalogId"]]
+        custom = obj.get("customData", {})
+        if "color" in custom:
+            assert "recolor" in entry
+            assert custom["color"] in ITEM_COLORS
+        if "light" in custom:
+            assert "light" in entry
+            assert custom["light"].get("color", "warm") in LIGHT_COLORS
+            assert custom["light"].get("effect", "steady") in LIGHT_EFFECTS
+        if "text" in entry and entry["text"]["field"] in custom:
+            assert 0 < len(custom[entry["text"]["field"]]) <= entry["text"]["maxLength"]
+        for ref in custom.get("photos", []):
+            assert ref.startswith("/static/images/") and (ROOT / ref.lstrip("/")).is_file()
 
 
 def test_every_vendored_model_is_in_the_catalog():
@@ -114,6 +184,11 @@ def test_registries_and_presets_were_parsed():
     assert {"cream", "midnight"} <= APPEARANCE_PRESETS["wallpaper"]
     assert {"oak", "walnut"} <= APPEARANCE_PRESETS["floor"]
     assert {"day", "night"} <= APPEARANCE_PRESETS["lighting"]
+    assert {"beach", "forest", "city", "countryside", "snow", "desert"} == APPEARANCE_PRESETS[
+        "landscape"
+    ]
+    assert {"warm", "multi"} <= LIGHT_COLORS
+    assert {"steady", "twinkle"} <= LIGHT_EFFECTS
 
 
 def test_there_are_at_least_two_rooms():

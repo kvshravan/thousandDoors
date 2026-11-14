@@ -18,7 +18,8 @@
     "theme": "cozy",
     "wallpaper": "midnight",
     "floor": "walnut",
-    "lighting": "night"
+    "lighting": "night",
+    "landscape": "city"
   },
   "objects": [
     {
@@ -739,6 +740,77 @@
             "the one with the kalimba"
           ]
         }
+      }
+    },
+    {
+      "id": "fairy-lights",
+      "catalogId": "fairy-lights",
+      "position": {
+        "x": -4.97,
+        "y": 3.1,
+        "z": 0.2
+      },
+      "rotation": {
+        "x": 0,
+        "y": 1.5708,
+        "z": 0
+      },
+      "scale": {
+        "x": 1,
+        "y": 1,
+        "z": 1
+      },
+      "customData": {
+        "light": {
+          "color": "multi"
+        }
+      }
+    },
+    {
+      "id": "neon-sign",
+      "catalogId": "neon-sign",
+      "position": {
+        "x": -1.2,
+        "y": 2.6,
+        "z": -4.97
+      },
+      "rotation": {
+        "x": 0,
+        "y": 0.0,
+        "z": 0
+      },
+      "scale": {
+        "x": 1,
+        "y": 1,
+        "z": 1
+      },
+      "customData": {
+        "text": "night owl",
+        "light": {
+          "color": "purple"
+        }
+      }
+    },
+    {
+      "id": "guitar",
+      "catalogId": "electric-guitar",
+      "position": {
+        "x": 2.2,
+        "y": 0,
+        "z": -4.4
+      },
+      "rotation": {
+        "x": 0,
+        "y": 0.0,
+        "z": 0
+      },
+      "scale": {
+        "x": 1,
+        "y": 1,
+        "z": 1
+      },
+      "customData": {
+        "color": "teal"
       }
     }
   ]

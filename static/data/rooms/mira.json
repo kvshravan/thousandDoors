@@ -19,7 +19,8 @@
     "theme": "cozy",
     "wallpaper": "cream",
     "floor": "oak",
-    "lighting": "day"
+    "lighting": "day",
+    "landscape": "countryside"
   },
   "objects": [
     {
@@ -983,6 +984,34 @@
             "A comic about a shy cactus"
           ]
         }
+      }
+    },
+    {
+      "id": "photo-string",
+      "catalogId": "photo-string",
+      "position": {
+        "x": 4.97,
+        "y": 2.55,
+        "z": 3.0
+      },
+      "rotation": {
+        "x": 0,
+        "y": -1.5708,
+        "z": 0
+      },
+      "scale": {
+        "x": 1,
+        "y": 1,
+        "z": 1
+      },
+      "customData": {
+        "label": "Summer photos",
+        "photos": [
+          "/static/images/demo/sunset-hills.svg",
+          "/static/images/demo/blocks.svg",
+          "/static/images/demo/waves.svg",
+          "/static/images/demo/moonrise.svg"
+        ]
       }
     }
   ]

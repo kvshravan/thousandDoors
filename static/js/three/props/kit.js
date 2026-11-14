@@ -30,6 +30,8 @@ export class PropKit {
       map = null,
       side = THREE.FrontSide,
       basic = false,
+      transparent = false,
+      opacity = 1,
     } = options;
     const resolved = this.color(color);
     // Cached by the colour as requested (palette key or raw colour), so setPalette()
@@ -44,11 +46,13 @@ export class PropKit {
       map?.uuid ?? null,
       side,
       basic,
+      transparent,
+      opacity,
     ]);
     let material = this._materials.get(key);
     if (!material) {
       material = basic
-        ? new THREE.MeshBasicMaterial({ color: resolved, map, side })
+        ? new THREE.MeshBasicMaterial({ color: resolved, map, side, transparent, opacity })
         : new THREE.MeshStandardMaterial({
             color: resolved,
             roughness,
@@ -56,9 +60,12 @@ export class PropKit {
             flatShading,
             map,
             side,
+            transparent,
+            opacity,
             emissive: emissive ? this.color(emissive) : 0x000000,
             emissiveIntensity,
           });
+      if (transparent) material.depthWrite = false;
       material.userData.paletteKeys = { color, emissive };
       this._materials.set(key, material);
     }

@@ -112,6 +112,8 @@ export class Engine {
         attached: this.canvas.isConnected,
       },
       memory: { ...this.renderer.info.memory },
+      // Draw calls and triangles of the last rendered frame (shadow pass included).
+      render: { calls: this.renderer.info.render.calls, triangles: this.renderer.info.render.triangles },
     };
   }
 

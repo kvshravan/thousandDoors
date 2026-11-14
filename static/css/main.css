@@ -5,6 +5,8 @@
   --night-deep: #1d1320;
   --door: #c8693f;
   --door-dark: #8f4325;
+  /* Button colour: --door is too light for --ink text (needs 4.5:1 contrast). */
+  --accent: #a24e2b;
   --glow: #ffcf7a;
   --radius: 14px;
   --font: "Segoe UI", system-ui, -apple-system, Roboto, sans-serif;
@@ -39,4 +41,9 @@ h1 {
   line-height: 1.1;
   margin: 0.4em 0 0.3em;
   letter-spacing: -0.02em;
+}
+
+:focus-visible {
+  outline: 3px solid var(--glow);
+  outline-offset: 2px;
 }

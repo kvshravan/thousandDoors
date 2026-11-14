@@ -40,11 +40,30 @@ def select(page: Page, object_id: str) -> None:
 
 
 def click_floor(page: Page, x: float, z: float) -> None:
-    point = page.evaluate("([x, z]) => window.__doors.floorPoint(x, z)", [x, z])
+    click_world(page, x, 0, z)
+
+
+def click_world(page: Page, x: float, y: float, z: float) -> None:
+    point = page.evaluate("([x, y, z]) => window.__doors.worldPoint(x, y, z)", [x, y, z])
     box = page.locator(".engine-canvas").bounding_box()
     on_canvas = point and box["x"] < point["x"] < box["x"] + box["width"]
-    assert on_canvas and box["y"] < point["y"] < box["y"] + box["height"], f"{x},{z} is off screen"
+    assert on_canvas and box["y"] < point["y"] < box["y"] + box["height"], (
+        f"{x},{y},{z} is off screen"
+    )
     page.mouse.click(point["x"], point["y"])
+
+
+def bounds(page: Page, object_id: str) -> dict:
+    return page.evaluate("(id) => window.__doors.bounds()[id]", object_id)
+
+
+def add(page: Page, name: str) -> str:
+    """Adds a catalogue item by name and returns the pending object's id."""
+    page.get_by_role("tab", name="Add").click()
+    page.get_by_test_id("editor-search").fill(name)
+    page.get_by_role("button", name=name, exact=True).click()
+    page.wait_for_function("() => window.__doors.info().scene.editor.pending")
+    return editor(page)["pending"]
 
 
 def floor_overlaps(page: Page) -> list[tuple[str, str]]:
@@ -120,7 +139,7 @@ def test_add_an_item_and_place_it(page: Page, errors):
     enter_edit(page)
     count = info(page)["scene"]["objects"]
 
-    page.get_by_role("button", name="Armchair").click()
+    page.get_by_role("button", name="Armchair", exact=True).click()
     page.wait_for_function("() => window.__doors.info().scene.editor.pending === 'lounge-chair-1'")
     assert info(page)["scene"]["objects"] == count + 1
     expect(page.get_by_test_id("editor-status")).to_contain_text("place the armchair")
@@ -140,7 +159,7 @@ def test_add_an_item_and_place_it(page: Page, errors):
 def test_items_cannot_be_placed_on_top_of_others(page: Page, errors):
     enter_edit(page)
     count = info(page)["scene"]["objects"]
-    page.get_by_role("button", name="Coffee table").click()
+    page.get_by_role("button", name="Coffee table", exact=True).click()
     page.wait_for_function("() => window.__doors.info().scene.editor.pending")
 
     click_floor(page, 1.8, -0.1)
@@ -248,6 +267,7 @@ def test_look_changes_apply_immediately(page: Page, errors):
         "wallpaper": "midnight",
         "floor": "walnut",
         "lighting": "night",
+        "landscape": "countryside",
     }
     expect(page.get_by_role("button", name="Lighting: Night")).to_have_attribute(
         "aria-pressed", "true"
@@ -271,7 +291,7 @@ def test_cancel_puts_everything_back(page: Page, errors):
     page.keyboard.press("ArrowLeft")
     select(page, "coat-rack")
     page.keyboard.press("Delete")
-    page.get_by_role("button", name="Armchair").click()
+    page.get_by_role("button", name="Armchair", exact=True).click()
     page.wait_for_function("() => window.__doors.info().scene.editor.pending")
     click_floor(page, 0.5, -2.5)
     page.get_by_role("tab", name="Look").click()
@@ -344,6 +364,201 @@ def test_a_corrupt_saved_layout_is_ignored(page: Page, errors):
     assert errors == []
 
 
+# ---- Catalogue, stacking, walls, ceiling, colour and size ----
+
+
+def visible_items(page: Page) -> list[str]:
+    return page.locator("[data-add-item]:visible .editor-item-name").all_inner_texts()
+
+
+def wait_placed(page: Page) -> None:
+    page.wait_for_function("() => window.__doors.info().scene.editor.pending === null")
+
+
+def test_catalogue_has_categories_and_search(page: Page, errors):
+    enter_edit(page)
+    assert len(visible_items(page)) >= 80
+
+    page.get_by_role("button", name="Lighting", exact=True).click()
+    lights = visible_items(page)
+    assert {"Ceiling fan", "Wall lamp", "Floor lamp", "Pendant lamp"} <= set(lights)
+    assert "Sofa" not in lights
+
+    page.get_by_role("button", name="All", exact=True).click()
+    search = page.get_by_test_id("editor-search")
+    search.fill("teddy")
+    assert visible_items(page) == ["Teddy bear"]
+    search.fill("couch")
+    assert {"Sofa", "Long sofa", "Corner sofa"} <= set(visible_items(page)), "tags match too"
+    search.fill("xylophone")
+    assert visible_items(page) == []
+    expect(page.get_by_test_id("editor-empty")).to_have_text("Nothing matches “xylophone”.")
+    assert errors == []
+
+
+def test_small_things_stand_on_furniture(page: Page, errors):
+    enter_edit(page)
+    table = bounds(page, "coffee-table")
+    top = table["max"][1]
+
+    bear = add(page, "Teddy bear")
+    tv = bounds(page, "tv")
+    click_world(
+        page, (tv["min"][0] + tv["max"][0]) / 2, tv["min"][1], (tv["min"][2] + tv["max"][2]) / 2
+    )
+    assert editor(page)["pending"] == bear, "the TV is already there"
+    assert editor(page)["valid"] is False
+
+    click_world(
+        page, (table["min"][0] + table["max"][0]) / 2, top, (table["min"][2] + table["max"][2]) / 2
+    )
+    wait_placed(page)
+    placed = bounds(page, bear)
+    assert placed["min"][1] == pytest.approx(top, abs=0.03), "stands on the coffee table"
+
+    select(page, "coffee-table")
+    assert bear in editor(page)["selected"]["children"], "and moves with the table"
+    assert floor_overlaps(page) == []
+    assert errors == []
+
+
+def test_wall_items_hang_on_any_wall(page: Page, errors):
+    enter_edit(page)
+    mirror = add(page, "Wall mirror")
+    click_world(page, -2.6, 1.1, -4.99)
+    wait_placed(page)
+    placed = obj(page, mirror)
+    assert placed["rotation"]["y"] == pytest.approx(0, abs=1e-3), "faces into the room"
+    assert placed["position"]["z"] == pytest.approx(-4.97, abs=0.01)
+    assert bounds(page, mirror)["min"][2] >= -5.0
+
+    page.keyboard.press("ArrowLeft")
+    page.keyboard.press("ArrowUp")
+    moved = obj(page, mirror)["position"]
+    assert moved["x"] == pytest.approx(placed["position"]["x"] - 0.1, abs=1e-3)
+    assert moved["y"] == pytest.approx(placed["position"]["y"] + 0.1, abs=1e-3)
+    assert editor(page)["selected"]["canRotate"] is False
+
+    # Photos slide along the left wall but stop before the next photo.
+    select(page, "photo-sunset")
+    for _ in range(15):
+        page.keyboard.press("ArrowRight")
+    sunset, waves = bounds(page, "photo-sunset"), bounds(page, "photo-waves")
+    assert obj(page, "photo-sunset")["position"]["z"] < -0.4, "moved toward the back"
+    assert sunset["min"][2] >= waves["max"][2] - 0.011, "but not over the other photo"
+
+    # A new item can go on a different wall: turn to face the right-hand wall first.
+    page.keyboard.press("Escape")
+    page.locator(".engine-canvas").focus()
+    for _ in range(4):
+        page.keyboard.press("ArrowLeft")
+    wait_camera_settled(page)
+    hook = add(page, "Wall hooks")
+    click_world(page, 4.99, 0.8, 0.0)
+    wait_placed(page)
+    assert obj(page, hook)["rotation"]["y"] == pytest.approx(-math.pi / 2, abs=1e-3)
+    assert obj(page, hook)["position"]["x"] == pytest.approx(4.97, abs=0.01)
+    assert errors == []
+
+
+def test_ceiling_items_hang_from_the_ceiling(page: Page, errors):
+    enter_edit(page)
+    fan = add(page, "Ceiling fan")
+    click_floor(page, -2.0, 1.5)
+    wait_placed(page)
+    placed = obj(page, fan)["position"]
+    assert placed["y"] == pytest.approx(4.0)
+    assert placed["x"] == pytest.approx(-2.0, abs=0.26)
+    assert placed["z"] == pytest.approx(1.5, abs=0.26)
+    box = bounds(page, fan)
+    assert box["max"][1] <= 4.001 and box["min"][1] > 2.5, "hangs below the ceiling"
+
+    pendant = obj(page, "pendant")["position"]
+    add(page, "Ceiling lamp")
+    click_floor(page, pendant["x"], pendant["z"])
+    assert editor(page)["valid"] is False, "can't share a spot with the pendant lamp"
+    page.keyboard.press("Escape")
+    assert errors == []
+
+
+def test_recolour_and_resize_are_saved(page: Page, errors):
+    enter_edit(page)
+    point = point_for(page, "couch")
+    page.mouse.click(point["x"], point["y"])
+    expect(page.get_by_test_id("editor-item")).to_be_visible()
+    expect(page.get_by_role("button", name="Colour: Original")).to_have_attribute(
+        "aria-pressed", "true"
+    )
+    expect(page.get_by_role("button", name="Size: Medium")).to_have_attribute(
+        "aria-pressed", "true"
+    )
+    region = {"x": point["x"], "y": point["y"], "size": 16}
+    before = page.evaluate("(r) => window.__doors.samplePixels(r)", region)
+
+    page.get_by_role("button", name="Colour: Charcoal").click()
+    page.wait_for_function(
+        "() => window.__doors.layout().objects.find((o) => o.id === 'couch').customData?.color"
+        " === 'charcoal'"
+    )
+    expect(page.get_by_role("button", name="Colour: Charcoal")).to_have_attribute(
+        "aria-pressed", "true"
+    )
+    after = page.evaluate("(r) => window.__doors.samplePixels(r)", region)
+    assert after["meanBrightness"] < before["meanBrightness"] - 30, "the couch looks darker"
+    assert editor(page)["selected"]["id"] == "couch", "still selected after the rebuild"
+
+    page.get_by_role("button", name="Size: Large").click()
+    assert obj(page, "couch")["scale"] == {"x": 1.25, "y": 1.25, "z": 1.25}
+    assert floor_overlaps(page) == []
+
+    page.get_by_test_id("editor-save").click()
+    expect(page.get_by_test_id("editor")).to_be_hidden()
+    open_room(page, OWNER)
+    couch = obj(page, "couch")
+    assert couch["customData"] == {"color": "charcoal"}
+    assert couch["scale"]["x"] == 1.25
+    assert errors == []
+
+
+def test_cancel_undoes_colours(page: Page, errors):
+    enter_edit(page)
+    select(page, "armchair")
+    page.get_by_role("button", name="Colour: Teal").click()
+    page.wait_for_function(
+        "() => window.__doors.layout().objects.find((o) => o.id === 'armchair').customData?.color"
+    )
+    page.get_by_test_id("editor-cancel").click()
+    page.wait_for_function("() => !window.__doors.info().editing")
+    page.wait_for_function(
+        "() => !window.__doors.layout().objects.find((o) => o.id === 'armchair').customData"
+    )
+    assert errors == []
+
+
+def test_the_door_can_be_recoloured_but_not_moved(page: Page, errors):
+    enter_edit(page)
+    select(page, "door")
+    state = editor(page)["selected"]
+    assert state["canMove"] is False and state["canDelete"] is False
+    assert state["canRecolor"] is True and state["canResize"] is False
+    expect(page.get_by_role("button", name="Remove")).to_be_hidden()
+    expect(page.get_by_role("button", name="Size: Large")).to_have_count(0)
+
+    page.locator(".engine-canvas").focus()
+    page.keyboard.press("Delete")
+    page.keyboard.press("ArrowLeft")
+    assert (
+        obj(page, "door")["position"]
+        == next(o for o in MIRA["objects"] if o["id"] == "door")["position"]
+    )
+    page.get_by_role("button", name="Colour: Navy").click()
+    page.wait_for_function(
+        "() => window.__doors.layout().objects.find((o) => o.id === 'door').customData?.color"
+        " === 'navy'"
+    )
+    assert errors == []
+
+
 def test_placement_rules(page: Page, errors):
     open_room(page)
     result = page.evaluate(
@@ -405,7 +620,7 @@ def test_editing_by_touch_on_a_phone(owner_phone: Page):
     stage = page.locator(".engine-canvas").bounding_box()
     assert stage["height"] < 600, "the 3D view shrinks above the editor sheet"
 
-    page.get_by_role("button", name="Armchair").tap()
+    page.get_by_role("button", name="Armchair", exact=True).tap()
     page.wait_for_function("() => window.__doors.info().scene.editor.pending")
     point = page.evaluate("() => window.__doors.floorPoint(0.25, -1.25)")
     page.touchscreen.tap(point["x"], point["y"])

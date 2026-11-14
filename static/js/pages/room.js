@@ -1,6 +1,7 @@
 import { canInteract, normalizeRelationship } from '../permissions.js';
 import { Catalog, fetchJson, normalizeRoom } from '../three/catalog.js';
 import { Engine } from '../three/engine.js';
+import { ExteriorScene } from '../three/exterior-scene.js';
 import { detectQuality, isWebGL2Available } from '../three/quality.js';
 import { RoomScene } from '../three/room-scene.js';
 import { SceneManager } from '../three/scene-manager.js';
@@ -14,12 +15,16 @@ import {
 import { MusicPlayer } from '../ui/music.js';
 import { Panel } from '../ui/panel.js';
 import { PhotoViewer } from '../ui/photo-viewer.js';
+import { thingsPanel } from '../ui/panels.js';
 import { RoomStore } from '../ui/room-store.js';
 import { EditorPanel } from '../ui/editor-panel.js';
+import { DEMO_PHOTOS, ImageStore, isPhotoRef } from '../ui/image-store.js';
 import { resolveAppearance } from '../three/room-config.js';
 
 const HINT_FADE_DELAY_MS = 2500;
 const TOOLTIP_OFFSET_PX = 16;
+// Verbs for things outside the room, which aren't room interactions.
+const VERBS = { ...INTERACTION_VERBS, enter: 'Go inside' };
 
 class RoomPage {
   constructor(root) {
@@ -35,10 +40,15 @@ class RoomPage {
     this.resetButton = root.querySelector('#reset-view');
     this.retryButton = root.querySelector('#room-retry');
     this.standButton = root.querySelector('#stand-up');
+    this.thingsButton = root.querySelector('#things-list');
+    this.announcer = root.querySelector('#room-announcer');
     this.editButton = root.querySelector('#edit-room');
+    this.insideButton = root.querySelector('#go-inside');
     this.editorRoot = root.querySelector('#editor');
     this.editorPanel = null;
     this.editing = false;
+    this.outside = false;
+    this.images = new ImageStore();
     this._editSnapshot = null;
     this._editBusy = false;
     this.leaveUrl = root.querySelector('[data-testid="back-link"]').getAttribute('href');
@@ -71,7 +81,10 @@ class RoomPage {
       },
       getScene: () => this.manager?.current ?? null,
       getRoom: () => this.room,
+      images: this.images,
       sit: (objectId) => this._sit(objectId),
+      stepOutside: () => this.stepOutside(),
+      announce: (message) => this._announce(message),
     };
     this.registry = createInteractionRegistry(this.interactionContext);
 
@@ -82,6 +95,9 @@ class RoomPage {
     this.retryButton.addEventListener('click', this._onRetry);
     this.standButton.addEventListener('click', this._onReset);
     this.editButton.addEventListener('click', () => this.enterEditMode());
+    this.insideButton.addEventListener('click', () => this.goInside());
+    this.thingsButton.addEventListener('click', () => this.openThingsList());
+    this._onCanvasKey = (event) => this._handleCanvasKey(event);
 
     const coarse = window.matchMedia?.('(pointer: coarse)').matches;
     this.hint.textContent = coarse
@@ -119,19 +135,11 @@ class RoomPage {
 
       const quality = detectQuality(new URLSearchParams(window.location.search).get('quality'));
       this.engine = new Engine(this.stage, { quality, onContextLost: () => this._fail('lost') });
+      this._setUpCanvas(this.engine.canvas);
       this.manager = new SceneManager(this.engine);
-      const scene = await this.manager.show(
-        () =>
-          new RoomScene({
-            room: this.room,
-            catalog,
-            modelsUrl: this.urls.modelsUrl,
-            onInteract: (event) => this._interact(event),
-            onHoverChange: (target, point) => this._showTooltip(target, point),
-            canInteract: (level) => canInteract(level ?? 'everyone', this.viewer.relationship),
-          }),
-        { onProgress: (value) => this._setProgress(value) },
-      );
+      const scene = await this.manager.show(() => this._createRoomScene(), {
+        onProgress: (value) => this._setProgress(value),
+      });
       if (!scene) return;
       await this.engine.waitForFrame();
       if (this.manager?.current !== scene) return;
@@ -150,6 +158,8 @@ class RoomPage {
   destroy() {
     this._leaveEditMode();
     this.editButton.hidden = true;
+    this.insideButton.hidden = true;
+    this.outside = false;
     this.photoViewer.close();
     this.panel.close();
     this.music.stop();
@@ -169,6 +179,78 @@ class RoomPage {
     await this.mount();
   }
 
+  _createRoomScene() {
+    return new RoomScene({
+      room: this.room,
+      catalog: this.catalog,
+      modelsUrl: this.urls.modelsUrl,
+      images: this.images,
+      onInteract: (event) => this._interact(event),
+      onHoverChange: (target, point) => this._showTooltip(target, point),
+      canInteract: (level) => canInteract(level ?? 'everyone', this.viewer.relationship),
+    });
+  }
+
+  /** Leaves through the front door to see the house in its landscape. */
+  async stepOutside() {
+    if (this.state !== 'ready' || this.outside || this.editing) return false;
+    const ok = await this._switchScene(
+      () =>
+        new ExteriorScene({
+          room: this.room,
+          catalog: this.catalog,
+          onInteract: (event) => this._interact(event),
+          onHoverChange: (target, point) => this._showTooltip(target, point),
+        }),
+      true,
+    );
+    if (ok) {
+      const owner = this.room.owner.displayName || this.room.owner.username;
+      this._announce(`You're outside ${owner ? `${owner}'s` : 'the'} house. Choose Go inside to return.`);
+    }
+    return ok;
+  }
+
+  async goInside() {
+    if (this.state !== 'ready' || !this.outside) return false;
+    const ok = await this._switchScene(() => this._createRoomScene(), false);
+    if (ok) {
+      this._syncVisitorCounts(this.manager.current);
+      this._announce('You go back inside.');
+    }
+    return ok;
+  }
+
+  async _switchScene(create, outside) {
+    this.photoViewer.close();
+    this.panel.close();
+    this.music.stop();
+    this._musicSource = null;
+    this._showTooltip(null);
+    this.standButton.hidden = true;
+    this._setState('loading');
+    this.loading.hidden = false;
+    this.loading.classList.remove('is-hidden');
+    this.loadingText.textContent = outside ? 'Stepping outside…' : 'Coming back in…';
+    try {
+      const scene = await this.manager.show(create);
+      if (!scene) return false;
+      await this.engine.waitForFrame();
+      if (this.manager?.current !== scene) return false;
+    } catch (error) {
+      console.error('[room] Could not change scene.', error);
+      this._fail('load');
+      return false;
+    }
+    this.outside = outside;
+    this.insideButton.hidden = !outside;
+    this.editButton.hidden = outside || this.viewer.relationship !== 'owner';
+    this.engine.canvas.setAttribute('aria-label', outside ? `Outside ${this.room.name}, 3D view` : `${this.room.name}, 3D view`);
+    this.loading.classList.add('is-hidden');
+    this._setState('ready');
+    return true;
+  }
+
   getDebugInfo() {
     return {
       state: this.state,
@@ -180,6 +262,7 @@ class RoomPage {
       lastInteraction: this.lastInteraction,
       music: this.music.state,
       editing: this.editing,
+      outside: this.outside,
       customized: Boolean(this.room?.customized),
       savedLayout: this.store?.loadLayout() ?? null,
       ui: {
@@ -197,7 +280,8 @@ class RoomPage {
   }
 
   /** Renders a frame and returns basic pixel statistics, used to verify the canvas isn't blank. */
-  samplePixels() {
+  /** Colour statistics of the rendered canvas, or of a square around a client point. */
+  samplePixels(region = null) {
     const { engine } = this;
     const view = this.manager?.current;
     if (!engine || !view) return null;
@@ -207,7 +291,16 @@ class RoomPage {
     probe.width = size;
     probe.height = size;
     const ctx = probe.getContext('2d', { willReadFrequently: true });
-    ctx.drawImage(engine.canvas, 0, 0, size, size);
+    if (region) {
+      const rect = engine.canvas.getBoundingClientRect();
+      const scale = engine.canvas.width / rect.width;
+      const half = (region.size ?? 24) / 2;
+      const sx = (region.x - rect.left - half) * scale;
+      const sy = (region.y - rect.top - half) * scale;
+      ctx.drawImage(engine.canvas, sx, sy, half * 2 * scale, half * 2 * scale, 0, 0, size, size);
+    } else {
+      ctx.drawImage(engine.canvas, 0, 0, size, size);
+    }
     const { data } = ctx.getImageData(0, 0, size, size);
     const colors = new Set();
     let sum = 0;
@@ -237,16 +330,23 @@ class RoomPage {
 
   enterEditMode() {
     const scene = this.manager?.current;
-    if (this.editing || this.state !== 'ready' || !scene || this.viewer.relationship !== 'owner') return false;
+    if (this.editing || this.outside || this.state !== 'ready' || !scene || this.viewer.relationship !== 'owner') return false;
     if (!this.editorPanel) {
       this.editorPanel = new EditorPanel(this.editorRoot, {
         catalog: this.catalog,
         modelsUrl: this.urls.modelsUrl,
-        onAdd: (catalogId) => this.manager?.current?.editor?.beginPlacement(catalogId),
+        onAdd: (catalogId) => {
+          // Focus the 3D view so the arrow keys and Enter go to the item being placed.
+          this.manager?.current?.editor?.beginPlacement(catalogId).then((id) => {
+            if (id) this.engine?.canvas.focus();
+          });
+        },
         onAppearance: (change) => this._changeAppearance(change),
-        onCommand: (command) => this._editorCommand(command),
+        onCommand: (command, value) => this._editorCommand(command, value),
+        onUpload: (file) => this._uploadPhoto(file),
       });
     }
+    this._refreshPhotoLibrary();
     this.photoViewer.close();
     this.panel.close();
     this._showTooltip(null);
@@ -260,10 +360,38 @@ class RoomPage {
     return true;
   }
 
-  async _editorCommand(command) {
+  async _editorCommand(command, value) {
     const editor = this.manager?.current?.editor;
-    if (!editor || this._editBusy) return;
+    // Wait for a recolour to finish rebuilding, so saving never misses the object.
+    if (!editor || this._editBusy || editor.busy) return;
     switch (command) {
+      case 'color':
+        await editor.recolorSelected(value || null);
+        break;
+      case 'size':
+        editor.resizeSelected(value);
+        break;
+      case 'light-on':
+        editor.setLightSelected({ on: value === 'true' });
+        break;
+      case 'light-color':
+        editor.setLightSelected({ color: value });
+        break;
+      case 'light-effect':
+        editor.setLightSelected({ effect: value });
+        break;
+      case 'light-brightness':
+        editor.setLightSelected({ brightness: Number(value) });
+        break;
+      case 'text':
+        await editor.setTextSelected(value);
+        break;
+      case 'photo-use':
+        if (isPhotoRef(value)) await editor.usePhotoSelected(value);
+        break;
+      case 'photo-remove':
+        await editor.removePhotoSelected(Number(value));
+        break;
       case 'rotate-left':
         editor.rotateSelected(-1);
         break;
@@ -297,6 +425,31 @@ class RoomPage {
     const scene = this.manager?.current;
     if (!scene?.editing) return;
     this.editorPanel.setAppearance(scene.setAppearance(change));
+  }
+
+  async _refreshPhotoLibrary() {
+    try {
+      const uploads = await this.images.list();
+      this.editorPanel?.setPhotoLibrary([...uploads, ...DEMO_PHOTOS]);
+    } catch (error) {
+      console.warn('[room] Could not read uploaded photos.', error);
+    }
+  }
+
+  /** Stores an uploaded photo and puts it on the selected frame or photo string. */
+  async _uploadPhoto(file) {
+    const editor = this.manager?.current?.editor;
+    if (!editor) return;
+    let ref;
+    try {
+      editor._setMessage('Adding your photo…');
+      ref = await this.images.add(file);
+    } catch (error) {
+      editor._setMessage(error.message || 'That photo could not be added.');
+      return;
+    }
+    await this._refreshPhotoLibrary();
+    if (editor.selectedId) await editor.usePhotoSelected(ref);
   }
 
   saveEdits() {
@@ -343,13 +496,76 @@ class RoomPage {
     this.editButton.focus?.();
   }
 
+  // ---- Keyboard and screen-reader access ----
+
+  _setUpCanvas(canvas) {
+    canvas.tabIndex = 0;
+    // "application" lets screen readers pass arrow keys through to the camera.
+    canvas.setAttribute('role', 'application');
+    canvas.setAttribute('aria-roledescription', '3D room');
+    canvas.setAttribute('aria-label', `${this.room.name}, 3D view`);
+    canvas.setAttribute('aria-describedby', 'room-keys-help');
+    canvas.addEventListener('keydown', this._onCanvasKey);
+  }
+
+  _handleCanvasKey(event) {
+    const scene = this.manager?.current;
+    if (!scene || this.state !== 'ready' || event.altKey || event.ctrlKey || event.metaKey) return;
+    // While editing with something selected, the arrow keys move the furniture instead.
+    if (scene.editing && scene.editor?.selectedId) return;
+    const STEP = Math.PI / 12;
+    const actions = {
+      ArrowLeft: () => scene.orbitCamera(-STEP, 0),
+      ArrowRight: () => scene.orbitCamera(STEP, 0),
+      ArrowUp: () => scene.orbitCamera(0, -STEP / 2),
+      ArrowDown: () => scene.orbitCamera(0, STEP / 2),
+      '+': () => scene.zoomCamera(0.85),
+      '=': () => scene.zoomCamera(0.85),
+      '-': () => scene.zoomCamera(1 / 0.85),
+      _: () => scene.zoomCamera(1 / 0.85),
+      Home: () => (scene.editing ? null : this._stand()),
+    };
+    const action = actions[event.key];
+    if (!action) return;
+    event.preventDefault();
+    if (scene.seatedOn) this.standButton.hidden = true;
+    action();
+    this._fadeHint();
+  }
+
+  openThingsList() {
+    const scene = this.manager?.current;
+    if (!scene || this.state !== 'ready' || this.editing) return false;
+    this.panel.open(
+      thingsPanel(scene.listInteractive(), VERBS, (item) => {
+        this.panel.close();
+        this._interact(item);
+      }),
+    );
+    return true;
+  }
+
+  _announce(message) {
+    // Clear first so repeating the same message is announced again.
+    this.announcer.textContent = '';
+    window.setTimeout(() => {
+      this.announcer.textContent = message;
+    }, 50);
+  }
+
   _sit(objectId) {
-    if (this.manager?.current?.sitOn(objectId)) this.standButton.hidden = false;
+    const scene = this.manager?.current;
+    if (!scene?.sitOn(objectId)) return;
+    this.standButton.hidden = false;
+    const name = scene.objects.get(objectId)?.name.toLowerCase() ?? 'seat';
+    this._announce(`You sit on the ${name}. Press Stand up or Home to get up.`);
   }
 
   _stand() {
+    const wasSeated = Boolean(this.manager?.current?.seatedOn);
     this.manager?.current?.resetView();
     this.standButton.hidden = true;
+    if (wasSeated) this._announce('You stand up.');
   }
 
   _syncMusic(state) {
@@ -371,6 +587,10 @@ class RoomPage {
   _interact(event) {
     this.lastInteraction = { objectId: event.objectId, type: event.type };
     this._showTooltip(null);
+    if (event.type === 'enter') {
+      this.goInside();
+      return;
+    }
     handleInteraction(this.registry, event);
   }
 
@@ -379,7 +599,7 @@ class RoomPage {
       this.tooltip.hidden = true;
       return;
     }
-    const verb = INTERACTION_VERBS[target.type];
+    const verb = VERBS[target.type];
     this.tooltip.textContent = verb ? `${target.name} · ${verb}` : target.name;
     this.tooltip.hidden = false;
     const maxX = window.innerWidth - this.tooltip.offsetWidth - 8;
@@ -443,13 +663,25 @@ if (document.documentElement.dataset.debug === '1') {
       return page.state;
     },
     info: () => page.getDebugInfo(),
-    samplePixels: () => page.samplePixels(),
+    samplePixels: (region) => page.samplePixels(region),
     pointFor: (objectId) => page.pointFor(objectId),
     bounds: () => page.manager?.current?.getObjectBounds() ?? {},
     floorPoint: (x, z) => page.manager?.current?.worldToClient(x, 0, z) ?? null,
-    layout: () => page.manager?.current?.serialize() ?? null,
+    worldPoint: (x, y, z) => page.manager?.current?.worldToClient(x, y, z) ?? null,
+    layout: () => page.manager?.current?.serialize?.() ?? null,
     enterEdit: () => page.enterEditMode(),
     editorSelect: (objectId) => page.manager?.current?.editor?.select(objectId) ?? false,
+    stepOutside: () => page.stepOutside(),
+    goInside: () => page.goInside(),
+    // Adds a catalogue item in edit mode, then removes it again; resolves to its id or null.
+    editorTryAdd: async (catalogId) => {
+      const editor = page.manager?.current?.editor;
+      const id = editor ? await editor.beginPlacement(catalogId) : null;
+      const record = id ? page.manager.current.objects.get(id) : null;
+      const result = record ? { id, placeholder: Boolean(record.placeholder) } : null;
+      editor?.cancelPlacement();
+      return result;
+    },
     destroy: () => page.destroy(),
     remount: () => page.remount(),
   };

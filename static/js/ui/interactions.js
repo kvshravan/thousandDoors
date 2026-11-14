@@ -6,31 +6,49 @@ import {
   mediaPanel,
   musicBody,
   noticeboardBody,
+  photosPanel,
   posterPanel,
   profilePanel,
   secretPanel,
 } from './panels.js';
+
+const WINDOW_VIEWS = { day: 'a sunny day', evening: 'the evening sky', night: 'the night sky' };
 
 /**
  * Maps interaction types (from the catalogue) to handlers. Add a type here
  * instead of adding object-specific click logic elsewhere.
  *
  * Each handler receives { objectId, catalogId, name, type, data, lampOn }.
- * ctx: { photoViewer, panel, music, store, getScene, getRoom, sit, leaveUrl }
+ * ctx: { photoViewer, panel, music, store, getScene, getRoom, sit, leaveUrl, announce }
  */
 export function createInteractionRegistry(ctx) {
   const scene = () => ctx.getScene();
   const owner = () => ctx.getRoom().owner;
 
   return {
-    photograph: ({ data, name }) => ctx.photoViewer.open({ src: data.imageUrl, caption: data.caption ?? name }),
-    lamp: ({ objectId }) => scene()?.toggleLamp(objectId),
+    photograph: async ({ data, name }) => {
+      const src = await ctx.images?.resolve(data.imageUrl);
+      if (src) ctx.photoViewer.open({ src, caption: data.caption ?? name });
+      else ctx.announce?.("This photo is only on its owner's device for now.");
+    },
+    photos: async ({ data, name }) => {
+      const refs = Array.isArray(data.photos) ? data.photos : [];
+      const urls = await Promise.all(refs.map((ref) => ctx.images?.resolve(ref) ?? null));
+      ctx.panel.open(photosPanel(urls, name));
+    },
+    lamp: ({ objectId, name }) => {
+      const on = scene()?.toggleLamp(objectId);
+      if (typeof on === 'boolean') ctx.announce?.(`${name} switched ${on ? 'on' : 'off'}.`);
+    },
     profile: () => ctx.panel.open(profilePanel(owner())),
     poster: ({ data, name }) => ctx.panel.open(posterPanel(data, name)),
     collection: ({ data, name }) => ctx.panel.open(collectionPanel(data, name)),
     media: ({ data, name }) => ctx.panel.open(mediaPanel(data, name)),
-    door: () => ctx.panel.open(doorPanel(owner(), ctx.leaveUrl)),
-    window: ({ objectId }) => scene()?.runAction(objectId, 'cycle'),
+    door: () => ctx.panel.open(doorPanel(owner(), ctx.leaveUrl, ctx.stepOutside)),
+    window: ({ objectId }) => {
+      const view = scene()?.runAction(objectId, 'cycle');
+      if (view) ctx.announce?.(`The window now shows ${WINDOW_VIEWS[view] ?? view}.`);
+    },
     seat: ({ objectId }) => ctx.sit(objectId),
     secret: ({ objectId, data }) => {
       scene()?.runAction(objectId, 'setOpen', true);
@@ -44,6 +62,7 @@ export function createInteractionRegistry(ctx) {
 
 export const INTERACTION_VERBS = Object.freeze({
   photograph: 'View photo',
+  photos: 'Look at the photos',
   lamp: 'Switch on or off',
   profile: 'About the owner',
   poster: 'Look closer',

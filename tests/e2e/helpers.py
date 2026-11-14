@@ -1,4 +1,5 @@
 import math
+from pathlib import Path
 
 from playwright.sync_api import Page
 
@@ -87,3 +88,21 @@ def bring_into_view(page: Page, object_id: str, attempts: int = 12) -> dict:
 def click_object(page: Page, object_id: str) -> None:
     point = bring_into_view(page, object_id)
     page.mouse.click(point["x"], point["y"])
+
+
+AXE_SCRIPT = Path(__file__).parent / "vendor" / "axe.min.js"
+
+
+def axe_violations(page: Page) -> list[dict]:
+    """Runs the axe-core accessibility checker on the current page state."""
+    if not page.evaluate("() => Boolean(window.axe)"):
+        page.add_script_tag(path=str(AXE_SCRIPT))
+    return page.evaluate(
+        """async () => {
+            const result = await axe.run(document, { resultTypes: ['violations'] });
+            return result.violations.map((v) => ({
+                id: v.id, impact: v.impact, help: v.help,
+                targets: v.nodes.map((n) => n.target.join(' ')),
+            }));
+        }"""
+    )

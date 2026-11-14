@@ -97,45 +97,6 @@ export function createRugTexture(palette) {
   });
 }
 
-export function createSkyTexture(palette) {
-  return canvasTexture(256, 256, (ctx, w, h) => {
-    const sky = ctx.createLinearGradient(0, 0, 0, h);
-    sky.addColorStop(0, palette.skyTop);
-    sky.addColorStop(0.75, palette.skyBottom);
-    ctx.fillStyle = sky;
-    ctx.fillRect(0, 0, w, h);
-
-    const sun = ctx.createRadialGradient(w * 0.7, h * 0.55, 0, w * 0.7, h * 0.55, w * 0.3);
-    sun.addColorStop(0, palette.sun);
-    sun.addColorStop(0.25, palette.sun);
-    sun.addColorStop(1, `${palette.sun}00`);
-    ctx.fillStyle = sun;
-    ctx.fillRect(0, 0, w, h);
-
-    if (palette.stars) {
-      const rand = seededRandom(19);
-      ctx.fillStyle = palette.stars;
-      for (let i = 0; i < 40; i += 1) {
-        const size = rand() < 0.2 ? 3 : 2;
-        ctx.fillRect(rand() * w, rand() * h * 0.6, size, size);
-      }
-    }
-
-    const hill = (color, baseY, amplitude, phase) => {
-      ctx.fillStyle = color;
-      ctx.beginPath();
-      ctx.moveTo(0, h);
-      for (let x = 0; x <= w; x += 8) {
-        ctx.lineTo(x, baseY + Math.sin(x / w * Math.PI * 2 + phase) * amplitude);
-      }
-      ctx.lineTo(w, h);
-      ctx.fill();
-    };
-    hill(palette.hillFar, h * 0.72, 10, 0.6);
-    hill(palette.hillNear, h * 0.84, 14, 2.4);
-  });
-}
-
 export function createNameplateTexture(palette, username, online) {
   const texture = canvasTexture(512, 128, (ctx, w, h) => {
     ctx.fillStyle = palette.cream;
@@ -252,5 +213,118 @@ export function createClockFaceTexture(palette) {
       ctx.arc(w / 2 + Math.sin(angle) * r, h / 2 - Math.cos(angle) * r, size, 0, Math.PI * 2);
       ctx.fill();
     }
+  });
+}
+
+export function createKeysTexture(octaves = 4) {
+  return canvasTexture(512, 64, (ctx, w, h) => {
+    const whites = octaves * 7;
+    const keyWidth = w / whites;
+    ctx.fillStyle = '#f7f3ea';
+    ctx.fillRect(0, 0, w, h);
+    ctx.fillStyle = '#9a948a';
+    for (let i = 1; i < whites; i += 1) ctx.fillRect(i * keyWidth - 0.5, 0, 1, h);
+    ctx.fillStyle = '#1f1c1e';
+    for (let i = 0; i < whites; i += 1) {
+      // Black keys follow the white keys C, D, F, G, A.
+      if ([0, 1, 3, 4, 5].includes(i % 7) && i < whites - 1) {
+        ctx.fillRect((i + 0.65) * keyWidth, 0, keyWidth * 0.7, h * 0.6);
+      }
+    }
+  });
+}
+
+/** Neon text on a transparent background. Returns { texture, aspect }. */
+export function createNeonTexture(text) {
+  const label = String(text).slice(0, 24) || ' ';
+  const measure = document.createElement('canvas').getContext('2d');
+  const font = '700 110px "Segoe Script", "Brush Script MT", "Comic Sans MS", cursive';
+  measure.font = font;
+  const width = Math.min(2048, Math.max(256, Math.ceil(measure.measureText(label).width + 120)));
+  const texture = canvasTexture(width, 192, (ctx, w, h) => {
+    ctx.font = font;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.shadowColor = '#ffffff';
+    ctx.shadowBlur = 18;
+    ctx.fillStyle = '#ffffff';
+    ctx.fillText(label, w / 2, h / 2 + 6);
+    ctx.shadowBlur = 0;
+    ctx.fillText(label, w / 2, h / 2 + 6);
+  });
+  return { texture, aspect: width / 192 };
+}
+
+export function createScreenTexture(label = 'PLAY') {
+  return canvasTexture(256, 192, (ctx, w, h) => {
+    const sky = ctx.createLinearGradient(0, 0, 0, h);
+    sky.addColorStop(0, '#2b1d4e');
+    sky.addColorStop(1, '#5b2d6e');
+    ctx.fillStyle = sky;
+    ctx.fillRect(0, 0, w, h);
+    const rand = seededRandom(5);
+    ctx.fillStyle = '#ffe9a8';
+    for (let i = 0; i < 30; i += 1) ctx.fillRect(rand() * w, rand() * h * 0.6, 2, 2);
+    ctx.fillStyle = '#ff8fc8';
+    for (let i = 0; i < 6; i += 1) ctx.fillRect(30 + i * 34, 40 + (i % 2) * 14, 18, 14);
+    ctx.fillStyle = '#7dffa0';
+    ctx.fillRect(w / 2 - 12, h - 46, 24, 16);
+    ctx.fillStyle = '#ffd166';
+    ctx.font = '800 30px monospace';
+    ctx.textAlign = 'center';
+    ctx.fillText(label, w / 2, h - 60);
+  });
+}
+
+export function createGlobeTexture() {
+  return canvasTexture(512, 256, (ctx, w, h) => {
+    ctx.fillStyle = '#5b9bd5';
+    ctx.fillRect(0, 0, w, h);
+    const rand = seededRandom(11);
+    ctx.fillStyle = '#8bbf6a';
+    for (let i = 0; i < 9; i += 1) {
+      const x = rand() * w;
+      const y = h * (0.2 + rand() * 0.6);
+      ctx.beginPath();
+      ctx.ellipse(x, y, 20 + rand() * 50, 14 + rand() * 30, rand() * Math.PI, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.fillStyle = '#f4f1ea';
+    ctx.fillRect(0, 0, w, h * 0.06);
+    ctx.fillRect(0, h * 0.94, w, h * 0.06);
+  });
+}
+
+export function createPaintingTexture(seed = 3) {
+  return canvasTexture(256, 320, (ctx, w, h) => {
+    ctx.fillStyle = '#fbf5ec';
+    ctx.fillRect(0, 0, w, h);
+    const rand = seededRandom(seed);
+    const colors = ['#cf7651', '#e2b04a', '#9bb092', '#3e4a6b', '#e3a5a0'];
+    for (let i = 0; i < 7; i += 1) {
+      ctx.fillStyle = colors[i % colors.length];
+      ctx.globalAlpha = 0.85;
+      ctx.beginPath();
+      ctx.ellipse(rand() * w, rand() * h, 20 + rand() * 60, 20 + rand() * 60, rand() * Math.PI, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.globalAlpha = 1;
+  });
+}
+
+export function createBallTexture() {
+  return canvasTexture(256, 128, (ctx, w, h) => {
+    ctx.fillStyle = '#e07a35';
+    ctx.fillRect(0, 0, w, h);
+    ctx.strokeStyle = '#3a2418';
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.moveTo(0, h / 2);
+    ctx.lineTo(w, h / 2);
+    for (const x of [w * 0.25, w * 0.5, w * 0.75, w]) {
+      ctx.moveTo(x, 0);
+      ctx.lineTo(x, h);
+    }
+    ctx.stroke();
   });
 }

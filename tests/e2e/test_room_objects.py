@@ -77,8 +77,11 @@ def test_rooms_have_their_own_owner_and_appearance(page: Page, errors):
         "wallpaper": "cream",
         "floor": "oak",
         "lighting": "day",
+        "landscape": "countryside",
     }
     assert jun["scene"]["appearance"]["lighting"] == "night"
+    assert jun["scene"]["appearance"]["landscape"] == "city"
+    assert jun["scene"]["states"]["window"]["landscape"] == "city", "the window shows the city"
     assert jun["owner"]["username"] == "jun"
     assert jun_pixels["meanBrightness"] < mira_pixels["meanBrightness"] - 25, (
         "night should be darker"

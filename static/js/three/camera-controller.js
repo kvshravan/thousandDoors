@@ -38,6 +38,8 @@ export class CameraController {
     this._changed = true;
     this._resetting = false;
     this._goal = this.home;
+    // Honour the OS "reduce motion" setting: camera moves jump instead of gliding.
+    this.reducedMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false;
     this.idle = false;
     this._lastPosition = new THREE.Vector3(Infinity, Infinity, Infinity);
     this._lastTarget = new THREE.Vector3(Infinity, Infinity, Infinity);
@@ -95,6 +97,35 @@ export class CameraController {
   flyTo({ position, target }) {
     this._goal = { position: position.clone(), target: target.clone() };
     this._resetting = true;
+    // Drop leftover drag momentum, which would otherwise push the camera off the goal.
+    this.controls._sphericalDelta.set(0, 0, 0);
+    this.controls._panOffset.set(0, 0, 0);
+    this.controls._scale = 1;
+  }
+
+  /** Orbits around the target by the given angles (radians), within the usual limits. */
+  orbitBy(dAzimuth, dPolar) {
+    this._moveOnSphere((s) => {
+      s.theta += dAzimuth;
+      s.phi = THREE.MathUtils.clamp(s.phi + dPolar, this.controls.minPolarAngle, this.controls.maxPolarAngle);
+    });
+  }
+
+  /** Moves closer (factor < 1) or further away (factor > 1), within the zoom limits. */
+  zoomBy(factor) {
+    this._moveOnSphere((s) => {
+      s.radius = THREE.MathUtils.clamp(s.radius * factor, this.settings.minDistance, this.settings.maxDistance);
+    });
+  }
+
+  _moveOnSphere(change) {
+    // Chain from where an in-progress move is heading, so repeated key presses add up.
+    const from = this._resetting ? this._goal : { position: this.camera.position, target: this.controls.target };
+    const spherical = new THREE.Spherical().setFromVector3(from.position.clone().sub(from.target));
+    change(spherical);
+    spherical.makeSafe();
+    const position = from.target.clone().add(new THREE.Vector3().setFromSpherical(spherical));
+    this.flyTo({ position, target: from.target });
   }
 
   getDebugInfo() {
@@ -128,7 +159,7 @@ export class CameraController {
   }
 
   _stepReset(dt) {
-    const alpha = 1 - Math.exp(-RESET_SPEED * dt);
+    const alpha = this.reducedMotion ? 1 : 1 - Math.exp(-RESET_SPEED * dt);
     this.camera.position.lerp(this._goal.position, alpha);
     this.controls.target.lerp(this._goal.target, alpha);
     const done =

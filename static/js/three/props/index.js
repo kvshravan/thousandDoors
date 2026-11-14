@@ -1,9 +1,38 @@
 import { buildDoor, buildDoorMat, buildPendantLamp, buildPictureFrame, buildRug, buildWallClock, buildWindow } from './decor.js';
+import { buildCandles, buildFairyLights, buildLavaLamp, buildLedStrip, buildNeonSign, buildPaperLantern, buildPhotoString } from './glow.js';
+import {
+  buildArcade,
+  buildBasketball,
+  buildBeanBag,
+  buildCactus,
+  buildEasel,
+  buildGameConsole,
+  buildGlobe,
+  buildHangingPlant,
+  buildHeadphones,
+  buildSkateboard,
+  buildTelescope,
+  buildWallShelf,
+  buildYogaMat,
+} from './hobbies.js';
+import {
+  buildAcousticGuitar,
+  buildAmp,
+  buildDrumKit,
+  buildElectricGuitar,
+  buildGuitarWall,
+  buildKeyboard,
+  buildMicStand,
+  buildPiano,
+  buildUkulele,
+  buildViolin,
+  buildVinylCrate,
+} from './instruments.js';
 import { buildChest, buildGiftTable, buildNoticeboard, buildPoster, buildRecordPlayer } from './interactive.js';
 
 /**
  * Procedural builders referenced by catalogue entries ({ "builder": "door" }).
- * Signature: (kit, options, { loader, room }) => THREE.Object3D | Promise<THREE.Object3D>.
+ * Signature: (kit, options, { loader, room, images }) => THREE.Object3D | Promise<THREE.Object3D>.
  * Furniture comes from GLB models instead; see static/data/catalog.json.
  */
 export const PROP_BUILDERS = Object.freeze({
@@ -19,4 +48,35 @@ export const PROP_BUILDERS = Object.freeze({
   noticeboard: buildNoticeboard,
   giftTable: buildGiftTable,
   chest: buildChest,
+  acousticGuitar: buildAcousticGuitar,
+  electricGuitar: buildElectricGuitar,
+  guitarWall: buildGuitarWall,
+  ukulele: buildUkulele,
+  violin: buildViolin,
+  keyboard: buildKeyboard,
+  piano: buildPiano,
+  drumKit: buildDrumKit,
+  amp: buildAmp,
+  micStand: buildMicStand,
+  vinylCrate: buildVinylCrate,
+  fairyLights: buildFairyLights,
+  ledStrip: buildLedStrip,
+  neonSign: buildNeonSign,
+  candles: buildCandles,
+  lavaLamp: buildLavaLamp,
+  paperLantern: buildPaperLantern,
+  photoString: buildPhotoString,
+  gameConsole: buildGameConsole,
+  headphones: buildHeadphones,
+  arcade: buildArcade,
+  easel: buildEasel,
+  skateboard: buildSkateboard,
+  globe: buildGlobe,
+  telescope: buildTelescope,
+  basketball: buildBasketball,
+  yogaMat: buildYogaMat,
+  wallShelf: buildWallShelf,
+  beanBag: buildBeanBag,
+  hangingPlant: buildHangingPlant,
+  cactus: buildCactus,
 });

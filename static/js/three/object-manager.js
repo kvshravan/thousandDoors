@@ -1,22 +1,50 @@
 import * as THREE from 'three';
 import { PROP_BUILDERS } from './props/index.js';
+import { ITEM_COLORS, LIGHT_COLORS, resolveLightSettings } from './room-config.js';
 
-const GLOW_ON = { emissive: 'lampGlow', emissiveIntensity: 0.9 };
+const GLOW_INTENSITY = 0.9;
 const round = (value, digits) => Number(value.toFixed(digits));
+const prefersReducedMotion = () => window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false;
+
+/** The palette value for an owner-chosen item colour, or null if it isn't one. */
+export function itemColorValue(name) {
+  return Object.hasOwn(ITEM_COLORS, name ?? '') ? ITEM_COLORS[name].value : null;
+}
+
+/** How bright an animated light is at time t (seconds), as a factor of its brightness. */
+function effectFactor(effect, t, phase) {
+  switch (effect) {
+    case 'pulse':
+      return 0.5 + 0.5 * (0.5 + 0.5 * Math.sin(t * 2.2));
+    case 'twinkle': {
+      const wave = 0.5 + 0.5 * Math.sin(t * 3.1 + phase);
+      return 0.25 + 0.75 * wave * wave;
+    }
+    case 'flicker':
+      return 0.82 + 0.09 * Math.sin(t * 13 + phase) + 0.09 * Math.sin(t * 7.3 + phase * 2);
+    default:
+      return 1;
+  }
+}
 
 /**
  * Builds room objects ({ id, catalogId, position, rotation, scale, customData, permissions })
  * from catalogue entries, either GLB models or procedural builders. Objects can be
  * added and removed at any time, and the current layout serialized back to JSON.
+ *
+ * Objects with a catalogue `light` glow: customData.light = { color, brightness, effect }
+ * picks the colour (LIGHT_COLORS), strength, and animation, and customData.on whether
+ * the light starts on. `images.resolve(ref)` turns photo references into URLs.
  */
 export class ObjectManager {
-  constructor({ scene, kit, catalog, loader, theme, room }) {
+  constructor({ scene, kit, catalog, loader, theme, room, images = null }) {
     this.scene = scene;
     this.kit = kit;
     this.catalog = catalog;
     this.loader = loader;
     this.theme = theme;
     this.room = room;
+    this.images = images;
     this.records = new Map();
     this.failed = [];
     this.skipped = [];
@@ -57,6 +85,7 @@ export class ObjectManager {
     record.root.removeFromParent();
     record.light?.dispose();
     this.kit.removeUpdaters(record.updaters);
+    this._releaseLight(record);
     this.records.delete(objectId);
     this._order = this._order.filter((id) => id !== objectId);
     return true;
@@ -64,6 +93,40 @@ export class ObjectManager {
 
   get(objectId) {
     return this.records.get(objectId) ?? null;
+  }
+
+  /** The object as it is now, in the room JSON format (unrounded). */
+  snapshot(objectId) {
+    const record = this.records.get(objectId);
+    if (!record) return null;
+    const { position, rotation, scale } = record.root;
+    return {
+      id: record.id,
+      catalogId: record.catalogId,
+      position: { x: position.x, y: position.y, z: position.z },
+      rotation: { x: rotation.x, y: rotation.y, z: rotation.z },
+      scale: { x: scale.x, y: scale.y, z: scale.z },
+      customData: structuredClone(record.data),
+      permissions: { interact: record.permissionOverride },
+    };
+  }
+
+  /**
+   * Rebuilds an object with changed customData (colour, text...), keeping its place,
+   * its position in the saved order, and whether its lamp is on.
+   */
+  async rebuild(objectId, customData) {
+    const object = this.snapshot(objectId);
+    if (!object) return null;
+    const lampOn = this.records.get(objectId).lampOn;
+    const index = this._order.indexOf(objectId);
+    object.customData = structuredClone(customData);
+    this.removeObject(objectId);
+    const record = await this.addObject(object);
+    this._order = this._order.filter((id) => id !== objectId);
+    this._order.splice(index, 0, objectId);
+    if (record?.light) this.setLamp(objectId, lampOn);
+    return record;
   }
 
   /** Reorders saved output to match ids (unknown ids are ignored). */
@@ -82,14 +145,43 @@ export class ObjectManager {
     return null;
   }
 
+  /** Switches a light on or off for now (visitors' clicks); doesn't change the saved setting. */
   setLamp(objectId, on) {
     const record = this.records.get(objectId);
-    if (!record?.light) return null;
+    return record?.light ? this._switch(record, on) : null;
+  }
+
+  _switch(record, on) {
     record.lampOn = on;
-    record.light.intensity = on ? record.lightIntensity : 0;
-    const material = on ? this.kit.material('lampGlow', GLOW_ON) : this.kit.material('cream', { roughness: 0.6 });
-    for (const mesh of record.glowMeshes) mesh.material = material;
+    record.light.intensity = on ? record.lightIntensity * record.lightSettings.brightness : 0;
+    record.glowMeshes.forEach((mesh, i) => {
+      mesh.material = on ? record.onMaterials[i] : record.offMaterials[i];
+    });
     return on;
+  }
+
+  /**
+   * Changes a light's saved settings: any of { color, brightness, effect, on }.
+   * Applied in place, without rebuilding the object. Returns the new settings.
+   */
+  setLight(objectId, changes) {
+    const record = this.records.get(objectId);
+    if (!record?.light) return null;
+    const { on, ...settings } = changes;
+    if (Object.keys(settings).length > 0) {
+      record.data.light = resolveLightSettings({ ...record.data.light, ...settings }, record.lightDefaults);
+    }
+    if (typeof on === 'boolean') {
+      if (on) delete record.data.on;
+      else record.data.on = false;
+      record.lampOn = on;
+    }
+    this._applyLight(record);
+    return this.lightState(record);
+  }
+
+  lightState(record) {
+    return record?.light ? { on: record.lampOn, ...record.lightSettings, animated: record.effect !== 'steady' } : null;
   }
 
   /** The current layout in the room JSON format. */
@@ -113,11 +205,15 @@ export class ObjectManager {
 
   getDebugInfo() {
     const lamps = {};
+    const lights = {};
     const interactive = [];
     const permissions = {};
     const states = {};
     for (const record of this.records.values()) {
-      if (record.light) lamps[record.id] = record.lampOn;
+      if (record.light) {
+        lamps[record.id] = record.lampOn;
+        lights[record.id] = this.lightState(record);
+      }
       if (record.controls) states[record.id] = { ...record.controls.state };
       if (record.interaction) {
         interactive.push(record.id);
@@ -132,6 +228,7 @@ export class ObjectManager {
       permissions,
       states,
       lamps,
+      lights,
     };
   }
 
@@ -146,14 +243,18 @@ export class ObjectManager {
 
     let content;
     let updaters = [];
+    const color = entry.recolor ? itemColorValue(object.customData.color) : null;
     if (entry.model) {
-      content = await this._instantiateModel(entry);
+      content = await this._instantiateModel(entry, color);
     } else {
       const build = PROP_BUILDERS[entry.builder];
       if (!build) throw new Error(`No builder named "${entry.builder}".`);
-      const options = { ...(entry.options ?? {}), ...object.customData };
+      // customData.color is a colour name; builders get the resolved value.
+      const { color: _name, ...custom } = object.customData;
+      const options = { ...(entry.options ?? {}), ...custom };
+      if (color) options[entry.recolor] = color;
       const [result, owned] = this.kit.collectUpdaters(() =>
-        build(this.kit, options, { loader: this.loader, room: this.room }),
+        build(this.kit, options, { loader: this.loader, room: this.room, images: this.images }),
       );
       updaters = owned;
       content = await result;
@@ -179,17 +280,73 @@ export class ObjectManager {
     };
 
     if (entry.light) {
-      const { position = [0, 0, 0], intensity = 1, distance = 5 } = entry.light;
-      const light = new THREE.PointLight(this.kit.color('lampGlow'), intensity, distance, 2);
+      const { position = [0, 0, 0], intensity = 1, distance = 5, defaults = {} } = entry.light;
+      const light = new THREE.PointLight('#ffffff', intensity, distance, 2);
       light.position.set(...position);
       holder.add(light);
       record.light = light;
       record.lightIntensity = intensity;
+      record.lightDefaults = defaults;
+      record.lampOn = object.customData.on ?? true;
+      for (const mesh of glowMeshes) mesh.userData.baseMaterial = mesh.material;
+      this._applyLight(record);
     }
 
     this.records.set(object.id, record);
-    if (record.light) this.setLamp(object.id, object.customData.on ?? true);
     return record;
+  }
+
+  /** (Re)creates a light's materials, colour, and effect from its settings. */
+  _applyLight(record) {
+    this._releaseLight(record);
+    const settings = resolveLightSettings(record.data.light, record.lightDefaults);
+    const preset = LIGHT_COLORS[settings.color];
+    record.lightSettings = settings;
+    record.light.color.set(preset.value);
+
+    // Each glowing part gets its own material, so bulbs can differ and animate.
+    record.onMaterials = record.glowMeshes.map((mesh, i) => {
+      const material = mesh.userData.baseMaterial.clone();
+      const color = preset.bulbs ? preset.bulbs[i % preset.bulbs.length] : preset.value;
+      if (material.color && !mesh.userData.keepColor) material.color.set(color);
+      if (material.emissive) {
+        material.emissive.set(color);
+        material.emissiveIntensity = GLOW_INTENSITY * settings.brightness;
+        if (material.map && !material.emissiveMap) material.emissiveMap = material.map;
+      }
+      return material;
+    });
+    record.offMaterials = record.glowMeshes.map(
+      (mesh) => mesh.userData.offMaterial ?? this.kit.material('cream', { roughness: 0.6 }),
+    );
+
+    record.effect = prefersReducedMotion() ? 'steady' : settings.effect;
+    if (record.effect !== 'steady') {
+      const phases = record.glowMeshes.map((_, i) => i * 2.399);
+      let time = 0;
+      record.effectUpdater = (dt) => {
+        if (!record.lampOn) return false;
+        time += dt;
+        let sum = 0;
+        record.onMaterials.forEach((material, i) => {
+          const factor = effectFactor(record.effect, time, phases[i]);
+          if (material.emissive) material.emissiveIntensity = GLOW_INTENSITY * settings.brightness * factor;
+          sum += factor;
+        });
+        const average = record.onMaterials.length > 0 ? sum / record.onMaterials.length : effectFactor(record.effect, time, 0);
+        record.light.intensity = record.lightIntensity * settings.brightness * average;
+        return true;
+      };
+      this.kit.addUpdater(record.effectUpdater);
+    }
+    this._switch(record, record.lampOn);
+  }
+
+  _releaseLight(record) {
+    for (const material of record.onMaterials ?? []) material.dispose();
+    record.onMaterials = [];
+    if (record.effectUpdater) this.kit.removeUpdaters([record.effectUpdater]);
+    record.effectUpdater = null;
   }
 
   _baseRecord(object, entry, holder) {
@@ -203,6 +360,12 @@ export class ObjectManager {
       permissionOverride: override,
       placement: entry?.placement ?? 'floor',
       flat: Boolean(entry?.flat),
+      // Furniture other items can stand on: anything on the floor except rugs, plus
+      // catalogue items marked "support" (such as wall shelves).
+      support: Boolean(entry?.support) || ((entry?.placement ?? 'floor') === 'floor' && !entry?.flat),
+      recolor: entry?.recolor ?? null,
+      textOption: entry?.text ?? null,
+      photoOption: entry?.photos ?? null,
       controls: null,
       data: object.customData,
       root: holder,
@@ -210,16 +373,18 @@ export class ObjectManager {
       updaters: [],
       light: null,
       lightIntensity: 0,
+      lightSettings: null,
       lampOn: false,
     };
   }
 
-  async _instantiateModel(entry) {
+  async _instantiateModel(entry, color = null) {
     const template = await this.loader.loadModel(entry.model);
     const instance = template.clone(true);
     instance.scale.setScalar(this.catalog.modelScale * (entry.scale ?? 1));
     const shadows = this.kit.quality.shadows;
     const palette = { ...this.theme.modelMaterials, ...entry.materials };
+    if (color) palette[entry.recolor] = color;
 
     instance.traverse((child) => {
       if (!child.isMesh) return;
@@ -227,12 +392,39 @@ export class ObjectManager {
       child.receiveShadow = shadows;
       const remap = (material) => {
         if (material.name === 'lamp') child.userData.glow = true;
-        const color = palette[material.name];
-        return color ? this.kit.material(color, { roughness: 0.8 }) : material;
+        const value = palette[material.name];
+        return value ? this.kit.material(value, { roughness: 0.8 }) : material;
       };
       child.material = Array.isArray(child.material) ? child.material.map(remap) : remap(child.material);
     });
-    return instance;
+    return this._mount(instance, entry);
+  }
+
+  /**
+   * Re-anchors wall and ceiling models, which are authored standing on the floor:
+   * wall items get their back on the wall (z = 0) and are centred vertically, and
+   * ceiling items hang from the origin on a rod of length mount.drop.
+   */
+  _mount(instance, entry) {
+    if (entry.placement !== 'wall' && entry.placement !== 'ceiling') return instance;
+    instance.updateMatrixWorld(true);
+    const box = new THREE.Box3().setFromObject(instance);
+    const mounted = new THREE.Group();
+    mounted.name = 'mounted';
+    mounted.add(instance);
+    if (entry.placement === 'wall') {
+      instance.position.z -= box.min.z;
+      instance.position.y -= (box.min.y + box.max.y) / 2;
+      return mounted;
+    }
+    const drop = entry.mount?.drop ?? 0;
+    instance.position.y -= box.max.y + drop;
+    if (drop > 0) {
+      this.kit.part(mounted, this.kit.cylinder(0.015, 0.015, drop, 8), this.kit.material('metal'), [0, -drop / 2, 0], null, {
+        castShadow: false,
+      });
+    }
+    return mounted;
   }
 
   _place(object, content, entry) {

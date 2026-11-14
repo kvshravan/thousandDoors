@@ -1,6 +1,7 @@
 import * as THREE from 'three';
-import { WINDOW_SCENES } from '../room-config.js';
-import { createClockFaceTexture, createNameplateTexture, createRugTexture, createSkyTexture } from './textures.js';
+import { LANDSCAPES, WINDOW_SCENES } from '../room-config.js';
+import { createLandscapeTexture } from './landscapes.js';
+import { createClockFaceTexture, createNameplateTexture, createRugTexture } from './textures.js';
 
 // Wall-mounted props use their origin as the point on the wall surface, front facing +z.
 // Floor props use floor level at the centre of their footprint.
@@ -65,20 +66,22 @@ export function buildWindow(kit, { width = 2.0, height = 1.5, scene = null } = {
   const names = Object.keys(WINDOW_SCENES);
   const lighting = room?.appearance?.lighting;
   let current = names.includes(scene) ? scene : names.includes(lighting) ? lighting : 'day';
-  const skies = new Map();
-  const skyMaterial = (name) => {
-    if (!skies.has(name)) {
-      const texture = kit.texture(createSkyTexture({ ...kit.palette, ...WINDOW_SCENES[name] }));
-      skies.set(name, kit.material('#ffffff', { map: texture, basic: true }));
+  let landscape = Object.hasOwn(LANDSCAPES, room?.appearance?.landscape ?? '') ? room.appearance.landscape : 'countryside';
+  const views = new Map();
+  const viewMaterial = () => {
+    const key = `${landscape}:${current}`;
+    if (!views.has(key)) {
+      const texture = kit.texture(createLandscapeTexture(landscape, current));
+      views.set(key, kit.material('#ffffff', { map: texture, basic: true }));
     }
-    return skies.get(name);
+    return views.get(key);
   };
-  const glass = kit.part(win, kit.plane(width, height), skyMaterial(current), [0, 0, 0.01], null, {
+  const glass = kit.part(win, kit.plane(width, height), viewMaterial(), [0, 0, 0.01], null, {
     castShadow: false,
     receiveShadow: false,
   });
   const controls = {
-    state: { scene: current },
+    state: { scene: current, landscape },
     actions: {
       cycle() {
         return controls.actions.setScene(names[(names.indexOf(current) + 1) % names.length]);
@@ -86,9 +89,16 @@ export function buildWindow(kit, { width = 2.0, height = 1.5, scene = null } = {
       setScene(name) {
         if (!names.includes(name)) return current;
         current = name;
-        glass.material = skyMaterial(current);
+        glass.material = viewMaterial();
         controls.state.scene = current;
         return current;
+      },
+      setLandscape(name) {
+        if (!Object.hasOwn(LANDSCAPES, name)) return landscape;
+        landscape = name;
+        glass.material = viewMaterial();
+        controls.state.landscape = landscape;
+        return landscape;
       },
     },
   };
@@ -127,12 +137,17 @@ export function buildWindow(kit, { width = 2.0, height = 1.5, scene = null } = {
 export async function buildPictureFrame(
   kit,
   { width = 0.6, height = 0.8, imageUrl = null, frameColor = 'woodDark' } = {},
-  { loader } = {},
+  { loader, images } = {},
 ) {
   const frame = group('picture-frame');
   const border = 0.05;
   kit.part(frame, kit.rounded(width, height, 0.04, 0.012), kit.material(frameColor, { roughness: 0.7 }), [0, 0, 0.02], null, NO_CAST);
-  const map = imageUrl && loader ? await loader.loadTexture(imageUrl) : null;
+  let map = null;
+  if (imageUrl && loader) {
+    // Uploaded photos may be missing (another browser); show a blank card instead.
+    const url = images ? await images.resolve(imageUrl) : imageUrl;
+    map = url ? await loader.loadTexture(url).catch(() => null) : null;
+  }
   kit.part(
     frame,
     kit.plane(width - border * 2, height - border * 2),
@@ -175,14 +190,14 @@ export function buildWallClock(kit, { radius = 0.28 } = {}) {
   return clock;
 }
 
-export function buildPendantLamp(kit, { drop = 1.0 } = {}) {
+export function buildPendantLamp(kit, { drop = 1.0, color = 'mustard' } = {}) {
   const lamp = group('pendant-lamp');
   kit.part(lamp, kit.cylinder(0.006, 0.006, drop, 6), kit.material('metal'), [0, -drop / 2, 0], null, NO_CAST);
   kit.part(lamp, kit.cylinder(0.06, 0.06, 0.03, 12), kit.material('metal'), [0, -0.015, 0], null, NO_CAST);
   kit.part(
     lamp,
     kit.cylinder(0.07, 0.3, 0.24, 24, true),
-    kit.material('mustard', { side: THREE.DoubleSide, roughness: 0.7 }),
+    kit.material(color, { side: THREE.DoubleSide, roughness: 0.7 }),
     [0, -drop - 0.1, 0],
     null,
     NO_CAST,

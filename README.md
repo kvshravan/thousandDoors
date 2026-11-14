@@ -11,7 +11,8 @@ Stack: Python Flask, HTML/CSS, vanilla JavaScript, Three.js r187 (vendored, load
 | 0 | Project setup | ✅ Done |
 | 1 | First 3D room | ✅ Done |
 | 2 | Asset loading and object interactions | ✅ Done |
-| 3 | Personal Room MVP: 3a zoned layout + owner/appearance/permissions data ✅, 3b interactive room objects ✅, 3c customization mode ✅, 3d keyboard access and polish | In progress |
+| 3 | Personal Room MVP: zoned layout and room data, interactive objects, customization mode, keyboard access and polish | ✅ Done |
+| 3e | Richer rooms: about 120 things to add (furniture, instruments, lights, tech, hobbies, decor) with search; colours and sizes; placing on furniture, walls, and ceiling; light colours, brightness, and effects; neon text; photo string lights with your own uploads; six landscapes seen through the window and from outside the house | ✅ Done |
 
 ## Local setup (Windows)
 
@@ -47,23 +48,46 @@ Room page options (development only, until accounts exist):
 | Gift table (by the door) | Leave a flower, cookie, star, or tea |
 | Couch and armchair | Sit down; **Stand up** returns to the room view |
 | Old chest | Hidden notes, friends only (`?as=friend`) |
-| Window | Changes the view: day, evening, night |
-| Lamps | Switch on and off |
-| Door | Nameplate and the way out |
+| Window | Changes the view: day, evening, night (of the room's landscape) |
+| Lamps, fairy lights, neon, candles | Switch on and off |
+| Photo string lights (Mira's right wall) | The pegged photos, up close |
+| Door | Nameplate, **Step outside** to see the house in its landscape, and the way out |
 
 Notes and gifts are saved in your browser (localStorage, per room) until accounts arrive.
+
+### Outside the house
+
+Every room's house stands somewhere: a countryside cottage, beach house on stilts, forest log cabin, city apartment, snowy chalet, or desert adobe (the owner picks in **Look → Outside**). The window shows the place painted for the time of day, and **Step outside** at the door shows the house itself in 3D, with the owner's front door and nameplate. Drag to look around; click the door or **Go inside** to return.
+
+### Keyboard and accessibility
+
+- **Things here** lists every object you're allowed to use, with what it does (Sit down, Play music, Leave a gift...). Choosing one works exactly like clicking it, so the whole room works without a mouse.
+- **Tab** to the 3D view, then use the **arrow keys** to look around, **+** / **-** to zoom, and **Home** to stand up and return to the room view.
+- Changes you can't see, such as a lamp switching or the window changing, are announced to screen readers.
+- With the OS **reduce motion** setting, camera moves jump instead of gliding.
+- On phones, the room buttons collapse to icons (their names are still read out).
 
 ### Editing a room
 
 Open a room as its owner (`/room?as=owner`) and choose **Edit room**:
 
-- **Add**: pick furniture from the catalogue; it appears at a free spot and follows the pointer. Click or tap the floor to place it.
-- **Move**: drag furniture across the floor. It snaps to a 25 cm grid, stays inside the walls, and can't overlap other furniture (the footprint turns red where it doesn't fit). Things standing on furniture, like a lamp on a nightstand, move, turn, and are removed with it.
-- **Turn and remove**: the toolbar buttons, or **R** / **Shift+R** to turn, **Delete** to remove, arrow keys to nudge, **Escape** to deselect or cancel.
-- **Look**: walls, floor, and lighting change instantly.
+- **Add**: about 120 things in categories (furniture, seating, lighting, music, tech, decor, on the wall, hobbies), with a search box that also matches tags ("couch" finds every sofa). Besides the furniture kit there are instruments (guitars, ukulele, violin, synth, piano, drum kit, amp, microphone), lights (fairy lights, LED strip, neon sign, candles, lava lamp, paper lantern), gaming gear, an easel, telescope, globe, skateboard, yoga mat, bean bag, wall shelves, and photo string lights. A new item appears at a free spot and follows the pointer; click or tap to place it. The catalogue, category filters, and option groups are one Tab stop each; arrow keys move inside them.
+- **Move**: each kind of item moves its own way:
+  - *Floor* furniture snaps to a 25 cm grid, stays inside the walls, and can't overlap other furniture (the footprint turns red where it doesn't fit).
+  - *Small things* (lamps, plants, cushions, the teddy bear) stand on whatever furniture or wall shelf is under the pointer, or on the floor, and can't overlap each other. Things standing on furniture move, turn, and are removed with it.
+  - *Wall* items (photos, posters, mirrors, wall lamps, neon signs, shelves, the noticeboard) slide along any of the four walls and up and down, without overlapping each other, the door, or the window.
+  - *Ceiling* items (pendant lamp, ceiling lamp, ceiling fan, paper lantern, hanging plant) hang from the ceiling; point at the floor below where they should go.
+- **Item**: click something to change what it allows:
+  - colour (16 colours, or its original one) and size (small, medium, large);
+  - for lights: on/off, light colour (including rainbow bulbs), brightness, and effect (steady, pulse, twinkle, flicker; effects stay still with the OS reduce-motion setting);
+  - for neon signs and posters: the words;
+  - for frames and photo strings: the photo(s), from the bundled pictures or your own uploads. Uploads are shrunk to 512 px and kept in this browser (IndexedDB) until accounts arrive, so other devices show a blank card for them.
+  The door can be recoloured but not moved; the colour shows outside the house too.
+- **Turn and remove**: the toolbar buttons, or **R** / **Shift+R** to turn, **Delete** to remove, arrow keys to nudge, **Escape** to deselect or cancel. When you add an item from the catalogue by keyboard, focus moves to the 3D view: arrows move it and **Enter** places it.
+- **Look**: walls, floor, lighting, and the landscape outside change instantly.
 - **Save** keeps the layout in this browser (`doors:v1:<room>:layout`), **Cancel** puts everything back, **Start over** returns to the room as authored (save to keep it).
 
-Wall items (photos, posters, the noticeboard) and fixed parts (door, window, ceiling lamp) can't be moved yet.
+The door and window are part of the room and can't be moved.
 
 On macOS/Linux, activate with `source .venv/bin/activate` and use `cp` instead of `Copy-Item`.
 
@@ -79,6 +103,8 @@ pytest tests/e2e --slow-frames   # emulate a ~6 fps renderer, like a slow CI run
 ```
 
 Browser tests (`tests/e2e/`) start the app on a random port and drive headless Chromium with Playwright. WebGL runs on the SwiftShader software renderer, so no GPU is needed. They check that the room renders, resizes, responds to mouse and touch, keeps the camera inside the room, pauses when the tab is hidden, cleans up GPU resources, and falls back gracefully without WebGL. They also check that only the models a room uses are downloaded, every object sits inside the room, hover highlighting, every object interaction (profile, posters, shelves, TV, music, noticeboard posting, gifts, sitting, the friends-only chest, window scenes, the door), that visitor text can't inject HTML, tapping on phones, a placeholder when a model fails, and the error panel when the catalogue fails.
+
+Accessibility tests run [axe-core](https://github.com/dequelabs/axe-core) (vendored in `tests/e2e/vendor/`, test-only) on each page, open panel, and the editor. They also drive the camera, the things list, and the editor using only the keyboard, and check reduced motion and the phone layout. Performance tests hold each room and each outside landscape to a budget (draw calls, triangles, geometries, textures, download size, request count) and check that nothing is fetched from outside the app. `test_room_customize.py` adds every catalogue item once, and covers light settings, neon text, photo uploads (kept across reloads), frames, landscapes, and stepping outside and back in.
 
 `tests/test_catalog_data.py` validates `static/data/`: every model file exists and is a GLB, every builder and interaction type is registered in the JavaScript, every room's appearance uses known presets, and every room object points at a real catalogue item and image with a valid permission level.
 
@@ -121,26 +147,35 @@ static/
     scene-manager.js      Mounts one scene at a time, disposing the previous one
     camera-controller.js  Bounded orbit camera (mouse + touch), reset view
     room-scene.js         Builds a room from a room config + catalogue; edit mode, live
-                          appearance changes, serialize/applyLayout
-    editor-controller.js  Edit mode: select, drag, rotate, delete, place; riders on furniture
+                          appearance changes, light settings, serialize/applyLayout
+    exterior-scene.js     The house outside, in the room's landscape and time of day
+    editor-controller.js  Edit mode: select, drag, rotate, resize, recolour, delete, place on the
+                          floor, on furniture, on walls, or on the ceiling; riders on furniture;
+                          light, text, and photo changes
     placement.js          Pure grid/wall/overlap rules used by the editor
     screen-point.js       Ray and screen-space helpers shared by interactions and the editor
     catalog.js            Loads/validates the catalogue and normalizes room configs
     asset-loader.js       GLTF/texture loading with caching, normalization, and disposal
-    object-manager.js     Turns room objects into placed models/props, lamps, placeholders
+    object-manager.js     Turns room objects into placed models/props, lights (colour,
+                          brightness, effects), placeholders
     interaction-manager.js Raycast hover highlight and click/tap selection
-    room-config.js        Dimensions, palette (incl. model recolouring), lighting, camera limits
+    room-config.js        Dimensions, palette (incl. model recolouring), lighting, item colours
+                          and sizes, light colours and effects, landscapes, camera limits
     quality.js            WebGL 2 detection and device quality presets
-    props/                Procedural room shell, decor (door, window, frames, clock, rug), and
-                          interactive props (poster, record player, noticeboard, gift table, chest)
+    props/                Procedural room shell, decor (door, window, frames, clock, rug),
+                          interactive props, instruments, glowing things (fairy lights, neon,
+                          photo string), hobbies and tech, window landscapes (landscapes.js),
+                          and the houses and scenery outside (outdoors.js)
   js/ui/          HTML side: interaction registry, panel contents, editor panel, photo viewer, music player,
-                  per-room browser storage for notes and gifts
-  models/furniture/  GLB furniture (Kenney Furniture Kit, CC0; see LICENSE-kenney.txt)
+                  per-room browser storage for notes and gifts, uploaded photos (image-store.js)
+  models/furniture/  GLB furniture (Kenney Furniture Kit, CC0; see LICENSE-kenney.txt) and its thumbnails
+  models/props/thumbs/  Catalogue thumbnails for procedural props (made by tools/render_thumbnails.py)
   images/demo/    Original SVG artwork used as demo photos
   vendor/three/   Pinned Three.js r187 (see VERSION)
   css/            Styles; room.css holds the 3D page overlays and dialogs
 migrations/       SQL migrations (Milestone 4)
-tests/            pytest suite; tests/e2e/ has the Playwright browser tests
+tools/            Developer scripts (render_thumbnails.py: thumbnails for procedural props)
+tests/            pytest suite; tests/e2e/ has the Playwright browser tests (and vendor/axe.min.js)
 ```
 
 ### 3D architecture notes
@@ -151,23 +186,28 @@ tests/            pytest suite; tests/e2e/ has the Playwright browser tests
   ```
   { roomId, name, description,
     owner: { username, displayName, bio, status, online, interests },
-    appearance: { theme, wallpaper, floor, lighting },
+    appearance: { theme, wallpaper, floor, lighting, landscape },
     objects: [{ id, catalogId, position, rotation, scale, customData, permissions: { interact } }] }
   ```
   The catalogue maps `catalogId` to a GLB `model` or a procedural `builder`, plus an optional `interaction`, `light`, and default `permissions`. Milestone 4 moves rooms and the catalogue into Postgres without changing this shape.
+- Catalogue items also describe how they're edited: `placement` (`floor`, `surface`, `wall`, `ceiling`, or `fixed`), `category` and `tags` for the Add tab, `recolor` (the GLB material, or builder option, that an owner's colour replaces), `defaults` (customData for new copies, such as a starter track), `addable: false` for one-per-room parts, `mount.drop` for ceiling items, `scale`, `support` (wall items small things can stand on), `text` ({ field, maxLength, label } for editable words), and `photos` ({ field, max } for frames and photo strings). An owner's colour is stored as a name from `ITEM_COLORS` in `customData.color`; size is the object's scale. Wall and ceiling models are re-anchored on load so their origin is on the wall or ceiling.
+- Lights: an item with a catalogue `light` gets a point light, and its parts marked `userData.glow` follow `customData.light` = { color (`LIGHT_COLORS`), brightness, effect (`LIGHT_EFFECTS`) } plus `customData.on`. Settings change in place without rebuilding; effects animate only while the light is on and never with reduced motion.
+- Photos are references: bundled images (`/static/images/...`) or uploads (`upload:<id>`). The engine never sees files; builders ask an injected `images.resolve(ref)` for a URL, and anything else resolves to nothing. Milestone 4 can move uploads to Supabase Storage behind the same interface.
+- The room's `appearance.landscape` picks the window painting and the outside scene. `ExteriorScene` has the same view interface as `RoomScene`, so the page swaps them through `SceneManager`; the only outside interaction is the front door (`enter`).
 - Every room shares one layout of zones: entrance (door with the owner's nameplate and online light), centre (bed, rug, seating), left wall (memories), right wall (collections), back wall (desk, TV), corners (music, plants), and a window. Appearance presets (`WALLPAPERS`, `FLOORS`, `LIGHTING_MOODS` in `room-config.js`) make the same foundation look different per owner.
 - Permissions: each object has an interact level (`everyone`, `followers`, `friends`, `owner`). `js/permissions.js` compares it with the viewer's relationship to the owner; unknown levels fail closed. The 3D engine only receives a `canInteract` callback, so it stays unaware of users.
 - Only the models a room references are downloaded. Each model loads once, is normalized (origin at floor centre, kit scale applied) and cloned per instance, so geometry is shared. Materials are recoloured by name to the room theme (`modelMaterials`), keeping a consistent palette.
 - A model that fails to load becomes a neutral placeholder and is logged; the room still opens.
 - Clicks are raycast against the whole scene so objects can't be clicked through others. Interactions fire on `click` after a short, still press, so camera drags never trigger them. Types map to handlers in `js/ui/interactions.js` (each needs an entry in `INTERACTION_VERBS`, which the tests enforce); add new types there.
 - Interactive props expose `userData.controls = { state, actions }` (for example the chest's `setOpen`). The page calls them through `RoomScene.runAction(objectId, action)`, so UI code never touches meshes, and the state shows up in debug info for tests.
-- Camera damping is scaled by frame time, so the camera glides and settles in the same time at 6 fps (CI software rendering) as at 120 fps.
+- Camera damping is scaled by frame time, so the camera glides and settles in the same time at 6 fps (CI software rendering) as at 120 fps. Programmatic moves (`flyTo`, used for reset, sitting, and keyboard orbit/zoom) discard leftover drag momentum so they land exactly.
 - `PropKit` caches geometries, materials, and textures so repeated parts share GPU resources.
 - HTML overlays (nameplate, buttons, tooltip, dialogs, loading, errors, WebGL fallback) are separate from the canvas.
 
 ## Credits
 
 - Furniture models: [Furniture Kit](https://kenney.nl/assets/furniture-kit) by Kenney, CC0.
+- Accessibility testing: [axe-core](https://github.com/dequelabs/axe-core) by Deque, MPL-2.0 (tests only, not shipped).
 
 ## Content and IP
 
