@@ -11,7 +11,7 @@ Stack: Python Flask, HTML/CSS, vanilla JavaScript, Three.js r187 (vendored, load
 | 0 | Project setup | ✅ Done |
 | 1 | First 3D room | ✅ Done |
 | 2 | Asset loading and object interactions | ✅ Done |
-| 3 | Personal Room MVP: 3a zoned layout + owner/appearance/permissions data ✅, 3b interactive room objects ✅, 3c customization mode, 3d keyboard access and polish | In progress |
+| 3 | Personal Room MVP: 3a zoned layout + owner/appearance/permissions data ✅, 3b interactive room objects ✅, 3c customization mode ✅, 3d keyboard access and polish | In progress |
 
 ## Local setup (Windows)
 
@@ -52,6 +52,18 @@ Room page options (development only, until accounts exist):
 | Door | Nameplate and the way out |
 
 Notes and gifts are saved in your browser (localStorage, per room) until accounts arrive.
+
+### Editing a room
+
+Open a room as its owner (`/room?as=owner`) and choose **Edit room**:
+
+- **Add**: pick furniture from the catalogue; it appears at a free spot and follows the pointer. Click or tap the floor to place it.
+- **Move**: drag furniture across the floor. It snaps to a 25 cm grid, stays inside the walls, and can't overlap other furniture (the footprint turns red where it doesn't fit). Things standing on furniture, like a lamp on a nightstand, move, turn, and are removed with it.
+- **Turn and remove**: the toolbar buttons, or **R** / **Shift+R** to turn, **Delete** to remove, arrow keys to nudge, **Escape** to deselect or cancel.
+- **Look**: walls, floor, and lighting change instantly.
+- **Save** keeps the layout in this browser (`doors:v1:<room>:layout`), **Cancel** puts everything back, **Start over** returns to the room as authored (save to keep it).
+
+Wall items (photos, posters, the noticeboard) and fixed parts (door, window, ceiling lamp) can't be moved yet.
 
 On macOS/Linux, activate with `source .venv/bin/activate` and use `cp` instead of `Copy-Item`.
 
@@ -100,14 +112,19 @@ backend/          Blueprints and server logic
 templates/        Jinja templates
 static/
   data/
-    catalog.json          Item catalogue: id -> GLB model or procedural builder, interaction, light
+    catalog.json          Item catalogue: id -> GLB model or procedural builder, placement
+                          (floor/surface/wall/fixed), thumbnail, interaction, light
     rooms/*.json          Mock rooms (mira, jun) served at /room/<id>, in the room format below
   js/pages/       Page entry points (room.js loads data and wires HTML overlays to the engine)
   js/three/       3D engine, independent of Flask and the database
     engine.js             Renderer, single render loop, resize, visibility pause, disposal
     scene-manager.js      Mounts one scene at a time, disposing the previous one
     camera-controller.js  Bounded orbit camera (mouse + touch), reset view
-    room-scene.js         Builds a room from a room config + catalogue
+    room-scene.js         Builds a room from a room config + catalogue; edit mode, live
+                          appearance changes, serialize/applyLayout
+    editor-controller.js  Edit mode: select, drag, rotate, delete, place; riders on furniture
+    placement.js          Pure grid/wall/overlap rules used by the editor
+    screen-point.js       Ray and screen-space helpers shared by interactions and the editor
     catalog.js            Loads/validates the catalogue and normalizes room configs
     asset-loader.js       GLTF/texture loading with caching, normalization, and disposal
     object-manager.js     Turns room objects into placed models/props, lamps, placeholders
@@ -116,7 +133,7 @@ static/
     quality.js            WebGL 2 detection and device quality presets
     props/                Procedural room shell, decor (door, window, frames, clock, rug), and
                           interactive props (poster, record player, noticeboard, gift table, chest)
-  js/ui/          HTML side: interaction registry, panel contents, photo viewer, music player,
+  js/ui/          HTML side: interaction registry, panel contents, editor panel, photo viewer, music player,
                   per-room browser storage for notes and gifts
   models/furniture/  GLB furniture (Kenney Furniture Kit, CC0; see LICENSE-kenney.txt)
   images/demo/    Original SVG artwork used as demo photos

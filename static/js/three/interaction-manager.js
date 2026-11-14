@@ -1,10 +1,10 @@
 import * as THREE from 'three';
+import { findScreenPoint, setRayFromClient } from './screen-point.js';
 
 const CLICK_MAX_MOVE_PX = 6;
 const CLICK_MAX_MS = 600;
 const TAP_CLICK_FALLBACK_MS = 350;
 const HIGHLIGHT = new THREE.Color('#ffcf7a');
-const SAMPLE_GRID = 9;
 
 /**
  * Raycast-based hover and click handling. The first mesh under the pointer wins,
@@ -19,9 +19,9 @@ export class InteractionManager {
     this.onHoverChange = onHoverChange;
     this.onSelect = onSelect;
 
+    this.enabled = true;
     this.hovered = null;
     this._raycaster = new THREE.Raycaster();
-    this._ndc = new THREE.Vector2();
     this._pendingHover = null;
     this._press = null;
     this._activePointers = new Set();
@@ -57,10 +57,7 @@ export class InteractionManager {
   }
 
   pick(clientX, clientY) {
-    const rect = this.canvas.getBoundingClientRect();
-    if (rect.width === 0 || rect.height === 0) return null;
-    this._ndc.set(((clientX - rect.left) / rect.width) * 2 - 1, -((clientY - rect.top) / rect.height) * 2 + 1);
-    this._raycaster.setFromCamera(this._ndc, this.camera);
+    if (!setRayFromClient(this._raycaster, this.camera, this.canvas, clientX, clientY)) return null;
     const hits = this._raycaster.intersectObjects(this.scene.children, true);
     const hit = hits.find((h) => h.object.isMesh && h.object.visible);
     if (!hit) return null;
@@ -70,35 +67,33 @@ export class InteractionManager {
 
   /** Finds a client-space point where the given object is visible and clickable. */
   findScreenPoint(record) {
-    const rect = this.canvas.getBoundingClientRect();
-    const box = new THREE.Box3().setFromObject(record.root);
-    const corners = [];
-    for (const x of [box.min.x, box.max.x]) {
-      for (const y of [box.min.y, box.max.y]) {
-        for (const z of [box.min.z, box.max.z]) corners.push(new THREE.Vector3(x, y, z).project(this.camera));
-      }
-    }
-    if (corners.every((c) => c.z > 1)) return null;
-    const toClient = (c) => ({ x: rect.left + ((c.x + 1) / 2) * rect.width, y: rect.top + ((1 - c.y) / 2) * rect.height });
-    const points = corners.map(toClient);
-    const minX = Math.max(rect.left + 1, Math.min(...points.map((p) => p.x)));
-    const maxX = Math.min(rect.right - 1, Math.max(...points.map((p) => p.x)));
-    const minY = Math.max(rect.top + 1, Math.min(...points.map((p) => p.y)));
-    const maxY = Math.min(rect.bottom - 1, Math.max(...points.map((p) => p.y)));
-    if (minX >= maxX || minY >= maxY) return null;
+    return findScreenPoint({
+      camera: this.camera,
+      canvas: this.canvas,
+      root: record.root,
+      isHit: (x, y) => this.pick(x, y) === record,
+    });
+  }
 
-    // Sample from the centre outwards so the returned point is well inside the object.
-    const offsets = [];
-    for (let i = 0; i < SAMPLE_GRID; i += 1) offsets.push((i + 0.5) / SAMPLE_GRID);
-    offsets.sort((a, b) => Math.abs(a - 0.5) - Math.abs(b - 0.5));
-    for (const fy of offsets) {
-      for (const fx of offsets) {
-        const x = minX + (maxX - minX) * fx;
-        const y = minY + (maxY - minY) * fy;
-        if (this.pick(x, y) === record) return { x, y };
-      }
+  /** Turns hover and click handling off (for example while editing the room). */
+  setEnabled(enabled) {
+    this.enabled = enabled;
+    if (!enabled) {
+      this._pendingHover = null;
+      this._press = null;
+      this._clearTap();
+      this._setHovered(null);
     }
-    return null;
+  }
+
+  /** Drops cached highlight materials, which go stale when the room's palette changes. */
+  resetHighlights() {
+    const hovered = this.hovered;
+    this._applyHighlight(null);
+    for (const material of this._highlightMaterials.values()) material.dispose();
+    this._highlightMaterials.clear();
+    this._applyHighlight(hovered);
+    this._changed = true;
   }
 
   /** Temporarily removes highlighting so callers can swap materials safely. */
@@ -129,7 +124,7 @@ export class InteractionManager {
 
   _onPointerDown(event) {
     this._activePointers.add(event.pointerId);
-    if (this._activePointers.size > 1) {
+    if (!this.enabled || this._activePointers.size > 1) {
       this._press = null;
       return;
     }
@@ -158,7 +153,7 @@ export class InteractionManager {
   _selectTap() {
     const tap = this._tap;
     this._clearTap();
-    if (!tap) return;
+    if (!tap || !this.enabled) return;
     const record = this.pick(tap.x, tap.y);
     if (!record) return;
     // Interactions often move the camera or open a panel, so drop any stale hover.
@@ -174,7 +169,7 @@ export class InteractionManager {
   }
 
   _onPointerMove(event) {
-    if (event.pointerType !== 'mouse') return;
+    if (!this.enabled || event.pointerType !== 'mouse') return;
     if (event.buttons !== 0) {
       if (this.hovered) this._setHovered(null);
       return;

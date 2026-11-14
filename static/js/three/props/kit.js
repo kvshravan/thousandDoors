@@ -32,8 +32,10 @@ export class PropKit {
       basic = false,
     } = options;
     const resolved = this.color(color);
+    // Cached by the colour as requested (palette key or raw colour), so setPalette()
+    // can recolour every material that was asked for by palette key.
     const key = JSON.stringify([
-      resolved,
+      color,
       roughness,
       metalness,
       flatShading,
@@ -57,14 +59,29 @@ export class PropKit {
             emissive: emissive ? this.color(emissive) : 0x000000,
             emissiveIntensity,
           });
+      material.userData.paletteKeys = { color, emissive };
       this._materials.set(key, material);
     }
     return material;
   }
 
+  /** Switches palette and recolours every material created from palette keys. */
+  setPalette(palette) {
+    this.palette = palette;
+    for (const material of this._materials.values()) {
+      const { color, emissive } = material.userData.paletteKeys;
+      if (Object.hasOwn(palette, color)) material.color.set(palette[color]);
+      if (emissive && Object.hasOwn(palette, emissive)) material.emissive.set(palette[emissive]);
+    }
+  }
+
   texture(texture) {
     this._textures.add(texture);
     return texture;
+  }
+
+  releaseTexture(texture) {
+    if (this._textures.delete(texture)) texture.dispose();
   }
 
   geometry(key, create) {
@@ -146,6 +163,23 @@ export class PropKit {
   /** Registers a per-frame callback. It returns true when it changed something visible. */
   addUpdater(update) {
     this.updaters.push(update);
+    this._collecting?.push(update);
+  }
+
+  /** Runs fn and returns [result, updaters it registered], so they can be removed later. */
+  collectUpdaters(fn) {
+    const collected = [];
+    this._collecting = collected;
+    try {
+      return [fn(), collected];
+    } finally {
+      this._collecting = null;
+    }
+  }
+
+  removeUpdaters(updaters) {
+    const remove = new Set(updaters);
+    this.updaters = this.updaters.filter((update) => !remove.has(update));
   }
 
   dispose() {

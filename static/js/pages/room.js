@@ -15,6 +15,8 @@ import { MusicPlayer } from '../ui/music.js';
 import { Panel } from '../ui/panel.js';
 import { PhotoViewer } from '../ui/photo-viewer.js';
 import { RoomStore } from '../ui/room-store.js';
+import { EditorPanel } from '../ui/editor-panel.js';
+import { resolveAppearance } from '../three/room-config.js';
 
 const HINT_FADE_DELAY_MS = 2500;
 const TOOLTIP_OFFSET_PX = 16;
@@ -33,6 +35,12 @@ class RoomPage {
     this.resetButton = root.querySelector('#reset-view');
     this.retryButton = root.querySelector('#room-retry');
     this.standButton = root.querySelector('#stand-up');
+    this.editButton = root.querySelector('#edit-room');
+    this.editorRoot = root.querySelector('#editor');
+    this.editorPanel = null;
+    this.editing = false;
+    this._editSnapshot = null;
+    this._editBusy = false;
     this.leaveUrl = root.querySelector('[data-testid="back-link"]').getAttribute('href');
 
     const { catalogUrl, roomUrl, modelsUrl } = this.stage.dataset;
@@ -73,6 +81,7 @@ class RoomPage {
     this.resetButton.addEventListener('click', this._onReset);
     this.retryButton.addEventListener('click', this._onRetry);
     this.standButton.addEventListener('click', this._onReset);
+    this.editButton.addEventListener('click', () => this.enterEditMode());
 
     const coarse = window.matchMedia?.('(pointer: coarse)').matches;
     this.hint.textContent = coarse
@@ -103,8 +112,9 @@ class RoomPage {
       ]);
       const catalog = new Catalog(catalogData);
       this.catalog = catalog;
-      this.room = normalizeRoom(roomData);
-      this.store = new RoomStore(this.room.roomId);
+      this.originalRoom = normalizeRoom(roomData);
+      this.store = new RoomStore(this.originalRoom.roomId);
+      this.room = this._withSavedLayout(roomData);
       this._showNameplate(this.room);
 
       const quality = detectQuality(new URLSearchParams(window.location.search).get('quality'));
@@ -127,6 +137,7 @@ class RoomPage {
       if (this.manager?.current !== scene) return;
       this._syncVisitorCounts(scene);
       this._setState('ready');
+      this.editButton.hidden = this.viewer.relationship !== 'owner';
       this.loading.classList.add('is-hidden');
       this.engine.canvas.addEventListener('pointerdown', this._onFirstInteraction, { once: true });
       this.engine.canvas.addEventListener('wheel', this._onFirstInteraction, { once: true, passive: true });
@@ -137,6 +148,8 @@ class RoomPage {
   }
 
   destroy() {
+    this._leaveEditMode();
+    this.editButton.hidden = true;
     this.photoViewer.close();
     this.panel.close();
     this.music.stop();
@@ -166,6 +179,9 @@ class RoomPage {
       owner: this.room ? { ...this.room.owner } : null,
       lastInteraction: this.lastInteraction,
       music: this.music.state,
+      editing: this.editing,
+      customized: Boolean(this.room?.customized),
+      savedLayout: this.store?.loadLayout() ?? null,
       ui: {
         photoOpen: this.photoViewer.isOpen,
         panel: this.panel.getDebugInfo(),
@@ -200,6 +216,131 @@ class RoomPage {
       sum += (data[i] + data[i + 1] + data[i + 2]) / 3;
     }
     return { distinctColors: colors.size, meanBrightness: sum / (size * size) };
+  }
+
+  // ---- Edit mode (owner only) ----
+
+  /** The room as authored, with the owner's saved layout (if any) applied on top. */
+  _withSavedLayout(roomData) {
+    const saved = this.store.loadLayout();
+    if (!saved) return normalizeRoom(roomData);
+    let appearance = saved.appearance;
+    try {
+      resolveAppearance(appearance);
+    } catch {
+      appearance = roomData.appearance;
+    }
+    const room = normalizeRoom({ ...roomData, appearance, objects: saved.objects });
+    room.customized = true;
+    return room;
+  }
+
+  enterEditMode() {
+    const scene = this.manager?.current;
+    if (this.editing || this.state !== 'ready' || !scene || this.viewer.relationship !== 'owner') return false;
+    if (!this.editorPanel) {
+      this.editorPanel = new EditorPanel(this.editorRoot, {
+        catalog: this.catalog,
+        modelsUrl: this.urls.modelsUrl,
+        onAdd: (catalogId) => this.manager?.current?.editor?.beginPlacement(catalogId),
+        onAppearance: (change) => this._changeAppearance(change),
+        onCommand: (command) => this._editorCommand(command),
+      });
+    }
+    this.photoViewer.close();
+    this.panel.close();
+    this._showTooltip(null);
+    this.standButton.hidden = true;
+    this._editSnapshot = scene.serialize();
+    scene.enterEditMode({ onChange: (state) => this.editorPanel.render(state) });
+    this.editing = true;
+    document.body.classList.add('is-editing');
+    this.editorPanel.show(scene.appearance);
+    this.editorRoot.querySelector('[role="tab"][aria-selected="true"]')?.focus();
+    return true;
+  }
+
+  async _editorCommand(command) {
+    const editor = this.manager?.current?.editor;
+    if (!editor || this._editBusy) return;
+    switch (command) {
+      case 'rotate-left':
+        editor.rotateSelected(-1);
+        break;
+      case 'rotate-right':
+        editor.rotateSelected(1);
+        break;
+      case 'delete':
+        editor.deleteSelected();
+        break;
+      case 'place':
+        editor.commitPlacement();
+        break;
+      case 'save':
+        this.saveEdits();
+        break;
+      case 'cancel':
+        await this.cancelEdits();
+        break;
+      case 'restore':
+        await this._runBusy(() => this.manager.current.applyLayout(this.originalRoom));
+        editor.deselect();
+        this.editorPanel.setAppearance(this.manager.current.appearance);
+        editor._setMessage('Back to how the room started. Save to keep it.');
+        break;
+      default:
+        break;
+    }
+  }
+
+  _changeAppearance(change) {
+    const scene = this.manager?.current;
+    if (!scene?.editing) return;
+    this.editorPanel.setAppearance(scene.setAppearance(change));
+  }
+
+  saveEdits() {
+    const scene = this.manager?.current;
+    if (!scene?.editing) return false;
+    scene.editor.cancelPlacement();
+    const layout = scene.serialize();
+    this.store.saveLayout(layout);
+    this.room = normalizeRoom({ ...this.room, appearance: layout.appearance, objects: layout.objects });
+    this.room.customized = true;
+    this._leaveEditMode();
+    this._syncVisitorCounts(scene);
+    return true;
+  }
+
+  async cancelEdits() {
+    const scene = this.manager?.current;
+    if (!scene?.editing) return false;
+    const snapshot = this._editSnapshot;
+    this._leaveEditMode();
+    if (snapshot) await this._runBusy(() => scene.applyLayout(snapshot));
+    this._syncVisitorCounts(scene);
+    return true;
+  }
+
+  async _runBusy(task) {
+    this._editBusy = true;
+    this.editorPanel?.setBusy(true);
+    try {
+      await task();
+    } finally {
+      this._editBusy = false;
+      this.editorPanel?.setBusy(false);
+    }
+  }
+
+  _leaveEditMode() {
+    if (!this.editing) return;
+    this.manager?.current?.exitEditMode();
+    this.editing = false;
+    this._editSnapshot = null;
+    document.body.classList.remove('is-editing');
+    this.editorPanel?.hide();
+    this.editButton.focus?.();
   }
 
   _sit(objectId) {
@@ -305,6 +446,10 @@ if (document.documentElement.dataset.debug === '1') {
     samplePixels: () => page.samplePixels(),
     pointFor: (objectId) => page.pointFor(objectId),
     bounds: () => page.manager?.current?.getObjectBounds() ?? {},
+    floorPoint: (x, z) => page.manager?.current?.worldToClient(x, 0, z) ?? null,
+    layout: () => page.manager?.current?.serialize() ?? null,
+    enterEdit: () => page.enterEditMode(),
+    editorSelect: (objectId) => page.manager?.current?.editor?.select(objectId) ?? false,
     destroy: () => page.destroy(),
     remount: () => page.remount(),
   };

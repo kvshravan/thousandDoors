@@ -35,6 +35,11 @@ ROOM_MODULES = (
     "/static/js/ui/music.js",
     "/static/js/ui/room-store.js",
     "/static/js/three/props/interactive.js",
+    "/static/js/three/editor-controller.js",
+    "/static/js/three/placement.js",
+    "/static/js/three/screen-point.js",
+    "/static/js/ui/editor-panel.js",
+    "/static/models/furniture/thumbs/lounge-sofa.png",
     "/static/css/room.css",
     "/static/data/catalog.json",
     "/static/data/rooms/mira.json",
@@ -59,6 +64,7 @@ def test_room_page_renders(client):
     assert 'data-testid="room-fallback"' in html
     assert 'data-testid="photo-viewer"' in html
     assert 'data-testid="room-panel"' in html
+    assert 'data-testid="editor"' in html
     assert "/static/js/pages/room.js" in html
 
 

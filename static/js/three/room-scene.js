@@ -1,11 +1,14 @@
 import * as THREE from 'three';
 import { AssetLoader } from './asset-loader.js';
 import { CameraController } from './camera-controller.js';
+import { normalizeRoom } from './catalog.js';
+import { EditorController } from './editor-controller.js';
 import { InteractionManager } from './interaction-manager.js';
 import { ObjectManager } from './object-manager.js';
 import { buildRoomShell } from './props/architecture.js';
 import { PropKit } from './props/kit.js';
 import { CAMERA_SETTINGS, ROOM_DIMENSIONS, resolveAppearance } from './room-config.js';
+import { worldToClient } from './screen-point.js';
 
 // Seated eye position and look-at point, in the seat's local space (front faces +z).
 const SEAT_EYE = [0, 1.15, 0.1];
@@ -50,6 +53,8 @@ export class RoomScene {
     this.objects = null;
     this.interactions = null;
     this.engine = null;
+    this.editor = null;
+    this.shell = null;
     this.seatedOn = null;
     this._dirty = false;
   }
@@ -62,7 +67,8 @@ export class RoomScene {
     engine.setToneMappingExposure(this.lighting.toneMappingExposure);
 
     onProgress?.(0.05);
-    this.scene.add(buildRoomShell(this.kit, this.dimensions));
+    this.shell = buildRoomShell(this.kit, this.dimensions);
+    this.scene.add(this.shell);
     this._addLighting(engine.quality);
 
     this.objects = new ObjectManager({
@@ -95,6 +101,7 @@ export class RoomScene {
   update(dt) {
     let changed = this.controller.update(dt);
     if (this.interactions.update()) changed = true;
+    if (this.editor?.update()) changed = true;
     for (const updater of this.kit.updaters) {
       if (updater(dt)) changed = true;
     }
@@ -151,12 +158,119 @@ export class RoomScene {
     return on;
   }
 
+  // ---- Customization ----
+
+  get editing() {
+    return Boolean(this.editor);
+  }
+
+  /** Enters edit mode. Object interactions are paused until exitEditMode(). */
+  enterEditMode({ onChange } = {}) {
+    if (this.editor || !this.controller) return null;
+    this.seatedOn = null;
+    this.interactions.setEnabled(false);
+    this.editor = new EditorController({ scene: this, onChange });
+    this.editor.start();
+    return this.editor;
+  }
+
+  exitEditMode() {
+    if (!this.editor) return;
+    this.editor.stop();
+    this.editor = null;
+    this.interactions.setEnabled(true);
+    this._dirty = true;
+  }
+
+  /** Changes wallpaper, floor, and lighting in place. Throws on unknown presets. */
+  setAppearance(appearance) {
+    const resolved = resolveAppearance({ ...this.appearance, ...appearance });
+    this.appearance = resolved.choice;
+    this.palette = resolved.palette;
+    this.lighting = resolved.lighting;
+    this.objects.theme = resolved.palette;
+    this.kit.setPalette(resolved.palette);
+    this.shell.userData.refreshFloor();
+
+    const { hemisphere, sun } = resolved.lighting;
+    this.scene.background.set(resolved.palette.background);
+    this.hemisphere.color.set(hemisphere.sky);
+    this.hemisphere.groundColor.set(hemisphere.ground);
+    this.hemisphere.intensity = hemisphere.intensity;
+    this.sun.color.set(sun.color);
+    this.sun.intensity = sun.intensity;
+    this.engine.setToneMappingExposure(resolved.lighting.toneMappingExposure);
+    for (const record of this.objects.records.values()) {
+      record.controls?.actions?.setScene?.(resolved.choice.lighting);
+    }
+    this.interactions.resetHighlights();
+    this.engine.requestShadowUpdate();
+    this._dirty = true;
+    return { ...this.appearance };
+  }
+
+  async addObject(object) {
+    const record = await this.objects.addObject(object);
+    this.engine?.requestShadowUpdate();
+    this._dirty = true;
+    return record;
+  }
+
+  removeObject(objectId) {
+    const removed = this.objects.removeObject(objectId);
+    if (removed) {
+      this.engine?.requestShadowUpdate();
+      this._dirty = true;
+    }
+    return removed;
+  }
+
+  /** The room's current appearance and layout, in the room JSON format. */
+  serialize() {
+    return { appearance: { ...this.appearance }, objects: this.objects.serialize() };
+  }
+
+  /**
+   * Makes the scene match a serialized layout (used to cancel edits or start over).
+   * Objects are moved in place where possible and only rebuilt when they changed type.
+   */
+  async applyLayout(layout) {
+    const { appearance } = layout;
+    const { objects } = normalizeRoom({ objects: layout.objects });
+    this.setAppearance(appearance);
+    const wanted = new Map(objects.map((object) => [object.id, object]));
+    for (const id of [...this.objects.records.keys()]) {
+      const object = wanted.get(id);
+      if (!object || object.catalogId !== this.objects.get(id).catalogId) this.objects.removeObject(id);
+    }
+    await Promise.all(
+      objects.map((object) => {
+        const record = this.objects.get(object.id);
+        if (!record) return this.objects.addObject(object);
+        record.root.position.set(object.position.x, object.position.y, object.position.z);
+        record.root.rotation.set(object.rotation.x, object.rotation.y, object.rotation.z);
+        record.root.scale.set(object.scale.x, object.scale.y, object.scale.z);
+        return null;
+      }),
+    );
+    this.objects.setOrder(objects.map((object) => object.id));
+    this.engine?.requestShadowUpdate();
+    this._dirty = true;
+  }
+
   /** Client-space point where the object can be clicked, or null if it isn't visible. */
   getObjectScreenPoint(objectId) {
     const record = this.objects?.get(objectId);
     if (!record || !this.interactions) return null;
     this.scene.updateMatrixWorld(true);
-    return this.interactions.findScreenPoint(record);
+    return this.editor ? this.editor.findScreenPoint(objectId) : this.interactions.findScreenPoint(record);
+  }
+
+  /** Client-space point of a world position, or null if it is behind the camera. */
+  worldToClient(x, y, z) {
+    if (!this.engine) return null;
+    this.camera.updateMatrixWorld(true);
+    return worldToClient(this.camera, this.engine.canvas, new THREE.Vector3(x, y, z));
   }
 
   /** World-space bounding boxes of every room object, keyed by object id. */
@@ -185,6 +299,7 @@ export class RoomScene {
       meshes,
       lights,
       hovered: this.interactions?.hovered?.id ?? null,
+      editor: this.editor?.getState() ?? null,
       seatedOn: this.seatedOn,
       assets: this.loader?.getStats() ?? null,
       ...(this.objects?.getDebugInfo() ?? {}),
@@ -193,6 +308,8 @@ export class RoomScene {
   }
 
   dispose() {
+    this.editor?.stop();
+    this.editor = null;
     this.interactions?.dispose();
     this.interactions = null;
     this.controller?.dispose();
@@ -211,7 +328,8 @@ export class RoomScene {
 
   _addLighting(quality) {
     const { hemisphere, sun } = this.lighting;
-    this.scene.add(new THREE.HemisphereLight(hemisphere.sky, hemisphere.ground, hemisphere.intensity));
+    this.hemisphere = new THREE.HemisphereLight(hemisphere.sky, hemisphere.ground, hemisphere.intensity);
+    this.scene.add(this.hemisphere);
 
     const sunLight = new THREE.DirectionalLight(sun.color, sun.intensity);
     sunLight.name = 'sun';
@@ -227,6 +345,7 @@ export class RoomScene {
       sunLight.shadow.radius = 4;
     }
     this.scene.add(sunLight, sunLight.target);
+    this.sun = sunLight;
   }
 
   _cameraBounds() {

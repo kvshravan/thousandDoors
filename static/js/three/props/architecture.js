@@ -16,6 +16,13 @@ export function buildRoomShell(kit, { width, height, depth }) {
   floor.name = 'floor';
   floor.rotation.x = -Math.PI / 2;
   shell.add(floor);
+  // Lets the room re-texture the floor when the owner picks another floor style.
+  shell.userData.refreshFloor = () => {
+    const previous = floor.material.map;
+    floor.material.map = kit.texture(createPlankTexture(kit.palette));
+    floor.material.needsUpdate = true;
+    kit.releaseTexture(previous);
+  };
 
   const halfW = width / 2;
   const halfD = depth / 2;

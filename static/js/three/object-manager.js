@@ -2,10 +2,12 @@ import * as THREE from 'three';
 import { PROP_BUILDERS } from './props/index.js';
 
 const GLOW_ON = { emissive: 'lampGlow', emissiveIntensity: 0.9 };
+const round = (value, digits) => Number(value.toFixed(digits));
 
 /**
  * Builds room objects ({ id, catalogId, position, rotation, scale, customData, permissions })
- * from catalogue entries, either GLB models or procedural builders.
+ * from catalogue entries, either GLB models or procedural builders. Objects can be
+ * added and removed at any time, and the current layout serialized back to JSON.
  */
 export class ObjectManager {
   constructor({ scene, kit, catalog, loader, theme, room }) {
@@ -18,6 +20,10 @@ export class ObjectManager {
     this.records = new Map();
     this.failed = [];
     this.skipped = [];
+    // Objects with unknown catalogue ids are kept so saving doesn't silently drop them.
+    this._unknownObjects = [];
+    // Ids in the order objects were added, so saved layouts keep a stable order.
+    this._order = [];
   }
 
   async populate(objects, onProgress) {
@@ -25,23 +31,45 @@ export class ObjectManager {
     const total = objects.length || 1;
     await Promise.all(
       objects.map(async (object) => {
-        try {
-          await this._add(object);
-        } catch (error) {
-          if (this.loader.disposed) return;
-          console.warn(`[room] Showing a placeholder for "${object.id}".`, error);
-          this.failed.push(object.id);
-          this._addPlaceholder(object);
-        } finally {
-          done += 1;
-          onProgress?.(done / total);
-        }
+        await this.addObject(object);
+        done += 1;
+        onProgress?.(done / total);
       }),
     );
   }
 
+  /** Adds one object, falling back to a placeholder if its model fails. Returns its record. */
+  async addObject(object) {
+    if (!this._order.includes(object.id)) this._order.push(object.id);
+    try {
+      return await this._add(object);
+    } catch (error) {
+      if (this.loader.disposed) return null;
+      console.warn(`[room] Showing a placeholder for "${object.id}".`, error);
+      this.failed.push(object.id);
+      return this._addPlaceholder(object);
+    }
+  }
+
+  removeObject(objectId) {
+    const record = this.records.get(objectId);
+    if (!record) return false;
+    record.root.removeFromParent();
+    record.light?.dispose();
+    this.kit.removeUpdaters(record.updaters);
+    this.records.delete(objectId);
+    this._order = this._order.filter((id) => id !== objectId);
+    return true;
+  }
+
   get(objectId) {
     return this.records.get(objectId) ?? null;
+  }
+
+  /** Reorders saved output to match ids (unknown ids are ignored). */
+  setOrder(ids) {
+    const known = ids.filter((id) => this.records.has(id));
+    this._order = [...known, ...this._order.filter((id) => !known.includes(id) && this.records.has(id))];
   }
 
   /** Walks up from a hit mesh to the room object that owns it. */
@@ -62,6 +90,25 @@ export class ObjectManager {
     const material = on ? this.kit.material('lampGlow', GLOW_ON) : this.kit.material('cream', { roughness: 0.6 });
     for (const mesh of record.glowMeshes) mesh.material = material;
     return on;
+  }
+
+  /** The current layout in the room JSON format. */
+  serialize() {
+    const ordered = this._order.map((id) => this.records.get(id)).filter(Boolean);
+    const objects = ordered.map((record) => {
+      const { position, rotation, scale } = record.root;
+      const object = {
+        id: record.id,
+        catalogId: record.catalogId,
+        position: { x: round(position.x, 3), y: round(position.y, 3), z: round(position.z, 3) },
+        rotation: { x: round(rotation.x, 4), y: round(rotation.y, 4), z: round(rotation.z, 4) },
+        scale: { x: round(scale.x, 3), y: round(scale.y, 3), z: round(scale.z, 3) },
+      };
+      if (Object.keys(record.data).length > 0) object.customData = structuredClone(record.data);
+      if (record.permissionOverride) object.permissions = { interact: record.permissionOverride };
+      return object;
+    });
+    return [...objects, ...this._unknownObjects.map((object) => structuredClone(object))];
   }
 
   getDebugInfo() {
@@ -93,11 +140,28 @@ export class ObjectManager {
     if (!entry) {
       console.warn(`[room] Unknown catalogue item "${object.catalogId}" for "${object.id}" skipped.`);
       this.skipped.push(object.id);
-      return;
+      this._unknownObjects.push(object);
+      return null;
     }
 
-    const content = entry.model ? await this._instantiateModel(entry) : await this._build(entry, object);
-    if (this.loader.disposed) return;
+    let content;
+    let updaters = [];
+    if (entry.model) {
+      content = await this._instantiateModel(entry);
+    } else {
+      const build = PROP_BUILDERS[entry.builder];
+      if (!build) throw new Error(`No builder named "${entry.builder}".`);
+      const options = { ...(entry.options ?? {}), ...object.customData };
+      const [result, owned] = this.kit.collectUpdaters(() =>
+        build(this.kit, options, { loader: this.loader, room: this.room }),
+      );
+      updaters = owned;
+      content = await result;
+    }
+    if (this.loader.disposed) {
+      this.kit.removeUpdaters(updaters);
+      return null;
+    }
     const holder = this._place(object, content, entry);
 
     const glowMeshes = [];
@@ -106,18 +170,12 @@ export class ObjectManager {
     });
 
     const record = {
-      id: object.id,
-      catalogId: entry.id,
+      ...this._baseRecord(object, entry, holder),
       name: entry.name,
       interaction: entry.interaction ?? null,
-      permission: object.permissions?.interact ?? entry.permissions?.interact ?? null,
       controls: content.userData.controls ?? null,
-      data: object.customData,
-      root: holder,
       glowMeshes,
-      light: null,
-      lightIntensity: 0,
-      lampOn: false,
+      updaters,
     };
 
     if (entry.light) {
@@ -131,6 +189,29 @@ export class ObjectManager {
 
     this.records.set(object.id, record);
     if (record.light) this.setLamp(object.id, object.customData.on ?? true);
+    return record;
+  }
+
+  _baseRecord(object, entry, holder) {
+    const override = object.permissions?.interact ?? null;
+    return {
+      id: object.id,
+      catalogId: object.catalogId,
+      name: entry?.name ?? 'Missing item',
+      interaction: null,
+      permission: override ?? entry?.permissions?.interact ?? null,
+      permissionOverride: override,
+      placement: entry?.placement ?? 'floor',
+      flat: Boolean(entry?.flat),
+      controls: null,
+      data: object.customData,
+      root: holder,
+      glowMeshes: [],
+      updaters: [],
+      light: null,
+      lightIntensity: 0,
+      lampOn: false,
+    };
   }
 
   async _instantiateModel(entry) {
@@ -154,12 +235,6 @@ export class ObjectManager {
     return instance;
   }
 
-  async _build(entry, object) {
-    const build = PROP_BUILDERS[entry.builder];
-    if (!build) throw new Error(`No builder named "${entry.builder}".`);
-    return build(this.kit, { ...(entry.options ?? {}), ...object.customData }, { loader: this.loader, room: this.room });
-  }
-
   _place(object, content, entry) {
     const holder = new THREE.Group();
     holder.name = `object:${object.id}`;
@@ -178,19 +253,10 @@ export class ObjectManager {
     group.name = 'placeholder';
     const box = this.kit.part(group, this.kit.rounded(0.5, 0.5, 0.5, 0.06), this.kit.material('#c9b8a8', { roughness: 1 }), [0, 0.25, 0]);
     box.userData.placeholder = true;
-    const holder = this._place(object, group, null);
-    this.records.set(object.id, {
-      id: object.id,
-      catalogId: object.catalogId,
-      name: 'Missing item',
-      interaction: null,
-      data: object.customData,
-      root: holder,
-      glowMeshes: [],
-      light: null,
-      lightIntensity: 0,
-      lampOn: false,
-      placeholder: true,
-    });
+    const entry = this.catalog.get(object.catalogId);
+    const holder = this._place(object, group, entry);
+    const record = { ...this._baseRecord(object, entry, holder), name: 'Missing item', placeholder: true };
+    this.records.set(object.id, record);
+    return record;
   }
 }

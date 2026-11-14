@@ -34,10 +34,41 @@
     <a class="chip" href="{{ url_for('pages.index') }}" data-testid="back-link">← Back</a>
     <button class="chip" type="button" id="reset-view" data-testid="reset-view">Reset view</button>
     <button class="chip chip-accent" type="button" id="stand-up" data-testid="stand-up" hidden>Stand up</button>
+    <button class="chip" type="button" id="edit-room" data-testid="edit-room" hidden>Edit room</button>
   </nav>
   <p class="room-hint" id="room-hint" data-testid="room-hint">Drag to look around</p>
   <p class="room-tooltip" id="room-tooltip" data-testid="room-tooltip" hidden></p>
 </div>
+
+<aside class="editor" id="editor" data-testid="editor" aria-labelledby="editor-title" hidden>
+  <div class="editor-head">
+    <h2 class="editor-title" id="editor-title"><span class="editor-dot" aria-hidden="true"></span>Editing your room</h2>
+    <p class="editor-help">Drag furniture to move it. <kbd>R</kbd> turns it, <kbd>Delete</kbd> removes it, arrow keys nudge it.</p>
+  </div>
+  <div class="editor-tabs" role="tablist" aria-label="Editor sections">
+    <button type="button" role="tab" data-tab="add" aria-selected="true" aria-controls="editor-add" id="editor-tab-add">Add</button>
+    <button type="button" role="tab" data-tab="look" aria-selected="false" aria-controls="editor-look" id="editor-tab-look" tabindex="-1">Look</button>
+  </div>
+  <div class="editor-scroll">
+    <div class="editor-tabpanel" id="editor-add" role="tabpanel" aria-labelledby="editor-tab-add" data-tabpanel="add" data-editor-catalog></div>
+    <div class="editor-tabpanel" id="editor-look" role="tabpanel" aria-labelledby="editor-tab-look" data-tabpanel="look" data-editor-look hidden></div>
+  </div>
+  <div class="editor-selection" data-testid="editor-selection" data-editor-selection hidden>
+    <p class="editor-selection-name" data-editor-selection-name></p>
+    <div class="editor-selection-actions">
+      <button type="button" class="chip" data-editor-command="rotate-left" aria-label="Turn left">⟲</button>
+      <button type="button" class="chip" data-editor-command="rotate-right" aria-label="Turn right">⟳</button>
+      <button type="button" class="chip chip-accent" data-editor-command="place" hidden>Place here</button>
+      <button type="button" class="chip chip-danger" data-editor-command="delete">Remove</button>
+    </div>
+  </div>
+  <p class="editor-status" role="status" aria-live="polite" data-testid="editor-status" data-editor-status></p>
+  <div class="editor-foot">
+    <button type="button" class="button" data-editor-command="save" data-testid="editor-save">Save</button>
+    <button type="button" class="chip" data-editor-command="cancel" data-testid="editor-cancel">Cancel</button>
+    <button type="button" class="editor-link" data-editor-command="restore" data-testid="editor-restore">Start over</button>
+  </div>
+</aside>
 
 <dialog class="room-dialog photo-dialog" id="photo-viewer" data-testid="photo-viewer" aria-labelledby="photo-caption">
   <form method="dialog" class="room-dialog-close-form">

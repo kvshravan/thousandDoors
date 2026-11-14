@@ -81,7 +81,11 @@ export function buildWindow(kit, { width = 2.0, height = 1.5, scene = null } = {
     state: { scene: current },
     actions: {
       cycle() {
-        current = names[(names.indexOf(current) + 1) % names.length];
+        return controls.actions.setScene(names[(names.indexOf(current) + 1) % names.length]);
+      },
+      setScene(name) {
+        if (!names.includes(name)) return current;
+        current = name;
         glass.material = skyMaterial(current);
         controls.state.scene = current;
         return current;

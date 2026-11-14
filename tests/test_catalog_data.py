@@ -84,6 +84,13 @@ def test_catalog_item_is_valid(item):
         assert item["builder"] in BUILDERS, f"unknown builder {item['builder']}"
     if "interaction" in item:
         assert item["interaction"] in INTERACTIONS, f"no handler for {item['interaction']}"
+    assert item["placement"] in {"floor", "surface", "wall", "fixed"}
+    if item.get("flat"):
+        assert item["placement"] == "floor"
+    if "thumbnail" in item:
+        thumb = STATIC / "models" / item["thumbnail"]
+        assert thumb.is_file(), f"missing thumbnail {thumb}"
+        assert thumb.read_bytes()[:8] == b"\x89PNG\r\n\x1a\n"
     if "permissions" in item:
         assert item["permissions"]["interact"] in PERMISSION_LEVELS
     if "light" in item:

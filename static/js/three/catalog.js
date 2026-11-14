@@ -25,6 +25,10 @@ export class Catalog {
     return this._items.get(id) ?? null;
   }
 
+  items() {
+    return [...this._items.values()];
+  }
+
   get size() {
     return this._items.size;
   }

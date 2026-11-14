@@ -80,6 +80,17 @@ export class CameraController {
     this.flyTo(this.home);
   }
 
+  /** Overrides how far the camera may tilt; pass nothing to restore the defaults. */
+  setPolarLimits(min = this.settings.minPolarAngle, max = this.settings.maxPolarAngle) {
+    this.controls.minPolarAngle = min;
+    this.controls.maxPolarAngle = max;
+  }
+
+  /** Pauses mouse and touch camera control (for example while dragging furniture). */
+  setUserControl(enabled) {
+    this.controls.enabled = enabled;
+  }
+
   /** Smoothly moves the camera to { position, target } (THREE.Vector3s). A drag cancels it. */
   flyTo({ position, target }) {
     this._goal = { position: position.clone(), target: target.clone() };

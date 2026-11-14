@@ -1,6 +1,6 @@
 /**
- * Visitor contributions (noticeboard notes, gifts) saved in this browser until
- * accounts and the database arrive (Milestones 4 and 6).
+ * Visitor contributions (noticeboard notes, gifts) and the owner's edited layout,
+ * saved in this browser until accounts and the database arrive (Milestones 4 and 6).
  */
 
 const PREFIX = 'doors:v1';
@@ -74,6 +74,35 @@ export class RoomStore {
       // Storage full or blocked: the entry still shows for this visit.
     }
     return cleaned;
+  }
+
+  /** The owner's saved layout ({ appearance, objects }) for this room, or null. */
+  loadLayout() {
+    if (!this.storage) return null;
+    try {
+      const layout = JSON.parse(this.storage.getItem(this._key('layout')) ?? 'null');
+      const valid =
+        layout &&
+        typeof layout === 'object' &&
+        Array.isArray(layout.objects) &&
+        layout.objects.every((object) => object && typeof object === 'object' && typeof object.catalogId === 'string');
+      return valid ? { appearance: layout.appearance ?? {}, objects: layout.objects } : null;
+    } catch {
+      return null;
+    }
+  }
+
+  saveLayout({ appearance, objects }) {
+    try {
+      this.storage?.setItem(this._key('layout'), JSON.stringify({ version: 1, appearance, objects }));
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  clearLayout() {
+    this.storage?.removeItem(this._key('layout'));
   }
 
   _key(kind) {
