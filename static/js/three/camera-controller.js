@@ -34,6 +34,7 @@ export class CameraController {
 
     this._changed = true;
     this._resetting = false;
+    this.idle = false;
     this._onChange = () => {
       this._changed = true;
     };
@@ -56,6 +57,7 @@ export class CameraController {
 
     const changed = this._changed || this._resetting;
     this._changed = false;
+    this.idle = !changed;
     return changed;
   }
 
@@ -72,6 +74,7 @@ export class CameraController {
       distance: this.controls.getDistance(),
       polar: this.controls.getPolarAngle(),
       azimuth: this.controls.getAzimuthalAngle(),
+      idle: this.idle,
       aspect: this.camera.aspect,
       fov: this.camera.fov,
       limits: {

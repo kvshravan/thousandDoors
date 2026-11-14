@@ -1,5 +1,4 @@
 import math
-import time
 
 from playwright.sync_api import Page
 
@@ -26,17 +25,20 @@ def camera(page: Page) -> dict:
     return info(page)["scene"]["camera"]
 
 
-def wait_camera_settled(page: Page, timeout: float = 10.0) -> dict:
-    """Waits until damping finishes and the camera stops moving."""
-    deadline = time.monotonic() + timeout
-    previous = camera(page)
-    while time.monotonic() < deadline:
-        page.wait_for_timeout(150)
-        current = camera(page)
-        if _same_position(previous, current):
-            return current
-        previous = current
-    raise AssertionError("camera did not settle")
+def wait_camera_settled(page: Page, timeout: float = 15.0) -> dict:
+    """Waits until the controller reports a tick with no camera movement.
+
+    Requires a couple of fresh ticks first, so input that hasn't been processed
+    yet can't be mistaken for a settled camera.
+    """
+    start = info(page)["engine"]["ticks"]
+    page.wait_for_function(
+        "(start) => { const i = window.__doors.info();"
+        " return i.engine.ticks >= start + 2 && i.scene.camera.idle; }",
+        arg=start,
+        timeout=timeout * 1000,
+    )
+    return camera(page)
 
 
 def canvas_center(page: Page) -> tuple[float, float]:
@@ -65,7 +67,3 @@ def assert_camera_within_limits(cam: dict) -> None:
 
 def angle_delta(a: float, b: float) -> float:
     return abs(math.atan2(math.sin(a - b), math.cos(a - b)))
-
-
-def _same_position(a: dict, b: dict) -> bool:
-    return all(abs(a["position"][k] - b["position"][k]) < 5e-4 for k in "xyz")

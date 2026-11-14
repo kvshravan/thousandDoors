@@ -19,6 +19,7 @@ export class Engine {
     this.onContextLost = onContextLost;
     this.view = null;
     this.frameCount = 0;
+    this.tickCount = 0;
     this.wanted = false;
     this.running = false;
     this.disposed = false;
@@ -100,6 +101,7 @@ export class Engine {
       running: this.running,
       activeLoops,
       frames: this.frameCount,
+      ticks: this.tickCount,
       quality: this.quality.name,
       pixelRatio: this.renderer.getPixelRatio(),
       canvas: {
@@ -144,6 +146,7 @@ export class Engine {
 
   _tick(time) {
     if (!this.view) return;
+    this.tickCount += 1;
     this.timer.update(time);
     const dt = Math.min(this.timer.getDelta(), 0.1);
     const viewChanged = this.view.update(dt);
