@@ -17,7 +17,10 @@ def create_app(config_name: str | None = None) -> Flask:
 
     @app.context_processor
     def inject_globals():
-        return {"app_name": app.config["APP_NAME"]}
+        return {
+            "app_name": app.config["APP_NAME"],
+            "debug_hooks": app.config["EXPOSE_DEBUG_HOOKS"],
+        }
 
     return app
 

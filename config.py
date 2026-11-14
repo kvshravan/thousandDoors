@@ -12,17 +12,21 @@ class Config:
     SECRET_KEY = os.getenv("SECRET_KEY", "dev-insecure-key")
     TESTING = False
     DEBUG = False
+    # Exposes window.__doors for automated browser tests.
+    EXPOSE_DEBUG_HOOKS = False
 
 
 class DevelopmentConfig(Config):
     ENV_NAME = "development"
     DEBUG = True
+    EXPOSE_DEBUG_HOOKS = True
 
 
 class TestingConfig(Config):
     ENV_NAME = "testing"
     TESTING = True
     SECRET_KEY = "test-key"
+    EXPOSE_DEBUG_HOOKS = True
 
 
 class ProductionConfig(Config):

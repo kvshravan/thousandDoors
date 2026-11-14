@@ -1,0 +1,64 @@
+{% extends "base.html" %}
+{% block title %}Demo room · {{ app_name }}{% endblock %}
+{% block body_class %}page-room{% endblock %}
+{% block head %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/room.css') }}">
+<script type="importmap">
+{
+  "imports": {
+    "three": "{{ url_for('static', filename='vendor/three/build/three.module.min.js') }}",
+    "three/addons/": "{{ url_for('static', filename='vendor/three/examples/jsm/') }}"
+  }
+}
+</script>
+<link rel="modulepreload" href="{{ url_for('static', filename='vendor/three/build/three.module.min.js') }}">
+<link rel="modulepreload" href="{{ url_for('static', filename='vendor/three/build/three.core.js') }}">
+{% endblock %}
+{% block content %}
+<div class="room-stage" id="room-stage" role="img" aria-label="Interactive 3D view of a cozy demo room"></div>
+
+<div class="room-ui">
+  <div class="room-nameplate" data-testid="room-nameplate">
+    <span class="room-nameplate-title">Demo room</span>
+    <span class="room-nameplate-sub">A cozy corner to explore</span>
+  </div>
+  <nav class="room-actions" aria-label="Room actions">
+    <a class="chip" href="{{ url_for('pages.index') }}" data-testid="back-link">← Back</a>
+    <button class="chip" type="button" id="reset-view" data-testid="reset-view">Reset view</button>
+  </nav>
+  <p class="room-hint" id="room-hint" data-testid="room-hint">Drag to look around</p>
+</div>
+
+<div class="room-overlay room-loading" id="room-loading" data-testid="room-loading" role="status" aria-live="polite">
+  <div class="loading-door" aria-hidden="true"></div>
+  <p id="room-loading-text">Opening the door…</p>
+</div>
+
+<div class="room-overlay room-panel-wrap" id="room-error" data-testid="room-error" role="alert" hidden>
+  <div class="room-panel">
+    <h1>The door is stuck</h1>
+    <p>Something went wrong while opening this room.</p>
+    <button class="button" type="button" id="room-retry">Try again</button>
+  </div>
+</div>
+
+<div class="room-overlay room-panel-wrap" id="room-fallback" data-testid="room-fallback" hidden>
+  <div class="room-panel">
+    <h1>This room needs 3D</h1>
+    <p>Your browser or device can't display 3D graphics (WebGL 2), so this room can't open here.</p>
+    <ul>
+      <li>Use a recent version of Chrome, Edge, Firefox, or Safari.</li>
+      <li>Turn on hardware acceleration in your browser settings.</li>
+    </ul>
+    <a class="button" href="{{ url_for('pages.index') }}">Back home</a>
+  </div>
+</div>
+<noscript>
+  <div class="room-overlay room-panel-wrap">
+    <div class="room-panel"><h1>This room needs JavaScript</h1><p>Turn on JavaScript to step inside.</p></div>
+  </div>
+</noscript>
+{% endblock %}
+{% block scripts %}
+<script type="module" src="{{ url_for('static', filename='js/pages/room.js') }}"></script>
+{% endblock %}
