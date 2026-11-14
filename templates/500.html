@@ -1,0 +1,9 @@
+{% extends "base.html" %}
+{% block title %}Something broke · {{ app_name }}{% endblock %}
+{% block content %}
+<section class="hero">
+  <h1>The door is stuck.</h1>
+  <p class="lede">Something went wrong on our side. Please try again.</p>
+  <a class="button" href="{{ url_for('pages.index') }}">Back to the hallway</a>
+</section>
+{% endblock %}
