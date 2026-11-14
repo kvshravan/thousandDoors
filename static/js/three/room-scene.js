@@ -1,20 +1,34 @@
 import * as THREE from 'three';
+import { AssetLoader } from './asset-loader.js';
 import { CameraController } from './camera-controller.js';
+import { InteractionManager } from './interaction-manager.js';
+import { ObjectManager } from './object-manager.js';
 import { buildRoomShell } from './props/architecture.js';
-import { PROP_BUILDERS } from './props/index.js';
 import { PropKit } from './props/kit.js';
 import { CAMERA_SETTINGS, LIGHTING, ROOM_DIMENSIONS, THEMES } from './room-config.js';
 
 /**
- * Renders one room from a configuration: { theme, layout }.
- * Knows nothing about pages, routes, or the database.
+ * Renders one room from a normalized room config and a catalogue.
+ * Knows nothing about pages, routes, or the database; interactions are reported
+ * through callbacks.
  */
 export class RoomScene {
-  constructor({ theme = 'cozy', layout = [], dimensions = ROOM_DIMENSIONS, camera = CAMERA_SETTINGS } = {}) {
-    if (!THEMES[theme]) throw new Error(`Unknown room theme "${theme}".`);
-    this.themeName = theme;
-    this.palette = THEMES[theme];
-    this.layout = layout;
+  constructor({
+    room,
+    catalog,
+    modelsUrl,
+    onInteract,
+    onHoverChange,
+    dimensions = ROOM_DIMENSIONS,
+    camera = CAMERA_SETTINGS,
+  }) {
+    if (!THEMES[room.theme]) throw new Error(`Unknown room theme "${room.theme}".`);
+    this.room = room;
+    this.catalog = catalog;
+    this.modelsUrl = modelsUrl;
+    this.onInteract = onInteract;
+    this.onHoverChange = onHoverChange;
+    this.palette = THEMES[room.theme];
     this.dimensions = dimensions;
     this.cameraSettings = camera;
 
@@ -23,39 +37,56 @@ export class RoomScene {
     this.camera = new THREE.PerspectiveCamera(camera.fov, 1, camera.near, camera.far);
     this.controller = null;
     this.kit = null;
+    this.loader = null;
+    this.objects = null;
+    this.interactions = null;
     this.engine = null;
-    this.skippedProps = [];
+    this._dirty = false;
   }
 
   async load(engine, { onProgress } = {}) {
     this.engine = engine;
     this.kit = new PropKit({ palette: this.palette, quality: engine.quality });
+    this.loader = new AssetLoader(this.modelsUrl);
     this.scene.background = new THREE.Color(this.palette.background);
     engine.setToneMappingExposure(LIGHTING.toneMappingExposure);
 
-    onProgress?.(0.1);
+    onProgress?.(0.05);
     this.scene.add(buildRoomShell(this.kit, this.dimensions));
     this._addLighting(engine.quality);
-    onProgress?.(0.3);
 
-    const total = this.layout.length || 1;
-    for (const [index, item] of this.layout.entries()) {
-      this._placeProp(item);
-      if (index % 5 === 4) {
-        onProgress?.(0.3 + (0.6 * (index + 1)) / total);
-        await nextFrame();
-      }
-    }
+    this.objects = new ObjectManager({
+      scene: this.scene,
+      kit: this.kit,
+      catalog: this.catalog,
+      loader: this.loader,
+      theme: this.palette,
+    });
+    await this.objects.populate(this.room.objects, (fraction) => onProgress?.(0.1 + fraction * 0.85));
+    if (this.loader.disposed) return;
 
     this.controller = new CameraController(this.camera, engine.canvas, this.cameraSettings, this._cameraBounds());
+    this.interactions = new InteractionManager({
+      camera: this.camera,
+      canvas: engine.canvas,
+      scene: this.scene,
+      resolve: (object3d) => this.objects.resolve(object3d),
+      onHoverChange: (record, point) => this.onHoverChange?.(record ? describe(record) : null, point),
+      onSelect: (record) => this.onInteract?.(describe(record)),
+    });
     engine.renderer.compile(this.scene, this.camera);
     onProgress?.(1);
   }
 
   update(dt) {
     let changed = this.controller.update(dt);
+    if (this.interactions.update()) changed = true;
     for (const updater of this.kit.updaters) {
       if (updater(dt)) changed = true;
+    }
+    if (this._dirty) {
+      this._dirty = false;
+      changed = true;
     }
     return changed;
   }
@@ -74,6 +105,36 @@ export class RoomScene {
     this.controller?.resetView();
   }
 
+  /** Toggles a lamp and returns its new state, or null if the object has no light. */
+  toggleLamp(objectId) {
+    const record = this.objects?.get(objectId);
+    if (!record?.light) return null;
+    const on = this.interactions.withoutHighlight(() => this.objects.setLamp(objectId, !record.lampOn));
+    this._dirty = true;
+    return on;
+  }
+
+  /** Client-space point where the object can be clicked, or null if it isn't visible. */
+  getObjectScreenPoint(objectId) {
+    const record = this.objects?.get(objectId);
+    if (!record || !this.interactions) return null;
+    this.scene.updateMatrixWorld(true);
+    return this.interactions.findScreenPoint(record);
+  }
+
+  /** World-space bounding boxes of every room object, keyed by object id. */
+  getObjectBounds() {
+    const bounds = {};
+    if (!this.objects) return bounds;
+    this.scene.updateMatrixWorld(true);
+    const box = new THREE.Box3();
+    for (const record of this.objects.records.values()) {
+      box.setFromObject(record.root);
+      bounds[record.id] = { min: box.min.toArray(), max: box.max.toArray() };
+    }
+    return bounds;
+  }
+
   getDebugInfo() {
     let meshes = 0;
     let lights = 0;
@@ -82,39 +143,32 @@ export class RoomScene {
       if (object.isLight) lights += 1;
     });
     return {
-      theme: this.themeName,
-      props: this.layout.length - this.skippedProps.length,
-      skippedProps: [...this.skippedProps],
+      theme: this.room.theme,
+      roomId: this.room.roomId,
       meshes,
       lights,
+      hovered: this.interactions?.hovered?.id ?? null,
+      assets: this.loader?.getStats() ?? null,
+      ...(this.objects?.getDebugInfo() ?? {}),
       camera: this.controller?.getDebugInfo() ?? null,
     };
   }
 
   dispose() {
+    this.interactions?.dispose();
+    this.interactions = null;
     this.controller?.dispose();
     this.controller = null;
-    this.kit?.dispose();
-    this.kit = null;
     this.scene.traverse((object) => {
-      if (object.isInstancedMesh) object.dispose();
       if (object.isLight) object.dispose?.();
     });
     this.scene.clear();
+    this.loader?.dispose();
+    this.kit?.dispose();
+    this.loader = null;
+    this.kit = null;
+    this.objects = null;
     this.engine = null;
-  }
-
-  _placeProp({ prop, position = [0, 0, 0], rotationY = 0, options = {} }) {
-    const build = PROP_BUILDERS[prop];
-    if (!build) {
-      console.warn(`[room] Unknown prop "${prop}" skipped.`);
-      this.skippedProps.push(prop);
-      return;
-    }
-    const object = build(this.kit, options);
-    object.position.set(...position);
-    object.rotation.y = rotationY;
-    this.scene.add(object);
   }
 
   _addLighting(quality) {
@@ -147,6 +201,13 @@ export class RoomScene {
   }
 }
 
-function nextFrame() {
-  return new Promise((resolve) => requestAnimationFrame(() => resolve()));
+function describe(record) {
+  return {
+    objectId: record.id,
+    catalogId: record.catalogId,
+    name: record.data.label ?? record.data.caption ?? record.name,
+    type: record.interaction,
+    data: record.data,
+    lampOn: record.light ? record.lampOn : undefined,
+  };
 }

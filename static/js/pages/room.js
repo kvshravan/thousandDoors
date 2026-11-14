@@ -1,10 +1,14 @@
+import { Catalog, fetchJson, normalizeRoom } from '../three/catalog.js';
 import { Engine } from '../three/engine.js';
 import { detectQuality, isWebGL2Available } from '../three/quality.js';
-import { DEMO_ROOM_LAYOUT } from '../three/room-config.js';
 import { RoomScene } from '../three/room-scene.js';
 import { SceneManager } from '../three/scene-manager.js';
+import { GuestbookPanel } from '../ui/guestbook.js';
+import { createInteractionRegistry, handleInteraction, INTERACTION_VERBS } from '../ui/interactions.js';
+import { PhotoViewer } from '../ui/photo-viewer.js';
 
 const HINT_FADE_DELAY_MS = 2500;
+const TOOLTIP_OFFSET_PX = 16;
 
 class RoomPage {
   constructor(root) {
@@ -14,12 +18,29 @@ class RoomPage {
     this.errorPanel = root.querySelector('#room-error');
     this.fallbackPanel = root.querySelector('#room-fallback');
     this.hint = root.querySelector('#room-hint');
+    this.tooltip = root.querySelector('#room-tooltip');
+    this.nameplateTitle = root.querySelector('[data-room-name]');
+    this.nameplateSub = root.querySelector('[data-room-description]');
     this.resetButton = root.querySelector('#reset-view');
     this.retryButton = root.querySelector('#room-retry');
+
+    const { catalogUrl, roomUrl, modelsUrl } = this.stage.dataset;
+    this.urls = { catalogUrl, roomUrl, modelsUrl };
 
     this.state = 'idle';
     this.engine = null;
     this.manager = null;
+    this.room = null;
+    this.lastInteraction = null;
+
+    this.photoViewer = new PhotoViewer(root.querySelector('#photo-viewer'));
+    this.guestbook = new GuestbookPanel(root.querySelector('#guestbook-panel'));
+    this.registry = createInteractionRegistry({
+      photoViewer: this.photoViewer,
+      guestbook: this.guestbook,
+      getScene: () => this.manager?.current ?? null,
+      getRoomName: () => this.room?.name ?? '',
+    });
 
     this._onReset = () => this.manager?.current?.resetView();
     this._onRetry = () => this.remount();
@@ -29,8 +50,8 @@ class RoomPage {
 
     const coarse = window.matchMedia?.('(pointer: coarse)').matches;
     this.hint.textContent = coarse
-      ? 'Drag to look around · Pinch to zoom'
-      : 'Drag to look around · Scroll to zoom';
+      ? 'Drag to look around · Pinch to zoom · Tap things'
+      : 'Drag to look around · Scroll to zoom · Click things';
   }
 
   async mount() {
@@ -50,12 +71,28 @@ class RoomPage {
     this._setProgress(0);
 
     try {
+      const [catalogData, roomData] = await Promise.all([
+        fetchJson(this.urls.catalogUrl, 'the item catalogue'),
+        fetchJson(this.urls.roomUrl, 'the room'),
+      ]);
+      const catalog = new Catalog(catalogData);
+      this.room = normalizeRoom(roomData);
+      this._showNameplate(this.room);
+
       const quality = detectQuality(new URLSearchParams(window.location.search).get('quality'));
       this.engine = new Engine(this.stage, { quality, onContextLost: () => this._fail('lost') });
       this.manager = new SceneManager(this.engine);
-      const scene = await this.manager.show(() => new RoomScene({ theme: 'cozy', layout: DEMO_ROOM_LAYOUT }), {
-        onProgress: (value) => this._setProgress(value),
-      });
+      const scene = await this.manager.show(
+        () =>
+          new RoomScene({
+            room: this.room,
+            catalog,
+            modelsUrl: this.urls.modelsUrl,
+            onInteract: (event) => this._interact(event),
+            onHoverChange: (target, point) => this._showTooltip(target, point),
+          }),
+        { onProgress: (value) => this._setProgress(value) },
+      );
       if (!scene) return;
       await this.engine.waitForFrame();
       if (this.manager?.current !== scene) return;
@@ -70,6 +107,9 @@ class RoomPage {
   }
 
   destroy() {
+    this.photoViewer.close();
+    this.guestbook.close();
+    this._showTooltip(null);
     this.manager?.dispose();
     this.engine?.dispose();
     this.manager = null;
@@ -89,7 +129,18 @@ class RoomPage {
       engine: this.engine?.getDebugInfo() ?? null,
       scene: this.manager?.current?.getDebugInfo() ?? null,
       activeLoops: Engine.activeLoops,
+      lastInteraction: this.lastInteraction,
+      ui: {
+        photoOpen: this.photoViewer.isOpen,
+        guestbookOpen: this.guestbook.isOpen,
+        tooltip: this.tooltip.hidden ? null : this.tooltip.textContent,
+      },
     };
+  }
+
+  /** Client-space point where an object can be clicked, or null if it isn't visible. */
+  pointFor(objectId) {
+    return this.manager?.current?.getObjectScreenPoint(objectId) ?? null;
   }
 
   /** Renders a frame and returns basic pixel statistics, used to verify the canvas isn't blank. */
@@ -112,6 +163,31 @@ class RoomPage {
       sum += (data[i] + data[i + 1] + data[i + 2]) / 3;
     }
     return { distinctColors: colors.size, meanBrightness: sum / (size * size) };
+  }
+
+  _interact(event) {
+    this.lastInteraction = { objectId: event.objectId, type: event.type };
+    this._showTooltip(null);
+    handleInteraction(this.registry, event);
+  }
+
+  _showTooltip(target, point) {
+    if (!target || !point) {
+      this.tooltip.hidden = true;
+      return;
+    }
+    const verb = INTERACTION_VERBS[target.type];
+    this.tooltip.textContent = verb ? `${target.name} · ${verb}` : target.name;
+    this.tooltip.hidden = false;
+    const maxX = window.innerWidth - this.tooltip.offsetWidth - 8;
+    const maxY = window.innerHeight - this.tooltip.offsetHeight - 8;
+    this.tooltip.style.transform = `translate(${Math.min(point.x + TOOLTIP_OFFSET_PX, maxX)}px, ${Math.min(point.y + TOOLTIP_OFFSET_PX, maxY)}px)`;
+  }
+
+  _showNameplate(room) {
+    this.nameplateTitle.textContent = room.name;
+    this.nameplateSub.textContent = room.description;
+    this.nameplateSub.hidden = !room.description;
   }
 
   _fail(reason) {
@@ -159,6 +235,8 @@ if (document.documentElement.dataset.debug === '1') {
     },
     info: () => page.getDebugInfo(),
     samplePixels: () => page.samplePixels(),
+    pointFor: (objectId) => page.pointFor(objectId),
+    bounds: () => page.manager?.current?.getObjectBounds() ?? {},
     destroy: () => page.destroy(),
     remount: () => page.remount(),
   };

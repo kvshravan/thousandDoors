@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { createArtTexture, createClockFaceTexture, createRugTexture, createSkyTexture } from './textures.js';
+import { createClockFaceTexture, createRugTexture, createSkyTexture } from './textures.js';
 
 // Wall-mounted props use their origin as the point on the wall surface, front facing +z.
 // Floor props use floor level at the centre of their footprint.
@@ -88,13 +88,46 @@ export function buildWindow(kit, { width = 2.0, height = 1.5 } = {}) {
   return win;
 }
 
-export function buildPictureFrame(kit, { width = 0.6, height = 0.8, art = 'blocks', frameColor = 'woodDark' } = {}) {
+export async function buildPictureFrame(
+  kit,
+  { width = 0.6, height = 0.8, imageUrl = null, frameColor = 'woodDark' } = {},
+  { loader } = {},
+) {
   const frame = group('picture-frame');
   const border = 0.05;
   kit.part(frame, kit.rounded(width, height, 0.04, 0.012), kit.material(frameColor, { roughness: 0.7 }), [0, 0, 0.02], null, NO_CAST);
-  const map = kit.texture(createArtTexture(art, kit.palette));
-  kit.part(frame, kit.plane(width - border * 2, height - border * 2), kit.material('#ffffff', { map, roughness: 0.9 }), [0, 0, 0.041], null, NO_CAST);
+  const map = imageUrl && loader ? await loader.loadTexture(imageUrl) : null;
+  kit.part(
+    frame,
+    kit.plane(width - border * 2, height - border * 2),
+    kit.material(map ? '#ffffff' : 'cream', { map, roughness: 0.9 }),
+    [0, 0, 0.041],
+    null,
+    NO_CAST,
+  );
   return frame;
+}
+
+export function buildGuestbook(kit) {
+  const stand = group('guestbook');
+  const wood = kit.material('woodMid');
+  kit.part(stand, kit.cylinder(0.2, 0.24, 0.05, 20), wood, [0, 0.025, 0]);
+  kit.part(stand, kit.cylinder(0.035, 0.045, 0.85, 10), wood, [0, 0.45, 0]);
+
+  const top = group('guestbook-top');
+  top.position.set(0, 0.95, 0);
+  top.rotation.x = -0.5;
+  kit.part(top, kit.rounded(0.6, 0.04, 0.44, 0.014), kit.material('woodMid'), [0, 0, 0]);
+  kit.part(top, kit.box(0.56, 0.012, 0.03), kit.material('woodDark'), [0, 0.024, 0.21]);
+  kit.part(top, kit.rounded(0.54, 0.022, 0.38, 0.008), kit.material('terracotta'), [0, 0.03, 0]);
+  const page = kit.rounded(0.25, 0.02, 0.35, 0.006);
+  const paper = kit.material('linen', { roughness: 0.95 });
+  kit.part(top, page, paper, [-0.13, 0.05, 0], [0, 0, 0.06]);
+  kit.part(top, page, paper, [0.13, 0.05, 0], [0, 0, -0.06]);
+  kit.part(top, kit.box(0.018, 0.004, 0.36), kit.material('mustard'), [0.02, 0.066, 0.02], null, NO_CAST);
+  kit.part(top, kit.cylinder(0.009, 0.009, 0.18, 6), kit.material('navy'), [0.19, 0.07, 0.06], [0, 0.6, Math.PI / 2], NO_CAST);
+  stand.add(top);
+  return stand;
 }
 
 export function buildWallClock(kit, { radius = 0.28 } = {}) {
@@ -140,7 +173,7 @@ export function buildPendantLamp(kit, { drop = 1.0 } = {}) {
     null,
     NO_CAST,
   );
-  kit.part(
+  const bulb = kit.part(
     lamp,
     kit.sphere(0.07, 14, 10),
     kit.material('lampGlow', { emissive: 'lampGlow', emissiveIntensity: 1.4 }),
@@ -148,8 +181,6 @@ export function buildPendantLamp(kit, { drop = 1.0 } = {}) {
     null,
     { castShadow: false, receiveShadow: false },
   );
-  const light = new THREE.PointLight(kit.color('lampGlow'), 6, 12, 2);
-  light.position.set(0, -drop - 0.3, 0);
-  lamp.add(light);
+  bulb.userData.glow = true;
   return lamp;
 }

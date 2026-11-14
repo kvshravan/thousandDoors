@@ -67,3 +67,18 @@ def assert_camera_within_limits(cam: dict) -> None:
 
 def angle_delta(a: float, b: float) -> float:
     return abs(math.atan2(math.sin(a - b), math.cos(a - b)))
+
+
+def point_for(page: Page, object_id: str) -> dict | None:
+    return page.evaluate("(id) => window.__doors.pointFor(id)", object_id)
+
+
+def bring_into_view(page: Page, object_id: str, attempts: int = 12) -> dict:
+    """Rotates the camera until the object is clickable and returns its screen point."""
+    for _ in range(attempts):
+        point = point_for(page, object_id)
+        if point:
+            return point
+        mouse_drag(page, 160, 0, steps=6)
+        wait_camera_settled(page)
+    raise AssertionError(f"{object_id} never came into view")

@@ -38,6 +38,19 @@ export const THEMES = Object.freeze({
     hillNear: '#7f9e72',
     hillFar: '#a9c09a',
     sun: '#ffe7a8',
+    // Recolours GLB model materials (matched by material name) to this palette.
+    modelMaterials: {
+      wood: 'woodLight',
+      woodDark: 'woodDark',
+      carpet: 'terracotta',
+      carpetDarker: '#a8553a',
+      carpetWhite: 'linen',
+      metal: '#d3cbbf',
+      metalMedium: '#7b7570',
+      metalDark: '#3b3a3d',
+      plant: 'leaf',
+      _defaultMat: 'cream',
+    },
   },
 });
 
@@ -73,54 +86,3 @@ export const CAMERA_SETTINGS = Object.freeze({
   // Keeps the camera this far inside the walls, floor, and ceiling.
   boundsMargin: 0.3,
 });
-
-const HALF_PI = Math.PI / 2;
-
-// Placement of props for the demo room. Positions are in room units, y = floor.
-export const DEMO_ROOM_LAYOUT = Object.freeze([
-  { prop: 'rug', position: [0.3, 0, -0.6], options: { radius: 1.6 } },
-  { prop: 'bed', position: [-2.6, 0, -3.84] },
-  { prop: 'nightstand', position: [-1.15, 0, -4.68] },
-  { prop: 'desk', position: [1.4, 0, -4.58] },
-  { prop: 'chair', position: [1.4, 0, -3.72], rotationY: Math.PI - 0.12 },
-  { prop: 'floorLamp', position: [2.9, 0, -4.5] },
-  { prop: 'plant', position: [4.35, 0, -4.35], options: { seed: 3 } },
-  { prop: 'bookshelf', position: [-4.74, 0, 0.4], rotationY: HALF_PI },
-  { prop: 'plant', position: [-4.35, 0, 4.3], options: { seed: 11, scale: 0.75 } },
-  { prop: 'sofa', position: [-1.0, 0, 4.48], rotationY: Math.PI },
-  { prop: 'sideTable', position: [0.45, 0, 4.55] },
-  { prop: 'door', position: [4.97, 0, 2.0], rotationY: -HALF_PI },
-  { prop: 'doorMat', position: [4.45, 0, 2.0], rotationY: -HALF_PI },
-  { prop: 'window', position: [1.4, 2.15, -4.97], options: { width: 2.0, height: 1.5 } },
-  { prop: 'pendantLamp', position: [0.3, 4, -0.6], options: { drop: 1.0 } },
-  { prop: 'wallClock', position: [4.97, 2.7, -1.6], rotationY: -HALF_PI },
-  {
-    prop: 'pictureFrame',
-    position: [-4.97, 2.45, -1.7],
-    rotationY: HALF_PI,
-    options: { width: 0.8, height: 1.0, art: 'sun' },
-  },
-  {
-    prop: 'pictureFrame',
-    position: [-4.97, 2.65, -2.85],
-    rotationY: HALF_PI,
-    options: { width: 0.6, height: 0.6, art: 'waves' },
-  },
-  {
-    prop: 'pictureFrame',
-    position: [-4.97, 2.2, -2.85],
-    rotationY: HALF_PI,
-    options: { width: 0.6, height: 0.25, art: 'stripes', frameColor: 'woodLight' },
-  },
-  {
-    prop: 'pictureFrame',
-    position: [-1.0, 2.15, 4.97],
-    rotationY: Math.PI,
-    options: { width: 1.3, height: 0.8, art: 'blocks' },
-  },
-  {
-    prop: 'pictureFrame',
-    position: [-2.6, 1.95, -4.97],
-    options: { width: 0.5, height: 0.6, art: 'moon', frameColor: 'woodLight' },
-  },
-]);

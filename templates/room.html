@@ -15,19 +15,47 @@
 <link rel="modulepreload" href="{{ url_for('static', filename='vendor/three/build/three.core.js') }}">
 {% endblock %}
 {% block content %}
-<div class="room-stage" id="room-stage" role="img" aria-label="Interactive 3D view of a cozy demo room"></div>
+<div
+  class="room-stage"
+  id="room-stage"
+  role="img"
+  aria-label="Interactive 3D view of a cozy demo room"
+  data-catalog-url="{{ url_for('static', filename='data/catalog.json') }}"
+  data-room-url="{{ url_for('static', filename='data/demo-room.json') }}"
+  data-models-url="{{ url_for('static', filename='models/') }}"
+></div>
 
 <div class="room-ui">
   <div class="room-nameplate" data-testid="room-nameplate">
-    <span class="room-nameplate-title">Demo room</span>
-    <span class="room-nameplate-sub">A cozy corner to explore</span>
+    <span class="room-nameplate-title" data-room-name>Demo room</span>
+    <span class="room-nameplate-sub" data-room-description>A cozy corner to explore</span>
   </div>
   <nav class="room-actions" aria-label="Room actions">
     <a class="chip" href="{{ url_for('pages.index') }}" data-testid="back-link">← Back</a>
     <button class="chip" type="button" id="reset-view" data-testid="reset-view">Reset view</button>
   </nav>
   <p class="room-hint" id="room-hint" data-testid="room-hint">Drag to look around</p>
+  <p class="room-tooltip" id="room-tooltip" data-testid="room-tooltip" hidden></p>
 </div>
+
+<dialog class="room-dialog photo-dialog" id="photo-viewer" data-testid="photo-viewer" aria-labelledby="photo-caption">
+  <form method="dialog" class="room-dialog-close-form">
+    <button class="room-dialog-close" type="submit" aria-label="Close photo">×</button>
+  </form>
+  <img class="photo-image" data-photo-image alt="">
+  <p class="photo-error" data-photo-error hidden>This photo couldn't be loaded.</p>
+  <p class="photo-caption" id="photo-caption" data-photo-caption></p>
+</dialog>
+
+<dialog class="room-dialog guestbook-dialog" id="guestbook-panel" data-testid="guestbook-panel" aria-labelledby="guestbook-title">
+  <form method="dialog" class="room-dialog-close-form">
+    <button class="room-dialog-close" type="submit" aria-label="Close guestbook">×</button>
+  </form>
+  <h2 class="guestbook-title" id="guestbook-title" data-guestbook-title>Guestbook</h2>
+  <ul class="guestbook-list" data-guestbook-list></ul>
+  <p class="guestbook-empty" data-guestbook-empty hidden>No entries yet.</p>
+  <p class="guestbook-note">Signing guestbooks arrives with accounts.</p>
+</dialog>
 
 <div class="room-overlay room-loading" id="room-loading" data-testid="room-loading" role="status" aria-live="polite">
   <div class="loading-door" aria-hidden="true"></div>

@@ -1,0 +1,58 @@
+{
+  "version": 1,
+  "modelScale": 2,
+  "items": [
+    { "id": "bed-double", "name": "Double bed", "category": "furniture", "model": "furniture/bed-double.glb", "materials": { "carpet": "navy" } },
+    { "id": "side-table-drawers", "name": "Nightstand", "category": "furniture", "model": "furniture/side-table-drawers.glb" },
+    { "id": "side-table", "name": "Side table", "category": "furniture", "model": "furniture/side-table.glb" },
+    { "id": "desk", "name": "Desk", "category": "furniture", "model": "furniture/desk.glb" },
+    { "id": "chair-desk", "name": "Desk chair", "category": "furniture", "model": "furniture/chair-desk.glb", "materials": { "carpet": "mustard" } },
+    { "id": "bookcase-open", "name": "Bookcase", "category": "furniture", "model": "furniture/bookcase-open.glb", "materials": { "wood": "woodMid" } },
+    { "id": "lounge-sofa", "name": "Sofa", "category": "furniture", "model": "furniture/lounge-sofa.glb", "materials": { "carpet": "dustyPink" } },
+    { "id": "lounge-chair", "name": "Armchair", "category": "furniture", "model": "furniture/lounge-chair.glb", "materials": { "carpet": "sage" } },
+    { "id": "table-coffee", "name": "Coffee table", "category": "furniture", "model": "furniture/table-coffee.glb" },
+    { "id": "cabinet-television", "name": "Media cabinet", "category": "furniture", "model": "furniture/cabinet-television.glb", "materials": { "wood": "woodMid" } },
+    { "id": "coat-rack-standing", "name": "Coat rack", "category": "furniture", "model": "furniture/coat-rack-standing.glb", "materials": { "wood": "woodDark" } },
+    {
+      "id": "lamp-round-table",
+      "name": "Table lamp",
+      "category": "decorations",
+      "model": "furniture/lamp-round-table.glb",
+      "interaction": "lamp",
+      "light": { "position": [0, 0.5, 0], "intensity": 1.6, "distance": 4 }
+    },
+    {
+      "id": "lamp-square-floor",
+      "name": "Floor lamp",
+      "category": "decorations",
+      "model": "furniture/lamp-square-floor.glb",
+      "interaction": "lamp",
+      "light": { "position": [0, 1.55, 0], "intensity": 2.6, "distance": 6 }
+    },
+    { "id": "potted-plant", "name": "Potted plant", "category": "decorations", "model": "furniture/potted-plant.glb" },
+    { "id": "plant-small-1", "name": "Small plant", "category": "decorations", "model": "furniture/plant-small-1.glb" },
+    { "id": "plant-small-2", "name": "Small succulent", "category": "decorations", "model": "furniture/plant-small-2.glb" },
+    { "id": "books", "name": "Stack of books", "category": "decorations", "model": "furniture/books.glb" },
+    { "id": "pillow", "name": "Cushion", "category": "decorations", "model": "furniture/pillow.glb", "materials": { "carpet": "mustard" } },
+    { "id": "laptop", "name": "Laptop", "category": "entertainment", "model": "furniture/laptop.glb" },
+    { "id": "radio", "name": "Radio", "category": "entertainment", "model": "furniture/radio.glb" },
+    { "id": "television-modern", "name": "Television", "category": "entertainment", "model": "furniture/television-modern.glb" },
+    { "id": "speaker", "name": "Speaker", "category": "entertainment", "model": "furniture/speaker.glb" },
+
+    { "id": "rug-round", "name": "Round rug", "category": "decorations", "builder": "rug" },
+    { "id": "door-mat", "name": "Door mat", "category": "decorations", "builder": "doorMat" },
+    { "id": "door", "name": "Door", "category": "environment", "builder": "door" },
+    { "id": "window", "name": "Window", "category": "environment", "builder": "window" },
+    { "id": "wall-clock", "name": "Wall clock", "category": "decorations", "builder": "wallClock" },
+    {
+      "id": "pendant-lamp",
+      "name": "Pendant lamp",
+      "category": "decorations",
+      "builder": "pendantLamp",
+      "interaction": "lamp",
+      "light": { "position": [0, -1.3, 0], "intensity": 6, "distance": 12 }
+    },
+    { "id": "picture-frame", "name": "Picture frame", "category": "personal", "builder": "pictureFrame", "interaction": "photograph" },
+    { "id": "guestbook", "name": "Guestbook", "category": "social", "builder": "guestbook", "interaction": "guestbook" }
+  ]
+}

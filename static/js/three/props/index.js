@@ -1,27 +1,20 @@
-import { buildDoor, buildDoorMat, buildPendantLamp, buildPictureFrame, buildRug, buildWallClock, buildWindow } from './decor.js';
 import {
-  buildBed,
-  buildBookshelf,
-  buildChair,
-  buildDesk,
-  buildFloorLamp,
-  buildNightstand,
-  buildPlant,
-  buildSideTable,
-  buildSofa,
-} from './furniture.js';
+  buildDoor,
+  buildDoorMat,
+  buildGuestbook,
+  buildPendantLamp,
+  buildPictureFrame,
+  buildRug,
+  buildWallClock,
+  buildWindow,
+} from './decor.js';
 
-/** Maps layout prop names to builder functions: (kit, options) => THREE.Object3D. */
+/**
+ * Procedural builders referenced by catalogue entries ({ "builder": "door" }).
+ * Signature: (kit, options, { loader }) => THREE.Object3D | Promise<THREE.Object3D>.
+ * Furniture comes from GLB models instead; see static/data/catalog.json.
+ */
 export const PROP_BUILDERS = Object.freeze({
-  bed: buildBed,
-  nightstand: buildNightstand,
-  desk: buildDesk,
-  chair: buildChair,
-  bookshelf: buildBookshelf,
-  plant: buildPlant,
-  floorLamp: buildFloorLamp,
-  sofa: buildSofa,
-  sideTable: buildSideTable,
   rug: buildRug,
   door: buildDoor,
   doorMat: buildDoorMat,
@@ -29,4 +22,5 @@ export const PROP_BUILDERS = Object.freeze({
   pictureFrame: buildPictureFrame,
   wallClock: buildWallClock,
   pendantLamp: buildPendantLamp,
+  guestbook: buildGuestbook,
 });

@@ -27,8 +27,10 @@ def test_room_renders_a_furnished_scene(page: Page, errors):
     assert data["engine"]["quality"] in ("medium", "high")
     assert data["engine"]["running"] is True
     assert data["engine"]["frames"] > 0
-    assert data["scene"]["skippedProps"] == []
-    assert data["scene"]["props"] >= 15
+    assert data["scene"]["skipped"] == []
+    assert data["scene"]["failed"] == []
+    assert data["scene"]["assets"]["failed"] == []
+    assert data["scene"]["objects"] >= 25
     assert data["scene"]["meshes"] > 100
     expect(page.get_by_test_id("room-loading")).to_be_hidden()
 

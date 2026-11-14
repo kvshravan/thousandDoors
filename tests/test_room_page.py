@@ -10,6 +10,9 @@ THREE_FILES = (
     "/static/vendor/three/build/three.core.js",
     "/static/vendor/three/examples/jsm/controls/OrbitControls.js",
     "/static/vendor/three/examples/jsm/geometries/RoundedBoxGeometry.js",
+    "/static/vendor/three/examples/jsm/loaders/GLTFLoader.js",
+    "/static/vendor/three/examples/jsm/utils/BufferGeometryUtils.js",
+    "/static/vendor/three/examples/jsm/utils/SkeletonUtils.js",
 )
 
 ROOM_MODULES = (
@@ -20,8 +23,18 @@ ROOM_MODULES = (
     "/static/js/three/room-scene.js",
     "/static/js/three/room-config.js",
     "/static/js/three/quality.js",
+    "/static/js/three/catalog.js",
+    "/static/js/three/asset-loader.js",
+    "/static/js/three/object-manager.js",
+    "/static/js/three/interaction-manager.js",
     "/static/js/three/props/index.js",
+    "/static/js/ui/interactions.js",
+    "/static/js/ui/photo-viewer.js",
+    "/static/js/ui/guestbook.js",
     "/static/css/room.css",
+    "/static/data/catalog.json",
+    "/static/data/demo-room.json",
+    "/static/models/furniture/bed-double.glb",
 )
 
 
@@ -38,7 +51,16 @@ def test_room_page_renders(client):
     assert 'id="room-stage"' in html
     assert 'data-testid="room-loading"' in html
     assert 'data-testid="room-fallback"' in html
+    assert 'data-testid="photo-viewer"' in html
+    assert 'data-testid="guestbook-panel"' in html
     assert "/static/js/pages/room.js" in html
+
+
+def test_room_stage_points_at_data_and_models(client):
+    html = client.get("/room").get_data(as_text=True)
+    assert 'data-catalog-url="/static/data/catalog.json"' in html
+    assert 'data-room-url="/static/data/demo-room.json"' in html
+    assert 'data-models-url="/static/models/"' in html
 
 
 def test_import_map_points_to_pinned_local_three(client):

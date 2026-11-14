@@ -1,5 +1,5 @@
 import pytest
-from playwright.sync_api import Browser, Page
+from playwright.sync_api import Browser, Page, expect
 
 from .conftest import collect_errors
 from .helpers import (
@@ -7,6 +7,7 @@ from .helpers import (
     assert_camera_within_limits,
     canvas_center,
     open_room,
+    point_for,
     wait_camera_settled,
 )
 
@@ -91,4 +92,18 @@ def test_pinch_zooms_within_limits(phone_page: Page):
     zoomed_out = wait_camera_settled(phone_page)
     assert zoomed_out["distance"] > zoomed_in["distance"]
     assert_camera_within_limits(zoomed_out)
+    assert errors == []
+
+
+def test_tap_opens_a_photo(phone_page: Page):
+    errors = collect_errors(phone_page)
+    open_room(phone_page)
+    point = point_for(phone_page, "photo-moonrise") or point_for(phone_page, "photo-sunset")
+    assert point, "a photo should be visible from the starting view"
+
+    touch = Touch(phone_page)
+    touch.send("touchStart", [(point["x"], point["y"])])
+    touch.send("touchEnd", [])
+
+    expect(phone_page.get_by_test_id("photo-viewer")).to_be_visible()
     assert errors == []
