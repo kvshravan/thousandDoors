@@ -3,6 +3,8 @@ import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 
 const RESET_SPEED = 6;
 const RESET_EPSILON = 0.002;
+// Movements smaller than this (in room units, squared) are invisible and count as idle.
+const MOVE_EPSILON_SQ = 1e-10;
 
 /**
  * Orbit-style camera that stays inside the room: limited zoom, limited tilt,
@@ -35,13 +37,11 @@ export class CameraController {
     this._changed = true;
     this._resetting = false;
     this.idle = false;
-    this._onChange = () => {
-      this._changed = true;
-    };
+    this._lastPosition = new THREE.Vector3(Infinity, Infinity, Infinity);
+    this._lastTarget = new THREE.Vector3(Infinity, Infinity, Infinity);
     this._onStart = () => {
       this._resetting = false;
     };
-    controls.addEventListener('change', this._onChange);
     controls.addEventListener('start', this._onStart);
 
     camera.position.copy(this.home.position);
@@ -53,9 +53,18 @@ export class CameraController {
   update(dt) {
     if (this._resetting) this._stepReset(dt);
     this.controls.update(dt);
-    if (this._clampToBounds()) this._changed = true;
+    this._clampToBounds();
 
-    const changed = this._changed || this._resetting;
+    // Compare actual poses rather than trusting OrbitControls' "change" event, which
+    // can fire every frame at the zoom limit because of floating-point rounding.
+    const moved =
+      this._lastPosition.distanceToSquared(this.camera.position) > MOVE_EPSILON_SQ ||
+      this._lastTarget.distanceToSquared(this.controls.target) > MOVE_EPSILON_SQ;
+    if (moved) {
+      this._lastPosition.copy(this.camera.position);
+      this._lastTarget.copy(this.controls.target);
+    }
+    const changed = moved || this._changed || this._resetting;
     this._changed = false;
     this.idle = !changed;
     return changed;
@@ -91,7 +100,6 @@ export class CameraController {
   }
 
   dispose() {
-    this.controls.removeEventListener('change', this._onChange);
     this.controls.removeEventListener('start', this._onStart);
     this.controls.dispose();
   }
@@ -117,7 +125,7 @@ export class CameraController {
    */
   _clampToBounds() {
     const position = this.camera.position;
-    if (this.bounds.containsPoint(position)) return false;
+    if (this.bounds.containsPoint(position)) return;
 
     const target = this.controls.target;
     const offset = position.clone().sub(target);
@@ -131,6 +139,5 @@ export class CameraController {
       }
     }
     position.copy(target).addScaledVector(offset, Math.max(t, 0));
-    return true;
   }
 }

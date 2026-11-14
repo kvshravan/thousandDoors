@@ -39,7 +39,11 @@ function vector(value, fallback) {
   return result;
 }
 
-/** Normalizes a room config ({ roomId, name, theme, objects }) and fills in defaults. */
+/**
+ * Normalizes a room config and fills in defaults:
+ * { roomId, name, description, owner, appearance, objects: [{ id, catalogId,
+ *   position, rotation, scale, customData, permissions }] }
+ */
 export function normalizeRoom(data) {
   if (!data || !Array.isArray(data.objects)) throw new Error('Room configuration is missing objects.');
   const seen = new Set();
@@ -54,13 +58,24 @@ export function normalizeRoom(data) {
       rotation: vector(object.rotation, 0),
       scale: vector(object.scale, 1),
       customData: { ...(object.customData ?? {}) },
+      // null means "use the catalogue default".
+      permissions: { interact: object.permissions?.interact ?? null },
     };
   });
+  const owner = data.owner ?? {};
   return {
     roomId: String(data.roomId ?? ''),
     name: data.name ?? 'Room',
     description: data.description ?? '',
-    theme: data.theme ?? 'cozy',
+    owner: {
+      username: String(owner.username ?? ''),
+      displayName: String(owner.displayName ?? owner.username ?? ''),
+      bio: String(owner.bio ?? ''),
+      status: String(owner.status ?? ''),
+      online: Boolean(owner.online),
+      interests: Array.isArray(owner.interests) ? owner.interests.map(String) : [],
+    },
+    appearance: { ...(data.appearance ?? {}), ...(data.theme ? { theme: data.theme } : {}) },
     objects,
   };
 }

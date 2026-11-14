@@ -61,6 +61,20 @@ body.page-room {
   font-size: 0.8rem;
 }
 
+.status-dot {
+  display: inline-block;
+  width: 0.5rem;
+  height: 0.5rem;
+  margin-right: 0.35rem;
+  border-radius: 50%;
+  background: #a39a92;
+  vertical-align: 0.05em;
+}
+
+.status-dot.is-online {
+  background: #5fb26a;
+}
+
 .room-actions {
   position: absolute;
   left: max(1rem, env(safe-area-inset-left));

@@ -33,7 +33,9 @@ ROOM_MODULES = (
     "/static/js/ui/guestbook.js",
     "/static/css/room.css",
     "/static/data/catalog.json",
-    "/static/data/demo-room.json",
+    "/static/data/rooms/mira.json",
+    "/static/data/rooms/jun.json",
+    "/static/js/permissions.js",
     "/static/models/furniture/bed-double.glb",
 )
 
@@ -59,8 +61,19 @@ def test_room_page_renders(client):
 def test_room_stage_points_at_data_and_models(client):
     html = client.get("/room").get_data(as_text=True)
     assert 'data-catalog-url="/static/data/catalog.json"' in html
-    assert 'data-room-url="/static/data/demo-room.json"' in html
+    assert 'data-room-url="/static/data/rooms/mira.json"' in html
     assert 'data-models-url="/static/models/"' in html
+
+
+def test_named_room_loads_its_own_data(client):
+    response = client.get("/room/jun")
+    assert response.status_code == 200
+    assert 'data-room-url="/static/data/rooms/jun.json"' in response.get_data(as_text=True)
+
+
+@pytest.mark.parametrize("room_id", ["nobody", "Mira", "..%2Fcatalog", "-mira", "a" * 41])
+def test_unknown_or_malformed_room_is_404(client, room_id):
+    assert client.get(f"/room/{room_id}").status_code == 404
 
 
 def test_import_map_points_to_pinned_local_three(client):

@@ -2,6 +2,7 @@ import * as THREE from 'three';
 
 const CLICK_MAX_MOVE_PX = 6;
 const CLICK_MAX_MS = 600;
+const TAP_CLICK_FALLBACK_MS = 350;
 const HIGHLIGHT = new THREE.Color('#ffcf7a');
 const SAMPLE_GRID = 9;
 
@@ -34,6 +35,7 @@ export class InteractionManager {
     this._onPointerLeave = this._onPointerLeave.bind(this);
     this._onClick = this._onClick.bind(this);
     this._tap = null;
+    this._tapTimer = null;
     canvas.addEventListener('pointerdown', this._onPointerDown);
     canvas.addEventListener('pointerup', this._onPointerUp);
     canvas.addEventListener('pointercancel', this._onPointerUp);
@@ -118,6 +120,7 @@ export class InteractionManager {
     this.canvas.removeEventListener('pointermove', this._onPointerMove);
     this.canvas.removeEventListener('pointerleave', this._onPointerLeave);
     this.canvas.removeEventListener('click', this._onClick);
+    this._clearTap();
     this._applyHighlight(null);
     for (const material of this._highlightMaterials.values()) material.dispose();
     this._highlightMaterials.clear();
@@ -137,21 +140,33 @@ export class InteractionManager {
     this._activePointers.delete(event.pointerId);
     const press = this._press;
     this._press = null;
-    this._tap = null;
+    this._clearTap();
     if (!press || press.id !== event.pointerId || event.type === 'pointercancel') return;
     const moved = Math.hypot(event.clientX - press.x, event.clientY - press.y);
     if (moved > CLICK_MAX_MOVE_PX || performance.now() - press.time > CLICK_MAX_MS) return;
-    this._tap = { x: event.clientX, y: event.clientY, time: performance.now() };
+    this._tap = { x: event.clientX, y: event.clientY };
+    // Browsers skip the click for taps that interrupt a fling, so don't wait forever.
+    this._tapTimer = window.setTimeout(() => this._selectTap(), TAP_CLICK_FALLBACK_MS);
   }
 
-  // Selection happens on "click" (which follows pointerup) so that a dialog opened by the
-  // interaction doesn't receive the tap's own click and immediately close again.
+  // Selection normally happens on "click" (which follows pointerup) so that a dialog
+  // opened by the interaction doesn't receive the tap's own click and close again.
   _onClick() {
+    this._selectTap();
+  }
+
+  _selectTap() {
     const tap = this._tap;
-    this._tap = null;
-    if (!tap || performance.now() - tap.time > CLICK_MAX_MS) return;
+    this._clearTap();
+    if (!tap) return;
     const record = this.pick(tap.x, tap.y);
     if (record) this.onSelect?.(record);
+  }
+
+  _clearTap() {
+    this._tap = null;
+    if (this._tapTimer) window.clearTimeout(this._tapTimer);
+    this._tapTimer = null;
   }
 
   _onPointerMove(event) {

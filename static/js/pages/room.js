@@ -1,3 +1,4 @@
+import { canInteract, normalizeRelationship } from '../permissions.js';
 import { Catalog, fetchJson, normalizeRoom } from '../three/catalog.js';
 import { Engine } from '../three/engine.js';
 import { detectQuality, isWebGL2Available } from '../three/quality.js';
@@ -20,12 +21,14 @@ class RoomPage {
     this.hint = root.querySelector('#room-hint');
     this.tooltip = root.querySelector('#room-tooltip');
     this.nameplateTitle = root.querySelector('[data-room-name]');
-    this.nameplateSub = root.querySelector('[data-room-description]');
+    this.nameplateStatus = root.querySelector('[data-room-status]');
     this.resetButton = root.querySelector('#reset-view');
     this.retryButton = root.querySelector('#room-retry');
 
     const { catalogUrl, roomUrl, modelsUrl } = this.stage.dataset;
     this.urls = { catalogUrl, roomUrl, modelsUrl };
+    // Mock viewer until accounts exist (Milestone 4): ?as=stranger|follower|friend|owner.
+    this.viewer = { relationship: normalizeRelationship(new URLSearchParams(window.location.search).get('as')) };
 
     this.state = 'idle';
     this.engine = null;
@@ -90,6 +93,7 @@ class RoomPage {
             modelsUrl: this.urls.modelsUrl,
             onInteract: (event) => this._interact(event),
             onHoverChange: (target, point) => this._showTooltip(target, point),
+            canInteract: (level) => canInteract(level ?? 'everyone', this.viewer.relationship),
           }),
         { onProgress: (value) => this._setProgress(value) },
       );
@@ -129,6 +133,8 @@ class RoomPage {
       engine: this.engine?.getDebugInfo() ?? null,
       scene: this.manager?.current?.getDebugInfo() ?? null,
       activeLoops: Engine.activeLoops,
+      viewer: { ...this.viewer },
+      owner: this.room ? { ...this.room.owner } : null,
       lastInteraction: this.lastInteraction,
       ui: {
         photoOpen: this.photoViewer.isOpen,
@@ -186,8 +192,14 @@ class RoomPage {
 
   _showNameplate(room) {
     this.nameplateTitle.textContent = room.name;
-    this.nameplateSub.textContent = room.description;
-    this.nameplateSub.hidden = !room.description;
+    document.title = `${room.name} · ${document.title.split(' · ').pop()}`;
+    const { online, status } = room.owner;
+    const dot = document.createElement('span');
+    dot.className = `status-dot${online ? ' is-online' : ''}`;
+    dot.setAttribute('aria-hidden', 'true');
+    const label = [online ? 'Online' : 'Offline', status].filter(Boolean).join(' · ');
+    this.nameplateStatus.replaceChildren(dot, document.createTextNode(label));
+    this.nameplateStatus.hidden = !room.owner.username;
   }
 
   _fail(reason) {

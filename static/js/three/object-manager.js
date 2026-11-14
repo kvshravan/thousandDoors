@@ -4,16 +4,17 @@ import { PROP_BUILDERS } from './props/index.js';
 const GLOW_ON = { emissive: 'lampGlow', emissiveIntensity: 0.9 };
 
 /**
- * Builds room objects ({ id, catalogId, position, rotation, scale, customData })
+ * Builds room objects ({ id, catalogId, position, rotation, scale, customData, permissions })
  * from catalogue entries, either GLB models or procedural builders.
  */
 export class ObjectManager {
-  constructor({ scene, kit, catalog, loader, theme }) {
+  constructor({ scene, kit, catalog, loader, theme, room }) {
     this.scene = scene;
     this.kit = kit;
     this.catalog = catalog;
     this.loader = loader;
     this.theme = theme;
+    this.room = room;
     this.records = new Map();
     this.failed = [];
     this.skipped = [];
@@ -66,15 +67,20 @@ export class ObjectManager {
   getDebugInfo() {
     const lamps = {};
     const interactive = [];
+    const permissions = {};
     for (const record of this.records.values()) {
       if (record.light) lamps[record.id] = record.lampOn;
-      if (record.interaction) interactive.push(record.id);
+      if (record.interaction) {
+        interactive.push(record.id);
+        permissions[record.id] = record.permission;
+      }
     }
     return {
       objects: this.records.size,
       failed: [...this.failed].sort(),
       skipped: [...this.skipped].sort(),
       interactive: interactive.sort(),
+      permissions,
       lamps,
     };
   }
@@ -101,6 +107,7 @@ export class ObjectManager {
       catalogId: entry.id,
       name: entry.name,
       interaction: entry.interaction ?? null,
+      permission: object.permissions?.interact ?? entry.permissions?.interact ?? null,
       data: object.customData,
       root: holder,
       glowMeshes,
@@ -146,7 +153,7 @@ export class ObjectManager {
   async _build(entry, object) {
     const build = PROP_BUILDERS[entry.builder];
     if (!build) throw new Error(`No builder named "${entry.builder}".`);
-    return build(this.kit, { ...(entry.options ?? {}), ...object.customData }, { loader: this.loader });
+    return build(this.kit, { ...(entry.options ?? {}), ...object.customData }, { loader: this.loader, room: this.room });
   }
 
   _place(object, content, entry) {

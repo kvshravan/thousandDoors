@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% block title %}Demo room · {{ app_name }}{% endblock %}
+{% block title %}Room · {{ app_name }}{% endblock %}
 {% block body_class %}page-room{% endblock %}
 {% block head %}
 <link rel="stylesheet" href="{{ url_for('static', filename='css/room.css') }}">
@@ -19,16 +19,16 @@
   class="room-stage"
   id="room-stage"
   role="img"
-  aria-label="Interactive 3D view of a cozy demo room"
+  aria-label="Interactive 3D view of the room"
   data-catalog-url="{{ url_for('static', filename='data/catalog.json') }}"
-  data-room-url="{{ url_for('static', filename='data/demo-room.json') }}"
+  data-room-url="{{ url_for('static', filename='data/rooms/' ~ room_id ~ '.json') }}"
   data-models-url="{{ url_for('static', filename='models/') }}"
 ></div>
 
 <div class="room-ui">
   <div class="room-nameplate" data-testid="room-nameplate">
-    <span class="room-nameplate-title" data-room-name>Demo room</span>
-    <span class="room-nameplate-sub" data-room-description>A cozy corner to explore</span>
+    <span class="room-nameplate-title" data-room-name>Opening the room…</span>
+    <span class="room-nameplate-sub" data-room-status hidden></span>
   </div>
   <nav class="room-actions" aria-label="Room actions">
     <a class="chip" href="{{ url_for('pages.index') }}" data-testid="back-link">← Back</a>

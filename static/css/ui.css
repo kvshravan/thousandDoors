@@ -61,6 +61,11 @@
   background: var(--door-dark);
 }
 
+.hero-alt {
+  margin: 0.8rem 0 0;
+  color: var(--ink-soft);
+}
+
 .hero-door {
   position: relative;
   width: 120px;

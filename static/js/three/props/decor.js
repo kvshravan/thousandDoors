@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { createClockFaceTexture, createRugTexture, createSkyTexture } from './textures.js';
+import { createClockFaceTexture, createNameplateTexture, createRugTexture, createSkyTexture } from './textures.js';
 
 // Wall-mounted props use their origin as the point on the wall surface, front facing +z.
 // Floor props use floor level at the centre of their footprint.
@@ -26,7 +26,7 @@ export function buildDoorMat(kit) {
   return mat;
 }
 
-export function buildDoor(kit, { width = 1.05, height = 2.2 } = {}) {
+export function buildDoor(kit, { width = 1.05, height = 2.2, color = 'terracotta', nameplate = true } = {}, { room } = {}) {
   const door = group('door');
   const trim = kit.material('baseboard', { roughness: 0.7 });
   const jamb = 0.1;
@@ -34,19 +34,28 @@ export function buildDoor(kit, { width = 1.05, height = 2.2 } = {}) {
   kit.part(door, kit.box(jamb, height + jamb, 0.1), trim, [width / 2 + jamb / 2, (height + jamb) / 2, 0.05]);
   kit.part(door, kit.box(width + jamb * 2 + 0.06, jamb, 0.11), trim, [0, height + jamb / 2, 0.055]);
 
-  const panel = kit.material('terracotta', { roughness: 0.75 });
+  const panel = kit.material(color, { roughness: 0.75 });
   kit.part(door, kit.rounded(width, height, 0.06, 0.02), panel, [0, height / 2, 0.04]);
   const inset = kit.rounded(width * 0.34, height * 0.36, 0.025, 0.012);
-  const insetMaterial = kit.material('#d98a67', { roughness: 0.75 });
+  const insetMaterial = kit.material(new THREE.Color(kit.color(color)).offsetHSL(0, 0, 0.07).getStyle(), { roughness: 0.75 });
   for (const sx of [-1, 1]) {
-    for (const y of [height * 0.28, height * 0.7]) {
+    for (const y of [height * 0.28, height * 0.62]) {
       kit.part(door, inset, insetMaterial, [sx * width * 0.21, y, 0.078], null, NO_CAST);
     }
   }
   const brass = kit.material('brass', { metalness: 0.6, roughness: 0.35 });
   kit.part(door, kit.cylinder(0.05, 0.05, 0.02, 16), brass, [width * 0.38, height * 0.48, 0.08], [Math.PI / 2, 0, 0]);
   kit.part(door, kit.sphere(0.045, 14, 10), brass, [width * 0.38, height * 0.48, 0.12]);
-  kit.part(door, kit.rounded(0.32, 0.1, 0.015, 0.006), brass, [0, height * 0.86, 0.075], null, NO_CAST);
+
+  const owner = room?.owner;
+  if (nameplate && owner?.username) {
+    const map = kit.texture(createNameplateTexture(kit.palette, owner.username, owner.online));
+    kit.part(door, kit.rounded(0.62, 0.17, 0.015, 0.006), brass, [0, height * 0.86, 0.075], null, NO_CAST);
+    const label = kit.part(door, kit.plane(0.58, 0.145), kit.material('#ffffff', { map, roughness: 0.5 }), [0, height * 0.86, 0.084], null, NO_CAST);
+    label.name = 'nameplate';
+  } else {
+    kit.part(door, kit.rounded(0.32, 0.1, 0.015, 0.006), brass, [0, height * 0.86, 0.075], null, NO_CAST);
+  }
   return door;
 }
 

@@ -1,3 +1,5 @@
+import { makeDismissible } from './dialog.js';
+
 /** Modal viewer for photographs placed in a room. */
 export class PhotoViewer {
   constructor(dialog) {
@@ -14,15 +16,7 @@ export class PhotoViewer {
       this.image.hidden = false;
       this.error.hidden = true;
     });
-    dialog.addEventListener('click', (event) => {
-      if (event.target === dialog) dialog.close();
-    });
-    dialog.addEventListener('keydown', (event) => {
-      if (event.key === 'Escape') {
-        event.preventDefault();
-        dialog.close();
-      }
-    });
+    this._dismissible = makeDismissible(dialog);
   }
 
   get isOpen() {
@@ -36,7 +30,7 @@ export class PhotoViewer {
     this.image.src = src;
     this.caption.textContent = caption || '';
     this.caption.hidden = !caption;
-    if (!this.dialog.open) this.dialog.showModal();
+    this._dismissible.show();
   }
 
   close() {

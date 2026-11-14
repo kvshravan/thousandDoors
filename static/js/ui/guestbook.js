@@ -1,3 +1,5 @@
+import { makeDismissible } from './dialog.js';
+
 /** Read-only guestbook panel. Signing arrives with accounts (Milestone 6). */
 export class GuestbookPanel {
   constructor(dialog) {
@@ -5,15 +7,7 @@ export class GuestbookPanel {
     this.list = dialog.querySelector('[data-guestbook-list]');
     this.empty = dialog.querySelector('[data-guestbook-empty]');
     this.title = dialog.querySelector('[data-guestbook-title]');
-    dialog.addEventListener('click', (event) => {
-      if (event.target === dialog) dialog.close();
-    });
-    dialog.addEventListener('keydown', (event) => {
-      if (event.key === 'Escape') {
-        event.preventDefault();
-        dialog.close();
-      }
-    });
+    this._dismissible = makeDismissible(dialog);
   }
 
   get isOpen() {
@@ -37,7 +31,7 @@ export class GuestbookPanel {
       }),
     );
     this.empty.hidden = entries.length > 0;
-    if (!this.dialog.open) this.dialog.showModal();
+    this._dismissible.show();
   }
 
   close() {

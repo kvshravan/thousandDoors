@@ -7,9 +7,21 @@ from playwright.sync_api import Page, expect
 from .helpers import bring_into_view, info, open_room, point_for, wait_camera_settled
 
 STATIC = Path(__file__).resolve().parents[2] / "static"
-DEMO_ROOM = json.loads((STATIC / "data" / "demo-room.json").read_text(encoding="utf-8"))
+CATALOG = json.loads((STATIC / "data" / "catalog.json").read_text(encoding="utf-8"))
+ROOMS = {
+    path.stem: json.loads(path.read_text(encoding="utf-8"))
+    for path in (STATIC / "data" / "rooms").glob("*.json")
+}
+MIRA = ROOMS["mira"]
 ROOM_LIMIT = {"min": (-5.0, 0.0, -5.0), "max": (5.0, 4.0, 5.0)}
 RESOURCE_ERROR = re.compile(r"Failed to load resource")
+FLAT_ITEMS = {"rug", "door-mat", "door"}
+
+
+def _overlap(a: dict, b: dict) -> float:
+    dx = min(a["max"][0], b["max"][0]) - max(a["min"][0], b["min"][0])
+    dz = min(a["max"][2], b["max"][2]) - max(a["min"][2], b["min"][2])
+    return min(dx, dz)
 
 
 def test_only_models_used_by_the_room_are_downloaded(page: Page, errors):
@@ -19,32 +31,65 @@ def test_only_models_used_by_the_room_are_downloaded(page: Page, errors):
     data = open_room(page)
 
     downloaded = {url.rsplit("/static/models/", 1)[1] for url in requested}
+    all_models = {item["model"] for item in CATALOG["items"] if "model" in item}
     assert downloaded == set(data["scene"]["assets"]["models"])
-    assert "furniture/television-modern.glb" not in downloaded
-    assert data["scene"]["objects"] == len(DEMO_ROOM["objects"])
+    assert all_models - downloaded, "the demo should leave some catalogue models unused"
+    assert data["scene"]["objects"] == len(MIRA["objects"])
     assert errors == []
 
 
-def test_every_object_sits_inside_the_room(page: Page, errors):
-    open_room(page)
-    bounds = page.evaluate("() => window.__doors.bounds()")
+def test_every_object_sits_inside_the_room_without_overlapping(page: Page, errors):
+    for room_id, room in ROOMS.items():
+        open_room(page, f"/room/{room_id}?quality=low")
+        bounds = page.evaluate("() => window.__doors.bounds()")
 
-    assert set(bounds) == {obj["id"] for obj in DEMO_ROOM["objects"]}
-    for object_id, box in bounds.items():
-        for i in range(3):
-            assert box["min"][i] >= ROOM_LIMIT["min"][i] - 0.05, (
-                f"{object_id} pokes out of the room"
-            )
-            assert box["max"][i] <= ROOM_LIMIT["max"][i] + 0.05, (
-                f"{object_id} pokes out of the room"
-            )
+        assert set(bounds) == {obj["id"] for obj in room["objects"]}
+        for object_id, box in bounds.items():
+            for i in range(3):
+                assert box["min"][i] >= ROOM_LIMIT["min"][i] - 0.05, (
+                    f"{room_id}:{object_id} pokes out"
+                )
+                assert box["max"][i] <= ROOM_LIMIT["max"][i] + 0.05, (
+                    f"{room_id}:{object_id} pokes out"
+                )
+
+        floor = {k: v for k, v in bounds.items() if v["min"][1] < 0.05 and k not in FLAT_ITEMS}
+        ids = sorted(floor)
+        for i, a in enumerate(ids):
+            for b in ids[i + 1 :]:
+                assert _overlap(floor[a], floor[b]) <= 0.02, f"{room_id}: {a} overlaps {b}"
+    assert errors == []
+
+
+def test_rooms_have_their_own_owner_and_appearance(page: Page, errors):
+    mira = open_room(page)
+    expect(page.get_by_test_id("room-nameplate")).to_contain_text("Mira's room")
+    expect(page.get_by_test_id("room-nameplate")).to_contain_text("Online · Repotting the monstera")
+    mira_pixels = page.evaluate("() => window.__doors.samplePixels()")
+
+    jun = open_room(page, "/room/jun?quality=low")
+    expect(page.get_by_test_id("room-nameplate")).to_contain_text("Jun's room")
+    expect(page.get_by_test_id("room-nameplate")).to_contain_text("Offline")
+    jun_pixels = page.evaluate("() => window.__doors.samplePixels()")
+
+    assert mira["scene"]["appearance"] == {
+        "theme": "cozy",
+        "wallpaper": "cream",
+        "floor": "oak",
+        "lighting": "day",
+    }
+    assert jun["scene"]["appearance"]["lighting"] == "night"
+    assert jun["owner"]["username"] == "jun"
+    assert jun_pixels["meanBrightness"] < mira_pixels["meanBrightness"] - 25, (
+        "night should be darker"
+    )
+    assert page.title() == "Jun's room · 1000 Doors"
     assert errors == []
 
 
 def test_hover_highlights_interactive_objects(page: Page, errors):
     open_room(page)
-    point = point_for(page, "photo-sunset")
-    assert point, "photo should be visible from the starting view"
+    point = bring_into_view(page, "photo-sunset")
 
     page.mouse.move(point["x"], point["y"])
     page.wait_for_function("() => window.__doors.info().scene.hovered === 'photo-sunset'")
@@ -60,7 +105,7 @@ def test_hover_highlights_interactive_objects(page: Page, errors):
 
 def test_clicking_a_photo_opens_the_viewer(page: Page, errors):
     open_room(page)
-    point = point_for(page, "photo-sunset")
+    point = bring_into_view(page, "photo-sunset")
 
     page.mouse.click(point["x"], point["y"])
 
@@ -84,7 +129,7 @@ def test_clicking_a_photo_opens_the_viewer(page: Page, errors):
 
 def test_dragging_across_an_object_does_not_open_it(page: Page, errors):
     open_room(page)
-    point = point_for(page, "photo-sunset")
+    point = bring_into_view(page, "photo-sunset")
 
     page.mouse.move(point["x"], point["y"])
     page.mouse.down()
@@ -101,13 +146,49 @@ def test_clicking_a_lamp_toggles_its_light(page: Page, errors):
     open_room(page)
     assert info(page)["scene"]["lamps"]["bedside-lamp"] is True
 
-    point = point_for(page, "bedside-lamp")
+    point = bring_into_view(page, "bedside-lamp")
     page.mouse.click(point["x"], point["y"])
     page.wait_for_function("() => window.__doors.info().scene.lamps['bedside-lamp'] === false")
 
     point = point_for(page, "bedside-lamp")
     page.mouse.click(point["x"], point["y"])
     page.wait_for_function("() => window.__doors.info().scene.lamps['bedside-lamp'] === true")
+    assert errors == []
+
+
+def test_owner_only_objects_ignore_visitors(page: Page, errors):
+    data = open_room(page)
+    assert data["viewer"] == {"relationship": "stranger"}
+    assert data["scene"]["permissions"]["floor-lamp"] == "owner"
+    assert point_for(page, "floor-lamp") is None, "visitors can't use the owner's floor lamp"
+
+    open_room(page, "/room?quality=low&as=owner")
+    point = bring_into_view(page, "floor-lamp")
+    page.mouse.click(point["x"], point["y"])
+    page.wait_for_function("() => window.__doors.info().scene.lamps['floor-lamp'] === false")
+    assert errors == []
+
+
+def test_permission_rules(page: Page, errors):
+    open_room(page)
+    results = page.evaluate(
+        """async () => {
+            const { canInteract } = await import('/static/js/permissions.js');
+            const levels = ['everyone', 'followers', 'friends', 'owner', 'bogus', undefined];
+            const people = ['stranger', 'follower', 'friend', 'owner', 'hacker'];
+            return Object.fromEntries(levels.map((level) => [
+                String(level), people.filter((who) => canInteract(level, who)),
+            ]));
+        }"""
+    )
+    assert results == {
+        "everyone": ["stranger", "follower", "friend", "owner", "hacker"],
+        "followers": ["follower", "friend", "owner"],
+        "friends": ["friend", "owner"],
+        "owner": ["owner"],
+        "bogus": ["owner"],
+        "undefined": ["owner"],
+    }
     assert errors == []
 
 
@@ -121,7 +202,7 @@ def test_guestbook_shows_entries(page: Page, errors):
     expect(panel).to_be_visible()
     expect(panel.locator(".guestbook-entry")).to_have_count(3)
     expect(panel).to_contain_text("Teach me your ways")
-    expect(panel).to_contain_text("— Mira")
+    expect(panel).to_contain_text("— Jun")
     page.keyboard.press("Escape")
     expect(panel).to_be_hidden()
     assert errors == []
@@ -134,7 +215,7 @@ def test_failed_model_shows_placeholder_without_breaking_room(page: Page, errors
 
     assert data["scene"]["failed"] == ["bed"]
     assert data["scene"]["assets"]["failed"] == ["furniture/bed-double.glb"]
-    assert data["scene"]["objects"] == len(DEMO_ROOM["objects"])
+    assert data["scene"]["objects"] == len(MIRA["objects"])
     assert page.evaluate("() => window.__doors.bounds().bed.max[1]") > 0.4
     assert all(RESOURCE_ERROR.search(e) for e in errors), errors
 
@@ -160,7 +241,7 @@ def test_interactions_survive_remount(page: Page, errors):
     page.evaluate("() => window.__doors.remount()")
     page.wait_for_function("() => window.__doors.state === 'ready'")
 
-    point = point_for(page, "photo-moonrise")
+    point = bring_into_view(page, "photo-moonrise")
     page.mouse.click(point["x"], point["y"])
 
     expect(page.get_by_test_id("photo-viewer")).to_contain_text("Moonrise")

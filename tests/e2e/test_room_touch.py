@@ -98,10 +98,18 @@ def test_pinch_zooms_within_limits(phone_page: Page):
 def test_tap_opens_a_photo(phone_page: Page):
     errors = collect_errors(phone_page)
     open_room(phone_page)
-    point = point_for(phone_page, "photo-moonrise") or point_for(phone_page, "photo-sunset")
-    assert point, "a photo should be visible from the starting view"
-
     touch = Touch(phone_page)
+    x, y = canvas_center(phone_page)
+    point = None
+    for _ in range(12):
+        # Swipe first: taps right after a swipe are the case where browsers drop the click.
+        touch.gesture([(x - 60, y)], [(x + 60, y)], steps=6)
+        wait_camera_settled(phone_page)
+        point = point_for(phone_page, "photo-sunset")
+        if point:
+            break
+    assert point, "swiping around should bring the photo into view"
+
     touch.send("touchStart", [(point["x"], point["y"])])
     touch.send("touchEnd", [])
 

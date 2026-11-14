@@ -8,7 +8,8 @@
   </div>
   <h1>Every person is a door.</h1>
   <p class="lede">Build a cozy little room that says who you are, then wander the hallway and visit everyone else's.</p>
-  <a class="button" href="{{ url_for('pages.room') }}" data-testid="enter-room">Step inside the demo room</a>
+  <a class="button" href="{{ url_for('pages.room') }}" data-testid="enter-room">Step inside Mira's room</a>
+  <p class="hero-alt">or <a href="{{ url_for('pages.room', room_id='jun') }}" data-testid="enter-room-jun">knock on Jun's door</a></p>
   <p class="status" data-testid="app-status">The hallway is still under construction.</p>
 </section>
 {% endblock %}

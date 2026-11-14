@@ -108,9 +108,18 @@ export function createSkyTexture(palette) {
     const sun = ctx.createRadialGradient(w * 0.7, h * 0.55, 0, w * 0.7, h * 0.55, w * 0.3);
     sun.addColorStop(0, palette.sun);
     sun.addColorStop(0.25, palette.sun);
-    sun.addColorStop(1, 'rgba(255, 231, 168, 0)');
+    sun.addColorStop(1, `${palette.sun}00`);
     ctx.fillStyle = sun;
     ctx.fillRect(0, 0, w, h);
+
+    if (palette.stars) {
+      const rand = seededRandom(19);
+      ctx.fillStyle = palette.stars;
+      for (let i = 0; i < 40; i += 1) {
+        const size = rand() < 0.2 ? 3 : 2;
+        ctx.fillRect(rand() * w, rand() * h * 0.6, size, size);
+      }
+    }
 
     const hill = (color, baseY, amplitude, phase) => {
       ctx.fillStyle = color;
@@ -125,6 +134,33 @@ export function createSkyTexture(palette) {
     hill(palette.hillFar, h * 0.72, 10, 0.6);
     hill(palette.hillNear, h * 0.84, 14, 2.4);
   });
+}
+
+export function createNameplateTexture(palette, username, online) {
+  const texture = canvasTexture(512, 128, (ctx, w, h) => {
+    ctx.fillStyle = palette.cream;
+    ctx.fillRect(0, 0, w, h);
+    ctx.strokeStyle = palette.woodDark;
+    ctx.lineWidth = 6;
+    ctx.strokeRect(6, 6, w - 12, h - 12);
+
+    const dotX = 52;
+    ctx.fillStyle = online ? '#5fb26a' : '#a39a92';
+    ctx.beginPath();
+    ctx.arc(dotX, h / 2, 16, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.fillStyle = palette.woodDark;
+    ctx.textBaseline = 'middle';
+    let size = 64;
+    const label = `@${username}`;
+    do {
+      ctx.font = `700 ${size}px "Segoe UI", system-ui, sans-serif`;
+      size -= 4;
+    } while (ctx.measureText(label).width > w - 120 && size > 20);
+    ctx.fillText(label, dotX + 34, h / 2 + 2);
+  });
+  return texture;
 }
 
 export function createClockFaceTexture(palette) {

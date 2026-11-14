@@ -5,12 +5,13 @@ import { InteractionManager } from './interaction-manager.js';
 import { ObjectManager } from './object-manager.js';
 import { buildRoomShell } from './props/architecture.js';
 import { PropKit } from './props/kit.js';
-import { CAMERA_SETTINGS, LIGHTING, ROOM_DIMENSIONS, THEMES } from './room-config.js';
+import { CAMERA_SETTINGS, ROOM_DIMENSIONS, resolveAppearance } from './room-config.js';
 
 /**
  * Renders one room from a normalized room config and a catalogue.
- * Knows nothing about pages, routes, or the database; interactions are reported
- * through callbacks.
+ * Knows nothing about pages, routes, users, or the database. Interactions are
+ * reported through callbacks, and `canInteract(permission)` decides which objects
+ * respond to the current viewer.
  */
 export class RoomScene {
   constructor({
@@ -19,16 +20,20 @@ export class RoomScene {
     modelsUrl,
     onInteract,
     onHoverChange,
+    canInteract = () => true,
     dimensions = ROOM_DIMENSIONS,
     camera = CAMERA_SETTINGS,
   }) {
-    if (!THEMES[room.theme]) throw new Error(`Unknown room theme "${room.theme}".`);
+    const appearance = resolveAppearance(room.appearance);
     this.room = room;
     this.catalog = catalog;
     this.modelsUrl = modelsUrl;
     this.onInteract = onInteract;
     this.onHoverChange = onHoverChange;
-    this.palette = THEMES[room.theme];
+    this.canInteract = canInteract;
+    this.appearance = appearance.choice;
+    this.palette = appearance.palette;
+    this.lighting = appearance.lighting;
     this.dimensions = dimensions;
     this.cameraSettings = camera;
 
@@ -49,7 +54,7 @@ export class RoomScene {
     this.kit = new PropKit({ palette: this.palette, quality: engine.quality });
     this.loader = new AssetLoader(this.modelsUrl);
     this.scene.background = new THREE.Color(this.palette.background);
-    engine.setToneMappingExposure(LIGHTING.toneMappingExposure);
+    engine.setToneMappingExposure(this.lighting.toneMappingExposure);
 
     onProgress?.(0.05);
     this.scene.add(buildRoomShell(this.kit, this.dimensions));
@@ -61,6 +66,7 @@ export class RoomScene {
       catalog: this.catalog,
       loader: this.loader,
       theme: this.palette,
+      room: this.room,
     });
     await this.objects.populate(this.room.objects, (fraction) => onProgress?.(0.1 + fraction * 0.85));
     if (this.loader.disposed) return;
@@ -70,7 +76,10 @@ export class RoomScene {
       camera: this.camera,
       canvas: engine.canvas,
       scene: this.scene,
-      resolve: (object3d) => this.objects.resolve(object3d),
+      resolve: (object3d) => {
+        const record = this.objects.resolve(object3d);
+        return record?.interaction && this.canInteract(record.permission) ? record : null;
+      },
       onHoverChange: (record, point) => this.onHoverChange?.(record ? describe(record) : null, point),
       onSelect: (record) => this.onInteract?.(describe(record)),
     });
@@ -143,8 +152,8 @@ export class RoomScene {
       if (object.isLight) lights += 1;
     });
     return {
-      theme: this.room.theme,
       roomId: this.room.roomId,
+      appearance: { ...this.appearance },
       meshes,
       lights,
       hovered: this.interactions?.hovered?.id ?? null,
@@ -172,7 +181,7 @@ export class RoomScene {
   }
 
   _addLighting(quality) {
-    const { hemisphere, sun } = LIGHTING;
+    const { hemisphere, sun } = this.lighting;
     this.scene.add(new THREE.HemisphereLight(hemisphere.sky, hemisphere.ground, hemisphere.intensity));
 
     const sunLight = new THREE.DirectionalLight(sun.color, sun.intensity);

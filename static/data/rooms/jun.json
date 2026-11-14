@@ -1,0 +1,590 @@
+{
+  "roomId": "jun",
+  "name": "Jun's room",
+  "description": "Synths, speakers, and late nights",
+  "owner": {
+    "username": "jun",
+    "displayName": "Jun",
+    "bio": "Makes beats after midnight. Will lend you a record.",
+    "status": "Away from keyboard",
+    "online": false,
+    "interests": [
+      "music",
+      "gaming",
+      "film"
+    ]
+  },
+  "appearance": {
+    "theme": "cozy",
+    "wallpaper": "midnight",
+    "floor": "walnut",
+    "lighting": "night"
+  },
+  "objects": [
+    {
+      "id": "door",
+      "catalogId": "door",
+      "position": {
+        "x": 0,
+        "y": 0,
+        "z": 4.97
+      },
+      "rotation": {
+        "x": 0,
+        "y": 3.1416,
+        "z": 0
+      },
+      "scale": {
+        "x": 1.0,
+        "y": 1.0,
+        "z": 1.0
+      },
+      "customData": {
+        "color": "navy"
+      }
+    },
+    {
+      "id": "door-mat",
+      "catalogId": "door-mat",
+      "position": {
+        "x": 0,
+        "y": 0,
+        "z": 4.45
+      },
+      "rotation": {
+        "x": 0,
+        "y": 3.1416,
+        "z": 0
+      },
+      "scale": {
+        "x": 1.0,
+        "y": 1.0,
+        "z": 1.0
+      }
+    },
+    {
+      "id": "guestbook",
+      "catalogId": "guestbook",
+      "position": {
+        "x": -1.6,
+        "y": 0,
+        "z": 4.4
+      },
+      "rotation": {
+        "x": 0,
+        "y": 3.1416,
+        "z": 0
+      },
+      "scale": {
+        "x": 1.0,
+        "y": 1.0,
+        "z": 1.0
+      },
+      "customData": {
+        "entries": [
+          {
+            "author": "Mira",
+            "message": "That bassline on Friday. Wow."
+          }
+        ]
+      }
+    },
+    {
+      "id": "rug",
+      "catalogId": "rug-round",
+      "position": {
+        "x": 0.4,
+        "y": 0,
+        "z": -0.2
+      },
+      "rotation": {
+        "x": 0,
+        "y": 0.0,
+        "z": 0
+      },
+      "scale": {
+        "x": 1.0,
+        "y": 1.0,
+        "z": 1.0
+      },
+      "customData": {
+        "radius": 1.8
+      }
+    },
+    {
+      "id": "bed",
+      "catalogId": "bed-double",
+      "position": {
+        "x": -3.84,
+        "y": 0,
+        "z": 0.2
+      },
+      "rotation": {
+        "x": 0,
+        "y": 1.5708,
+        "z": 0
+      },
+      "scale": {
+        "x": 1.0,
+        "y": 1.0,
+        "z": 1.0
+      }
+    },
+    {
+      "id": "nightstand",
+      "catalogId": "side-table-drawers",
+      "position": {
+        "x": -4.75,
+        "y": 0,
+        "z": -1.4
+      },
+      "rotation": {
+        "x": 0,
+        "y": 1.5708,
+        "z": 0
+      },
+      "scale": {
+        "x": 1.0,
+        "y": 1.0,
+        "z": 1.0
+      }
+    },
+    {
+      "id": "bedside-lamp",
+      "catalogId": "lamp-round-table",
+      "position": {
+        "x": -4.75,
+        "y": 0.77,
+        "z": -1.4
+      },
+      "rotation": {
+        "x": 0,
+        "y": 1.5708,
+        "z": 0
+      },
+      "scale": {
+        "x": 1.0,
+        "y": 1.0,
+        "z": 1.0
+      }
+    },
+    {
+      "id": "couch",
+      "catalogId": "lounge-sofa",
+      "position": {
+        "x": 1.2,
+        "y": 0,
+        "z": 1.1
+      },
+      "rotation": {
+        "x": 0,
+        "y": 3.1416,
+        "z": 0
+      },
+      "scale": {
+        "x": 1.0,
+        "y": 1.0,
+        "z": 1.0
+      }
+    },
+    {
+      "id": "armchair",
+      "catalogId": "lounge-chair",
+      "position": {
+        "x": 3.2,
+        "y": 0,
+        "z": 0.9
+      },
+      "rotation": {
+        "x": 0,
+        "y": 3.6416,
+        "z": 0
+      },
+      "scale": {
+        "x": 1.0,
+        "y": 1.0,
+        "z": 1.0
+      }
+    },
+    {
+      "id": "pendant",
+      "catalogId": "pendant-lamp",
+      "position": {
+        "x": 0.4,
+        "y": 4,
+        "z": -0.2
+      },
+      "rotation": {
+        "x": 0,
+        "y": 0.0,
+        "z": 0
+      },
+      "scale": {
+        "x": 1.0,
+        "y": 1.0,
+        "z": 1.0
+      },
+      "customData": {
+        "drop": 0.8
+      }
+    },
+    {
+      "id": "photo-moonrise",
+      "catalogId": "picture-frame",
+      "position": {
+        "x": -4.97,
+        "y": 2.35,
+        "z": 0.2
+      },
+      "rotation": {
+        "x": 0,
+        "y": 1.5708,
+        "z": 0
+      },
+      "scale": {
+        "x": 1.0,
+        "y": 1.0,
+        "z": 1.0
+      },
+      "customData": {
+        "width": 0.7,
+        "height": 0.85,
+        "imageUrl": "/static/images/demo/moonrise.svg",
+        "caption": "Moonrise over the studio"
+      }
+    },
+    {
+      "id": "photo-waves",
+      "catalogId": "picture-frame",
+      "position": {
+        "x": -4.97,
+        "y": 2.4,
+        "z": -1.0
+      },
+      "rotation": {
+        "x": 0,
+        "y": 1.5708,
+        "z": 0
+      },
+      "scale": {
+        "x": 1.0,
+        "y": 1.0,
+        "z": 1.0
+      },
+      "customData": {
+        "width": 0.6,
+        "height": 0.6,
+        "imageUrl": "/static/images/demo/waves.svg",
+        "caption": "Sound waves"
+      }
+    },
+    {
+      "id": "speaker-left",
+      "catalogId": "speaker",
+      "position": {
+        "x": -4.5,
+        "y": 0,
+        "z": -4.5
+      },
+      "rotation": {
+        "x": 0,
+        "y": 0.0,
+        "z": 0
+      },
+      "scale": {
+        "x": 1.0,
+        "y": 1.0,
+        "z": 1.0
+      }
+    },
+    {
+      "id": "music-table",
+      "catalogId": "side-table",
+      "position": {
+        "x": -3.35,
+        "y": 0,
+        "z": -4.7
+      },
+      "rotation": {
+        "x": 0,
+        "y": 0.0,
+        "z": 0
+      },
+      "scale": {
+        "x": 1.0,
+        "y": 1.0,
+        "z": 1.0
+      }
+    },
+    {
+      "id": "radio",
+      "catalogId": "radio",
+      "position": {
+        "x": -3.35,
+        "y": 0.77,
+        "z": -4.72
+      },
+      "rotation": {
+        "x": 0,
+        "y": 0.0,
+        "z": 0
+      },
+      "scale": {
+        "x": 1.0,
+        "y": 1.0,
+        "z": 1.0
+      }
+    },
+    {
+      "id": "desk",
+      "catalogId": "desk",
+      "position": {
+        "x": -1.2,
+        "y": 0,
+        "z": -4.55
+      },
+      "rotation": {
+        "x": 0,
+        "y": 0.0,
+        "z": 0
+      },
+      "scale": {
+        "x": 1.0,
+        "y": 1.0,
+        "z": 1.0
+      }
+    },
+    {
+      "id": "laptop",
+      "catalogId": "laptop",
+      "position": {
+        "x": -1.2,
+        "y": 0.77,
+        "z": -4.55
+      },
+      "rotation": {
+        "x": 0,
+        "y": 0.0,
+        "z": 0
+      },
+      "scale": {
+        "x": 1.0,
+        "y": 1.0,
+        "z": 1.0
+      }
+    },
+    {
+      "id": "desk-chair",
+      "catalogId": "chair-desk",
+      "position": {
+        "x": -1.2,
+        "y": 0,
+        "z": -3.75
+      },
+      "rotation": {
+        "x": 0,
+        "y": 3.3,
+        "z": 0
+      },
+      "scale": {
+        "x": 1.0,
+        "y": 1.0,
+        "z": 1.0
+      }
+    },
+    {
+      "id": "window",
+      "catalogId": "window",
+      "position": {
+        "x": 1.2,
+        "y": 2.15,
+        "z": -4.97
+      },
+      "rotation": {
+        "x": 0,
+        "y": 0.0,
+        "z": 0
+      },
+      "scale": {
+        "x": 1.0,
+        "y": 1.0,
+        "z": 1.0
+      },
+      "customData": {
+        "width": 2.0,
+        "height": 1.5
+      }
+    },
+    {
+      "id": "tv-cabinet",
+      "catalogId": "cabinet-television",
+      "position": {
+        "x": 3.55,
+        "y": 0,
+        "z": -4.72
+      },
+      "rotation": {
+        "x": 0,
+        "y": 0.0,
+        "z": 0
+      },
+      "scale": {
+        "x": 1.0,
+        "y": 1.0,
+        "z": 1.0
+      }
+    },
+    {
+      "id": "tv",
+      "catalogId": "television-modern",
+      "position": {
+        "x": 3.55,
+        "y": 0.62,
+        "z": -4.75
+      },
+      "rotation": {
+        "x": 0,
+        "y": 0.0,
+        "z": 0
+      },
+      "scale": {
+        "x": 1.0,
+        "y": 1.0,
+        "z": 1.0
+      }
+    },
+    {
+      "id": "speaker-right",
+      "catalogId": "speaker",
+      "position": {
+        "x": 4.6,
+        "y": 0,
+        "z": -4.6
+      },
+      "rotation": {
+        "x": 0,
+        "y": 0.0,
+        "z": 0
+      },
+      "scale": {
+        "x": 1.0,
+        "y": 1.0,
+        "z": 1.0
+      }
+    },
+    {
+      "id": "bookcase-1",
+      "catalogId": "bookcase-open",
+      "position": {
+        "x": 4.72,
+        "y": 0,
+        "z": -1.2
+      },
+      "rotation": {
+        "x": 0,
+        "y": -1.5708,
+        "z": 0
+      },
+      "scale": {
+        "x": 1.0,
+        "y": 1.0,
+        "z": 1.0
+      }
+    },
+    {
+      "id": "shelf-books-1",
+      "catalogId": "books",
+      "position": {
+        "x": 4.74,
+        "y": 0.26,
+        "z": -1.4
+      },
+      "rotation": {
+        "x": 0,
+        "y": -1.5708,
+        "z": 0
+      },
+      "scale": {
+        "x": 1.0,
+        "y": 1.0,
+        "z": 1.0
+      }
+    },
+    {
+      "id": "shelf-books-2",
+      "catalogId": "books",
+      "position": {
+        "x": 4.74,
+        "y": 1.22,
+        "z": -1.0
+      },
+      "rotation": {
+        "x": 0,
+        "y": -1.5708,
+        "z": 0
+      },
+      "scale": {
+        "x": 1.0,
+        "y": 1.0,
+        "z": 1.0
+      }
+    },
+    {
+      "id": "shelf-plant",
+      "catalogId": "plant-small-2",
+      "position": {
+        "x": 4.74,
+        "y": 1.76,
+        "z": -1.2
+      },
+      "rotation": {
+        "x": 0,
+        "y": 0.0,
+        "z": 0
+      },
+      "scale": {
+        "x": 1.0,
+        "y": 1.0,
+        "z": 1.0
+      }
+    },
+    {
+      "id": "floor-lamp",
+      "catalogId": "lamp-square-floor",
+      "position": {
+        "x": 4.6,
+        "y": 0,
+        "z": 0.4
+      },
+      "rotation": {
+        "x": 0,
+        "y": 0.0,
+        "z": 0
+      },
+      "scale": {
+        "x": 1.0,
+        "y": 1.0,
+        "z": 1.0
+      }
+    },
+    {
+      "id": "entrance-plant",
+      "catalogId": "plant-small-1",
+      "position": {
+        "x": 4.5,
+        "y": 0,
+        "z": 4.5
+      },
+      "rotation": {
+        "x": 0,
+        "y": 0.0,
+        "z": 0
+      },
+      "scale": {
+        "x": 2.2,
+        "y": 2.2,
+        "z": 2.2
+      }
+    }
+  ]
+}
