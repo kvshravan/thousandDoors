@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+{% block title %}Sign in · {{ app_name }}{% endblock %}
+{% block body_class %}page-signin{% endblock %}
+{% block content %}
+<section class="form-card">
+  <h1>Sign in</h1>
+  <p class="form-hint">We'll email you a link. No password needed; new here? The same link creates your account.</p>
+  <form id="signin-form" data-testid="signin-form" novalidate>
+    <label class="form-field">
+      <span>Email</span>
+      <input type="email" name="email" autocomplete="email" required data-testid="signin-email">
+    </label>
+    <button class="button" type="submit" data-testid="signin-submit">Email me a sign-in link</button>
+  </form>
+  <p class="form-status" id="signin-status" role="status" aria-live="polite" data-testid="signin-status"></p>
+</section>
+{% endblock %}
+{% block scripts %}
+<script type="module" src="{{ url_for('static', filename='js/pages/signin.js') }}"></script>
+{% endblock %}

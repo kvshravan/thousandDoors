@@ -153,9 +153,10 @@ export class EditorPanel {
     }
   }
 
-  /** The photos an owner can pick from: [{ ref, url?, name }] (bundled demos plus uploads). */
-  setPhotoLibrary(photos) {
+  /** The photos an owner can pick from: [{ ref, url?, name, local? }] (uploads and bundled demos). */
+  setPhotoLibrary(photos, { account = false } = {}) {
     this.library = [...photos];
+    this.accountMode = account;
     this._itemKey = null;
     if (this._lastState) this._renderItem(this._lastState);
   }
@@ -583,8 +584,23 @@ export class EditorPanel {
       }),
       h('span', { text: 'Upload a photo' }),
     );
-    const note = h('p', { className: 'editor-note', text: 'Uploads stay in this browser until accounts arrive.' });
-    return this._section(single ? 'Photo' : `Photos (${photos.value.length} of ${photos.max})`, current, library, upload, note);
+    const localCount = this.library.filter((photo) => photo.local).length;
+    const migrate =
+      this.accountMode &&
+      localCount > 0 &&
+      h('button', {
+        className: 'chip editor-migrate',
+        type: 'button',
+        dataset: { editorCommand: 'photos-migrate', key: 'photos-migrate', testid: 'photos-migrate' },
+        text: `Move ${localCount} photo${localCount === 1 ? '' : 's'} from this browser to your account`,
+      });
+    const note = h('p', {
+      className: 'editor-note',
+      text: this.accountMode
+        ? 'Uploads are saved to your account, so every visitor sees them.'
+        : 'Uploads stay in this browser (demo room preview).',
+    });
+    return this._section(single ? 'Photo' : `Photos (${photos.value.length} of ${photos.max})`, current, library, upload, migrate, note);
   }
 
   // ---- Look: walls, floor, lighting ----

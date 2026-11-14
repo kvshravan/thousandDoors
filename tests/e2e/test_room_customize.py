@@ -187,7 +187,7 @@ def test_a_frame_can_show_a_different_photo(page: Page, errors):
     page.get_by_role("button", name="Use photo: Waves").click()
     page.wait_for_function(
         "() => window.__doors.layout().objects.find((o) => o.id === 'photo-sunset')"
-        ".customData.imageUrl.endsWith('waves.svg')"
+        "?.customData?.imageUrl?.endsWith('waves.svg')"
     )
     expect(page.get_by_role("button", name="Use photo: Waves")).to_have_attribute(
         "aria-pressed", "true"

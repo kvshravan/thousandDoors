@@ -1,5 +1,5 @@
 import { h } from './dom.js';
-import { GIFTS, MAX_AUTHOR_LENGTH, MAX_MESSAGE_LENGTH } from './room-store.js';
+import { GIFTS, MAX_MESSAGE_LENGTH } from './room-store.js';
 
 // Builders for the content shown in the interaction panel. All text goes through
 // h(), which uses textContent, so room data and visitor input can't inject HTML.
@@ -213,24 +213,26 @@ export function musicBody({ track, playing, supported, onToggle }) {
   ];
 }
 
-function namedForm({ testid, placeholder, onSubmit }, ...fields) {
-  const author = h('input', {
-    name: 'author',
-    type: 'text',
-    maxlength: MAX_AUTHOR_LENGTH,
-    placeholder,
-    autocomplete: 'nickname',
-    'aria-label': 'Your name',
-  });
-  const form = h('form', { className: 'panel-form', dataset: { testid } }, author, ...fields);
+function signInPrompt(what) {
+  const here = window.location.pathname + window.location.search;
+  return h(
+    'p',
+    { className: 'panel-footnote', dataset: { testid: 'sign-in-prompt' } },
+    h('a', { href: `/signin?next=${encodeURIComponent(here)}`, text: 'Sign in' }),
+    ` to ${what}.`,
+  );
+}
+
+function plainForm(testid, onSubmit, ...fields) {
+  const form = h('form', { className: 'panel-form', dataset: { testid } }, ...fields);
   form.addEventListener('submit', (event) => {
     event.preventDefault();
-    onSubmit({ author: author.value, submitter: event.submitter, form });
+    onSubmit({ submitter: event.submitter, form });
   });
   return form;
 }
 
-export function noticeboardBody({ notes, status, onPost }) {
+export function noticeboardBody({ notes, status, signedIn, onPost }) {
   const message = h('textarea', {
     name: 'message',
     rows: '3',
@@ -249,17 +251,14 @@ export function noticeboardBody({ notes, status, onPost }) {
           ),
         )
       : h('p', { className: 'muted', text: 'No notes yet. Be the first!' }),
-    namedForm(
-      { testid: 'note-form', placeholder: 'Your name (optional)', onSubmit: ({ author }) => onPost({ author, message: message.value }) },
-      message,
-      h('button', { className: 'button', type: 'submit', text: 'Pin note' }),
-    ),
+    signedIn
+      ? plainForm('note-form', () => onPost({ message: message.value }), message, h('button', { className: 'button', type: 'submit', text: 'Pin note' }))
+      : signInPrompt('pin a note'),
     status && h('p', { className: 'panel-status-message', role: 'status', text: status }),
-    h('p', { className: 'panel-footnote', text: 'Notes are saved in this browser until accounts arrive.' }),
   ];
 }
 
-export function giftsBody({ gifts, status, onGive }) {
+export function giftsBody({ gifts, status, signedIn, onGive }) {
   const buttons = Object.entries(GIFTS).map(([id, gift]) =>
     h('button', { className: 'gift-button', type: 'submit', value: id, dataset: { gift: id } }, h('span', { 'aria-hidden': 'true', text: gift.icon }), ` ${gift.label}`),
   );
@@ -272,10 +271,9 @@ export function giftsBody({ gifts, status, onGive }) {
         )
       : h('p', { className: 'muted', text: 'The table is empty for now.' }),
     h('h3', { className: 'panel-subhead', text: 'Leave a gift' }),
-    namedForm(
-      { testid: 'gift-form', placeholder: 'Your name (optional)', onSubmit: ({ author, submitter }) => onGive({ author, gift: submitter?.value }) },
-      h('div', { className: 'gift-buttons' }, buttons),
-    ),
+    signedIn
+      ? plainForm('gift-form', ({ submitter }) => onGive({ gift: submitter?.value }), h('div', { className: 'gift-buttons' }, buttons))
+      : signInPrompt('leave a gift'),
     status && h('p', { className: 'panel-status-message', role: 'status', text: status }),
   ];
 }

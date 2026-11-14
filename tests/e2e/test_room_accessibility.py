@@ -5,7 +5,15 @@ import pytest
 from playwright.sync_api import Browser, Page, expect
 
 from .conftest import SLOW_FRAMES_SCRIPT, collect_errors
-from .helpers import axe_violations, camera, info, mouse_drag, open_room, wait_camera_settled
+from .helpers import (
+    axe_violations,
+    camera,
+    info,
+    mouse_drag,
+    open_room,
+    sign_in,
+    wait_camera_settled,
+)
 
 OWNER = "/room?quality=low&as=owner"
 
@@ -47,6 +55,7 @@ def test_room_has_no_accessibility_violations(page: Page, errors, path):
 
 
 def test_open_panels_have_no_accessibility_violations(page: Page, errors):
+    sign_in(page, username="sam")
     open_room(page, OWNER)
 
     page.get_by_test_id("things-list").click()

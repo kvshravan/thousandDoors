@@ -1,0 +1,427 @@
+{
+  "roomId": "starter",
+  "name": "My room",
+  "description": "A fresh start",
+  "appearance": {
+    "theme": "cozy",
+    "wallpaper": "cream",
+    "floor": "oak",
+    "lighting": "day",
+    "landscape": "countryside"
+  },
+  "objects": [
+    {
+      "id": "door",
+      "catalogId": "door",
+      "position": {
+        "x": 0,
+        "y": 0,
+        "z": 4.97
+      },
+      "rotation": {
+        "x": 0,
+        "y": 3.1416,
+        "z": 0
+      },
+      "scale": {
+        "x": 1.0,
+        "y": 1.0,
+        "z": 1.0
+      }
+    },
+    {
+      "id": "door-mat",
+      "catalogId": "door-mat",
+      "position": {
+        "x": 0,
+        "y": 0,
+        "z": 4.45
+      },
+      "rotation": {
+        "x": 0,
+        "y": 3.1416,
+        "z": 0
+      },
+      "scale": {
+        "x": 1.0,
+        "y": 1.0,
+        "z": 1.0
+      }
+    },
+    {
+      "id": "entrance-plant",
+      "catalogId": "potted-plant",
+      "position": {
+        "x": 4.4,
+        "y": 0,
+        "z": 4.4
+      },
+      "rotation": {
+        "x": 0,
+        "y": 0.0,
+        "z": 0
+      },
+      "scale": {
+        "x": 1.0,
+        "y": 1.0,
+        "z": 1.0
+      }
+    },
+    {
+      "id": "rug",
+      "catalogId": "rug-round",
+      "position": {
+        "x": 0.6,
+        "y": 0,
+        "z": -0.4
+      },
+      "rotation": {
+        "x": 0,
+        "y": 0.0,
+        "z": 0
+      },
+      "scale": {
+        "x": 1.0,
+        "y": 1.0,
+        "z": 1.0
+      }
+    },
+    {
+      "id": "bed",
+      "catalogId": "bed-double",
+      "position": {
+        "x": -3.84,
+        "y": 0,
+        "z": -0.4
+      },
+      "rotation": {
+        "x": 0,
+        "y": 1.5708,
+        "z": 0
+      },
+      "scale": {
+        "x": 1.0,
+        "y": 1.0,
+        "z": 1.0
+      }
+    },
+    {
+      "id": "nightstand",
+      "catalogId": "side-table-drawers",
+      "position": {
+        "x": -4.75,
+        "y": 0,
+        "z": -2.0
+      },
+      "rotation": {
+        "x": 0,
+        "y": 1.5708,
+        "z": 0
+      },
+      "scale": {
+        "x": 1.0,
+        "y": 1.0,
+        "z": 1.0
+      }
+    },
+    {
+      "id": "bedside-lamp",
+      "catalogId": "lamp-round-table",
+      "position": {
+        "x": -4.75,
+        "y": 0.77,
+        "z": -2.0
+      },
+      "rotation": {
+        "x": 0,
+        "y": 1.5708,
+        "z": 0
+      },
+      "scale": {
+        "x": 1.0,
+        "y": 1.0,
+        "z": 1.0
+      }
+    },
+    {
+      "id": "couch",
+      "catalogId": "lounge-sofa",
+      "position": {
+        "x": 1.8,
+        "y": 0,
+        "z": 1.0
+      },
+      "rotation": {
+        "x": 0,
+        "y": 3.1416,
+        "z": 0
+      },
+      "scale": {
+        "x": 1.0,
+        "y": 1.0,
+        "z": 1.0
+      }
+    },
+    {
+      "id": "coffee-table",
+      "catalogId": "table-coffee",
+      "position": {
+        "x": 1.8,
+        "y": 0,
+        "z": -0.1
+      },
+      "rotation": {
+        "x": 0,
+        "y": 0.0,
+        "z": 0
+      },
+      "scale": {
+        "x": 1.0,
+        "y": 1.0,
+        "z": 1.0
+      }
+    },
+    {
+      "id": "pendant",
+      "catalogId": "pendant-lamp",
+      "position": {
+        "x": 0.6,
+        "y": 4,
+        "z": -0.4
+      },
+      "rotation": {
+        "x": 0,
+        "y": 0.0,
+        "z": 0
+      },
+      "scale": {
+        "x": 1.0,
+        "y": 1.0,
+        "z": 1.0
+      }
+    },
+    {
+      "id": "photo-sunset",
+      "catalogId": "picture-frame",
+      "position": {
+        "x": -4.97,
+        "y": 2.3,
+        "z": -0.4
+      },
+      "rotation": {
+        "x": 0,
+        "y": 1.5708,
+        "z": 0
+      },
+      "scale": {
+        "x": 1.0,
+        "y": 1.0,
+        "z": 1.0
+      },
+      "customData": {
+        "imageUrl": "/static/images/demo/sunset-hills.svg",
+        "caption": "A favourite place"
+      }
+    },
+    {
+      "id": "corner-plant",
+      "catalogId": "potted-plant",
+      "position": {
+        "x": -4.45,
+        "y": 0,
+        "z": -4.45
+      },
+      "rotation": {
+        "x": 0,
+        "y": 0.0,
+        "z": 0
+      },
+      "scale": {
+        "x": 1.4,
+        "y": 1.4,
+        "z": 1.4
+      }
+    },
+    {
+      "id": "desk",
+      "catalogId": "desk",
+      "position": {
+        "x": -1.2,
+        "y": 0,
+        "z": -4.55
+      },
+      "rotation": {
+        "x": 0,
+        "y": 0.0,
+        "z": 0
+      },
+      "scale": {
+        "x": 1.0,
+        "y": 1.0,
+        "z": 1.0
+      }
+    },
+    {
+      "id": "laptop",
+      "catalogId": "laptop",
+      "position": {
+        "x": -1.35,
+        "y": 0.77,
+        "z": -4.55
+      },
+      "rotation": {
+        "x": 0,
+        "y": 0.0,
+        "z": 0
+      },
+      "scale": {
+        "x": 1.0,
+        "y": 1.0,
+        "z": 1.0
+      }
+    },
+    {
+      "id": "desk-chair",
+      "catalogId": "chair-desk",
+      "position": {
+        "x": -1.2,
+        "y": 0,
+        "z": -3.75
+      },
+      "rotation": {
+        "x": 0,
+        "y": 3.02,
+        "z": 0
+      },
+      "scale": {
+        "x": 1.0,
+        "y": 1.0,
+        "z": 1.0
+      }
+    },
+    {
+      "id": "window",
+      "catalogId": "window",
+      "position": {
+        "x": 1.2,
+        "y": 2.15,
+        "z": -4.97
+      },
+      "rotation": {
+        "x": 0,
+        "y": 0.0,
+        "z": 0
+      },
+      "scale": {
+        "x": 1.0,
+        "y": 1.0,
+        "z": 1.0
+      }
+    },
+    {
+      "id": "tv-cabinet",
+      "catalogId": "cabinet-television",
+      "position": {
+        "x": 3.55,
+        "y": 0,
+        "z": -4.72
+      },
+      "rotation": {
+        "x": 0,
+        "y": 0.0,
+        "z": 0
+      },
+      "scale": {
+        "x": 1.0,
+        "y": 1.0,
+        "z": 1.0
+      }
+    },
+    {
+      "id": "floor-lamp",
+      "catalogId": "lamp-square-floor",
+      "position": {
+        "x": 4.6,
+        "y": 0,
+        "z": -4.6
+      },
+      "rotation": {
+        "x": 0,
+        "y": 0.0,
+        "z": 0
+      },
+      "scale": {
+        "x": 1.0,
+        "y": 1.0,
+        "z": 1.0
+      }
+    },
+    {
+      "id": "bookcase-1",
+      "catalogId": "bookcase-open",
+      "position": {
+        "x": 4.72,
+        "y": 0,
+        "z": -1.6
+      },
+      "rotation": {
+        "x": 0,
+        "y": -1.5708,
+        "z": 0
+      },
+      "scale": {
+        "x": 1.0,
+        "y": 1.0,
+        "z": 1.0
+      },
+      "customData": {
+        "title": "My shelf",
+        "items": []
+      }
+    },
+    {
+      "id": "noticeboard",
+      "catalogId": "noticeboard",
+      "position": {
+        "x": -2.3,
+        "y": 1.5,
+        "z": 4.97
+      },
+      "rotation": {
+        "x": 0,
+        "y": 3.1416,
+        "z": 0
+      },
+      "scale": {
+        "x": 1.0,
+        "y": 1.0,
+        "z": 1.0
+      },
+      "customData": {
+        "entries": []
+      }
+    },
+    {
+      "id": "gift-table",
+      "catalogId": "gift-table",
+      "position": {
+        "x": -2.3,
+        "y": 0,
+        "z": 4.45
+      },
+      "rotation": {
+        "x": 0,
+        "y": 3.1416,
+        "z": 0
+      },
+      "scale": {
+        "x": 1.0,
+        "y": 1.0,
+        "z": 1.0
+      },
+      "customData": {
+        "gifts": []
+      }
+    }
+  ]
+}

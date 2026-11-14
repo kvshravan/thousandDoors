@@ -1,4 +1,5 @@
 import threading
+import urllib.request
 
 import pytest
 from werkzeug.serving import make_server
@@ -49,6 +50,13 @@ def live_server():
 @pytest.fixture(scope="session")
 def base_url(live_server):
     return live_server
+
+
+@pytest.fixture(autouse=True)
+def fresh_data(live_server):
+    """Each browser test starts with only the demo rooms (the app keeps data in memory)."""
+    request = urllib.request.Request(f"{live_server}/__test__/reset", method="POST")
+    urllib.request.urlopen(request, timeout=10).read()
 
 
 @pytest.fixture(scope="session")

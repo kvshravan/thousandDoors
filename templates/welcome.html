@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% block title %}Welcome · {{ app_name }}{% endblock %}
+{% block body_class %}page-welcome{% endblock %}
+{% block content %}
+<section class="form-card">
+  <h1>Your door</h1>
+  <p class="form-hint">Pick the name on your door. Your room will live at <strong>/room/<span data-preview>yourname</span></strong>.</p>
+  <form id="welcome-form" data-testid="welcome-form" novalidate hidden>
+    <label class="form-field">
+      <span>Username</span>
+      <input name="username" required minlength="3" maxlength="20" pattern="[a-z0-9][a-z0-9_\-]{2,19}" autocomplete="username" autocapitalize="none" spellcheck="false" aria-describedby="username-hint" data-testid="welcome-username">
+      <span class="form-hint" id="username-hint">3–20 lowercase letters, numbers, - or _.</span>
+    </label>
+    <label class="form-field">
+      <span>Display name</span>
+      <input name="displayName" maxlength="40" autocomplete="nickname" data-testid="welcome-name">
+    </label>
+    <button class="button" type="submit" data-testid="welcome-submit">Build my room</button>
+  </form>
+  <p class="form-status" id="welcome-status" role="status" aria-live="polite" data-testid="welcome-status"></p>
+</section>
+{% endblock %}
+{% block scripts %}
+<script type="module" src="{{ url_for('static', filename='js/pages/welcome.js') }}"></script>
+{% endblock %}

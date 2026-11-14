@@ -12,9 +12,20 @@ body.page-room {
   pointer-events: none;
 }
 
-.page-room .topbar .brand {
+.page-room .topbar .brand,
+.page-room .topbar .account {
   pointer-events: auto;
   text-shadow: 0 1px 6px rgb(0 0 0 / 0.35);
+}
+
+body.is-editing .topbar .account {
+  display: none;
+}
+
+@media (max-width: 600px) {
+  .page-room .topbar .account {
+    display: none;
+  }
 }
 
 .room-stage {
@@ -1099,6 +1110,11 @@ body.is-editing .room-stage {
 .editor-upload:focus-within {
   outline: 3px solid var(--glow);
   outline-offset: 2px;
+}
+
+.editor-migrate {
+  margin: 0.6rem 0 0 0.4rem;
+  pointer-events: auto;
 }
 
 .editor-note {

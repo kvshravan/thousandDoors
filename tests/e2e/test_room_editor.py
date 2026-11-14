@@ -497,7 +497,7 @@ def test_recolour_and_resize_are_saved(page: Page, errors):
 
     page.get_by_role("button", name="Colour: Charcoal").click()
     page.wait_for_function(
-        "() => window.__doors.layout().objects.find((o) => o.id === 'couch').customData?.color"
+        "() => window.__doors.layout().objects.find((o) => o.id === 'couch')?.customData?.color"
         " === 'charcoal'"
     )
     expect(page.get_by_role("button", name="Colour: Charcoal")).to_have_attribute(
@@ -525,12 +525,12 @@ def test_cancel_undoes_colours(page: Page, errors):
     select(page, "armchair")
     page.get_by_role("button", name="Colour: Teal").click()
     page.wait_for_function(
-        "() => window.__doors.layout().objects.find((o) => o.id === 'armchair').customData?.color"
+        "() => window.__doors.layout().objects.find((o) => o.id === 'armchair')?.customData?.color"
     )
     page.get_by_test_id("editor-cancel").click()
     page.wait_for_function("() => !window.__doors.info().editing")
     page.wait_for_function(
-        "() => !window.__doors.layout().objects.find((o) => o.id === 'armchair').customData"
+        "() => !window.__doors.layout().objects.find((o) => o.id === 'armchair')?.customData"
     )
     assert errors == []
 
@@ -553,7 +553,7 @@ def test_the_door_can_be_recoloured_but_not_moved(page: Page, errors):
     )
     page.get_by_role("button", name="Colour: Navy").click()
     page.wait_for_function(
-        "() => window.__doors.layout().objects.find((o) => o.id === 'door').customData?.color"
+        "() => window.__doors.layout().objects.find((o) => o.id === 'door')?.customData?.color"
         " === 'navy'"
     )
     assert errors == []

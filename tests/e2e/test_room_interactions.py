@@ -3,7 +3,7 @@ import math
 import pytest
 from playwright.sync_api import Page, expect
 
-from .helpers import click_object, info, open_room, point_for, wait_camera_settled
+from .helpers import click_object, info, open_room, point_for, sign_in, wait_camera_settled
 
 
 def panel(page: Page):
@@ -128,12 +128,17 @@ def test_noticeboard_post_is_pinned_and_kept(page: Page, errors):
     open_room(page)
     assert states(page)["noticeboard"]["notes"] == 3
     click_object(page, "noticeboard")
+    expect(page.get_by_test_id("sign-in-prompt")).to_contain_text("Sign in to pin a note")
+    expect(page.get_by_test_id("note-form")).to_have_count(0)
+
+    sign_in(page, username="sam", display_name="Sam")
+    open_room(page)
+    click_object(page, "noticeboard")
     form = page.get_by_test_id("note-form")
 
     form.get_by_role("button", name="Pin note").click()
     expect(panel(page).locator(".note")).to_have_count(3)
 
-    form.get_by_label("Your name").fill("Sam")
     form.get_by_label("Your note").fill('Love the plants <img src=x onerror="window.__pwned=1">')
     form.get_by_role("button", name="Pin note").click()
 
@@ -154,10 +159,12 @@ def test_noticeboard_post_is_pinned_and_kept(page: Page, errors):
 
 
 def test_notes_are_kept_per_room(page: Page, errors):
+    sign_in(page, username="sam")
     open_room(page)
     click_object(page, "noticeboard")
     page.get_by_test_id("note-form").get_by_label("Your note").fill("Hi Mira")
     page.get_by_role("button", name="Pin note").click()
+    expect(panel(page)).to_contain_text("Pinned!")
 
     open_room(page, "/room/jun?quality=low")
     assert states(page)["noticeboard"]["notes"] == 1
@@ -165,13 +172,13 @@ def test_notes_are_kept_per_room(page: Page, errors):
 
 
 def test_visitors_can_leave_a_gift(page: Page, errors):
+    sign_in(page, username="sam", display_name="Sam")
     open_room(page)
     assert states(page)["gift-table"]["gifts"] == 1
     click_object(page, "gift-table")
     expect(panel(page).locator(".gift-list li")).to_have_text(["🌷 Flower from Jun"])
 
     form = page.get_by_test_id("gift-form")
-    form.get_by_label("Your name").fill("Sam")
     form.get_by_role("button", name="Cup of tea").click()
 
     expect(panel(page).locator(".gift-list li")).to_have_text(

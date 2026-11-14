@@ -22,6 +22,36 @@ def info(page: Page) -> dict:
     return page.evaluate("() => window.__doors.info()")
 
 
+TEST_USER_ID = "00000000-0000-4000-8000-000000000001"
+
+
+def sign_in(
+    page: Page,
+    *,
+    user_id: str = TEST_USER_ID,
+    email: str = "sam@example.com",
+    username: str | None = None,
+    display_name: str | None = None,
+) -> dict:
+    """Signs the browser in as a test user (and creates their room if `username` is given).
+
+    The test server mints tokens with its own key in place of Supabase, so no email is sent.
+    """
+    session = page.request.post("/__test__/session", data={"id": user_id, "email": email}).json()
+    if username:
+        response = page.request.post(
+            "/api/me/profile",
+            data={"username": username, "displayName": display_name or username},
+            headers={"Authorization": f"Bearer {session['access_token']}"},
+        )
+        assert response.status == 201, response.text()
+    # localStorage belongs to the site, so a page from it must be open first.
+    if page.url == "about:blank":
+        page.goto("/healthz")
+    page.evaluate("(s) => localStorage.setItem('doors:auth', JSON.stringify(s))", session)
+    return session
+
+
 def camera(page: Page) -> dict:
     return info(page)["scene"]["camera"]
 

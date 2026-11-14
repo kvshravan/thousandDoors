@@ -19,7 +19,7 @@
   class="room-stage"
   id="room-stage"
   data-catalog-url="{{ url_for('static', filename='data/catalog.json') }}"
-  data-room-url="{{ url_for('static', filename='data/rooms/' ~ room_id ~ '.json') }}"
+  data-room-url="{{ url_for('api.get_room', room_id=room_id) }}"
   data-models-url="{{ url_for('static', filename='models/') }}"
 ></div>
 <p class="sr-only" id="room-keys-help">Arrow keys look around, plus and minus zoom, Home resets the view. Use “Things here” to use the objects in this room.</p>

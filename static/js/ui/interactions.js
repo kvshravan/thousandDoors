@@ -87,13 +87,13 @@ export function handleInteraction(registry, event) {
   return true;
 }
 
-/** Visitor contributions shown for a room: seeded mock data plus this browser's additions. */
+/** Visitor contributions shown for a room: seeded mock data plus everyone's additions. */
 export function noteCount(ctx, data) {
-  return (data.entries ?? []).length + ctx.store.list('notes').length;
+  return (data.entries ?? []).length + (ctx.store?.list('notes').length ?? 0);
 }
 
 export function giftCount(ctx, data) {
-  return (data.gifts ?? []).length + ctx.store.list('gifts').length;
+  return (data.gifts ?? []).length + (ctx.store?.list('gifts').length ?? 0);
 }
 
 function openMusic(ctx, objectId, data) {
@@ -124,9 +124,15 @@ function openNoticeboard(ctx, objectId, data) {
       noticeboardBody({
         notes: [...seeded, ...ctx.store.list('notes')],
         status,
-        onPost: (note) => {
-          if (!ctx.store.add('notes', note)) {
+        signedIn: ctx.store.signedIn,
+        onPost: async (note) => {
+          if (!note.message.trim()) {
             render('Write something first.');
+            return;
+          }
+          const result = await ctx.store.add('notes', note);
+          if (result.error) {
+            render(result.error);
             return;
           }
           ctx.getScene()?.runAction(objectId, 'setCount', noteCount(ctx, data));
@@ -146,9 +152,13 @@ function openGifts(ctx, objectId, data) {
       giftsBody({
         gifts: [...seeded, ...ctx.store.list('gifts')],
         status,
-        onGive: (gift) => {
-          const saved = ctx.store.add('gifts', gift);
-          if (!saved) return;
+        signedIn: ctx.store.signedIn,
+        onGive: async (gift) => {
+          const result = await ctx.store.add('gifts', gift);
+          if (result.error) {
+            render(result.error);
+            return;
+          }
           ctx.getScene()?.runAction(objectId, 'setCount', giftCount(ctx, data));
           render('Your gift is on the table.');
         },

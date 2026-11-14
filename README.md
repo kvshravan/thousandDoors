@@ -2,7 +2,7 @@
 
 A social network where every person gets a cozy 3D room behind a door. Your room is your identity, the hallway is your social network, and the wider world is where you discover people.
 
-Stack: Python Flask, HTML/CSS, vanilla JavaScript, Three.js r187 (vendored, loaded through an import map), Supabase (from Milestone 4). No Node.js or frontend build step.
+Stack: Python Flask, HTML/CSS, vanilla JavaScript, Three.js r187 (vendored, loaded through an import map), Supabase (Auth, Postgres, Storage). No Node.js or frontend build step.
 
 ## Status
 
@@ -13,6 +13,7 @@ Stack: Python Flask, HTML/CSS, vanilla JavaScript, Three.js r187 (vendored, load
 | 2 | Asset loading and object interactions | ✅ Done |
 | 3 | Personal Room MVP: zoned layout and room data, interactive objects, customization mode, keyboard access and polish | ✅ Done |
 | 3e | Richer rooms: about 120 things to add (furniture, instruments, lights, tech, hobbies, decor) with search; colours and sizes; placing on furniture, walls, and ceiling; light colours, brightness, and effects; neon text; photo string lights with your own uploads; six landscapes seen through the window and from outside the house | ✅ Done |
+| 4 | Accounts and database: magic-link sign-in, choose a username and get a starter room, rooms saved to Postgres with row-level security, shared notes and gifts, photos in Supabase Storage | ✅ Done |
 
 ## Local setup (Windows)
 
@@ -23,16 +24,35 @@ python -m venv .venv
 .\.venv\Scripts\Activate.ps1
 pip install -r requirements-dev.txt
 python -m playwright install chromium
-Copy-Item .env.example .env
+Copy-Item .env.example .env   # then fill in the Supabase values (below)
+flask --app app db upgrade    # create the tables, policies, and photo bucket
+flask --app app db seed       # add the demo rooms (Mira, Jun)
 flask --app app run --debug
 ```
 
 Open http://127.0.0.1:5000 and choose **Step inside Mira's room**, or go straight to http://127.0.0.1:5000/room (Mira) or http://127.0.0.1:5000/room/jun. Health check: http://127.0.0.1:5000/healthz.
 
-Room page options (development only, until accounts exist):
+Without `DATABASE_URL` the app still runs, keeping everything in memory (lost on restart), which is how the tests run.
+
+### Supabase
+
+1. Create a project at https://supabase.com/dashboard.
+2. Copy into `.env` (never commit it):
+   - `SUPABASE_URL`: **Connect** → Project URL
+   - `SUPABASE_PUBLISHABLE_KEY` and `SUPABASE_SECRET_KEY`: **Settings → API Keys**
+   - `DATABASE_URL`: **Connect** → Session pooler connection string, with your database password
+   - `SUPABASE_JWKS_URL` (optional): defaults to `<SUPABASE_URL>/auth/v1/.well-known/jwks.json`
+3. **Authentication → URL Configuration**: Site URL `http://127.0.0.1:5000`, and add `http://127.0.0.1:5000/**` (and later the deployed URL) to Redirect URLs.
+4. Run `flask --app app db upgrade` and `flask --app app db seed`. `flask --app app db status` lists applied migrations.
+
+### Accounts
+
+**Sign in** (top right) emails a magic link; new emails get an account. After the link, choose a username: it's your door's name and your room's address (`/room/<username>`), and you get a furnished starter room. **Edit room** then saves to your account, so every visitor sees it. Leaving notes and gifts needs an account (they're signed with your name); anyone can read them.
+
+Room page options (development only):
 
 - `?quality=low|medium|high` overrides the automatic graphics quality.
-- `?as=stranger|follower|friend|owner` sets who you are to the room's owner. Objects only respond if their permission allows it (Mira's floor lamp is owner-only; the secret chest is friends-only).
+- `?as=stranger|follower|friend|owner` previews the room as someone else. Objects only respond if their permission allows it (Mira's floor lamp is owner-only; the secret chest is friends-only). `?as=owner` on a demo room lets you try the editor, saving only in this browser.
 
 ### Things to try in a room
 
@@ -53,7 +73,7 @@ Room page options (development only, until accounts exist):
 | Photo string lights (Mira's right wall) | The pegged photos, up close |
 | Door | Nameplate, **Step outside** to see the house in its landscape, and the way out |
 
-Notes and gifts are saved in your browser (localStorage, per room) until accounts arrive.
+Notes and gifts are shared: they're saved on the server, so every visitor sees them.
 
 ### Outside the house
 
@@ -81,11 +101,11 @@ Open a room as its owner (`/room?as=owner`) and choose **Edit room**:
   - colour (16 colours, or its original one) and size (small, medium, large);
   - for lights: on/off, light colour (including rainbow bulbs), brightness, and effect (steady, pulse, twinkle, flicker; effects stay still with the OS reduce-motion setting);
   - for neon signs and posters: the words;
-  - for frames and photo strings: the photo(s), from the bundled pictures or your own uploads. Uploads are shrunk to 512 px and kept in this browser (IndexedDB) until accounts arrive, so other devices show a blank card for them.
+  - for frames and photo strings: the photo(s), from the bundled pictures or your own uploads. Uploads are shrunk to 512 px in the browser, checked by the server, and stored in Supabase Storage, so every visitor sees them. Photos uploaded before signing in (kept in the browser) show a **Move to your account** button.
   The door can be recoloured but not moved; the colour shows outside the house too.
 - **Turn and remove**: the toolbar buttons, or **R** / **Shift+R** to turn, **Delete** to remove, arrow keys to nudge, **Escape** to deselect or cancel. When you add an item from the catalogue by keyboard, focus moves to the 3D view: arrows move it and **Enter** places it.
 - **Look**: walls, floor, lighting, and the landscape outside change instantly.
-- **Save** keeps the layout in this browser (`doors:v1:<room>:layout`), **Cancel** puts everything back, **Start over** returns to the room as authored (save to keep it).
+- **Save** saves the room to your account (on a demo room with `?as=owner`, only in this browser), **Cancel** puts everything back, **Start over** returns to the room as it was when you opened it (save to keep it).
 
 The door and window are part of the room and can't be moved.
 
@@ -108,6 +128,14 @@ Accessibility tests run [axe-core](https://github.com/dequelabs/axe-core) (vendo
 
 `tests/test_catalog_data.py` validates `static/data/`: every model file exists and is a GLB, every builder and interaction type is registered in the JavaScript, every room's appearance uses known presets, and every room object points at a real catalogue item and image with a valid permission level.
 
+`tests/test_api.py` covers the API on the in-memory store: tokens (expired, wrong issuer, unsigned, forged, anon), usernames, starter rooms, who may edit, layout validation (unknown items, out-of-range positions, outside photo URLs, unsafe embeds, missing door, too many objects), notes and gifts with their hourly limit, and photo uploads judged by their bytes. `tests/e2e/test_accounts.py` drives magic-link sign-in (Supabase's endpoints are intercepted), choosing a username, saving and seeing a room from another browser, failed saves, moving browser photos to the account, token refresh, and signing out. Tests never touch your Supabase project: they use memory storage and a signing key generated at startup.
+
+`tests/test_postgres.py` checks the row-level security policies by attacking them directly, as someone using the Supabase Data API would (editing others' rooms, forging note authors, taking usernames, filing photos in others' folders). It runs when `TEST_DATABASE_URL` is set, inside transactions that are always rolled back. CI runs it on a Postgres service with `tests/sql/supabase_shim.sql` standing in for Supabase's auth schema. To run it against your project (slow from far away, but it leaves nothing behind):
+
+```powershell
+$env:TEST_DATABASE_URL = "<your DATABASE_URL>"; pytest tests/test_postgres.py
+```
+
 In development and testing the page exposes `window.__doors` (state, debug info, object bounds and screen points, pixel sampling, destroy, remount) for these tests. It is not rendered in production.
 
 CI runs the same checks on every push and pull request (`.github/workflows/ci.yml`).
@@ -121,6 +149,11 @@ Settings come from environment variables (loaded from `.env` in development). Se
 | `FLASK_ENV` | `development`, `testing`, or `production` |
 | `SECRET_KEY` | Flask session secret. Required in production. |
 | `APP_NAME` | Display name |
+| `SUPABASE_URL` | Project URL. Required in production. |
+| `SUPABASE_PUBLISHABLE_KEY` | Browser key for sign-in. Required in production. |
+| `SUPABASE_SECRET_KEY` | Server-only key, used to store photos. Never sent to browsers. |
+| `SUPABASE_JWKS_URL` | Public keys for verifying sign-in tokens (defaults from `SUPABASE_URL`) |
+| `DATABASE_URL` | Postgres connection (session pooler). Without it, data lives in memory. Required in production. |
 
 ## Production
 
@@ -167,16 +200,30 @@ static/
                           photo string), hobbies and tech, window landscapes (landscapes.js),
                           and the houses and scenery outside (outdoors.js)
   js/ui/          HTML side: interaction registry, panel contents, editor panel, photo viewer, music player,
-                  per-room browser storage for notes and gifts, uploaded photos (image-store.js)
+                  visitor notes and gifts (visitor-book.js), photos (image-store.js), demo layout preview
+  js/auth.js      Magic-link sign-in with Supabase Auth (no supabase-js), sessions, calls to the API
+  js/app.js       Every page: finishes a sign-in arriving from an email link, shows the account links
+  js/pages/       Page scripts: room.js, signin.js, welcome.js
+  data/templates/starter.json  The furnished room each new member starts with
   models/furniture/  GLB furniture (Kenney Furniture Kit, CC0; see LICENSE-kenney.txt) and its thumbnails
   models/props/thumbs/  Catalogue thumbnails for procedural props (made by tools/render_thumbnails.py)
   images/demo/    Original SVG artwork used as demo photos
   vendor/three/   Pinned Three.js r187 (see VERSION)
   css/            Styles; room.css holds the 3D page overlays and dialogs
-migrations/       SQL migrations (Milestone 4)
+migrations/       SQL migrations, applied in order by `flask db upgrade`
 tools/            Developer scripts (render_thumbnails.py: thumbnails for procedural props)
-tests/            pytest suite; tests/e2e/ has the Playwright browser tests (and vendor/axe.min.js)
+tests/            pytest suite; tests/e2e/ has the Playwright browser tests (and vendor/axe.min.js);
+                  tests/sql/ the Supabase stand-in for testing against plain Postgres
 ```
+
+### Backend architecture notes
+
+- `backend/api.py` is the JSON API: `/api/me`, `/api/me/profile`, `/api/rooms/<id>` (+ `/layout`, `/notes`, `/gifts`), and `/api/photos`. `/photos/<id>` redirects to the photo in Storage. Errors are `{ "error": { "code", "message" } }`.
+- Flask is the only client of the database. The browser signs in with Supabase Auth and sends its access token; `backend/auth.py` verifies it against the project's public keys (JWKS, ES256), so the server holds no signing secret.
+- `backend/store.py` has `PostgresStore` and `MemoryStore` with the same methods. `PostgresStore` runs every query as the requesting user (`set local role authenticated` plus their JWT claims, or `anon`), so the row-level security policies in `migrations/0001_rooms.sql` apply to every request, not just to Supabase's Data API. Privileges are granted column by column: owners can change a room's contents but not its id or owner.
+- `backend/rooms.py` validates everything the editor sends (catalogue ids, ranges, photo references, embeds, sizes) and keeps one source of truth by reading the presets from `room-config.js`. A room is stored as one JSON document, in the same shape as the demo room files.
+- Photos are checked by their bytes, stored at `<user id>/<photo id>.<ext>` in the public `photos` bucket using the secret key, and recorded in `public.photos`. A frame or photo string refers to one as `photo:<id>`.
+- Demo rooms (Mira, Jun) have no owner. `flask db seed` refreshes them from `static/data/rooms/` without touching anyone's room.
 
 ### 3D architecture notes
 
@@ -189,13 +236,13 @@ tests/            pytest suite; tests/e2e/ has the Playwright browser tests (and
     appearance: { theme, wallpaper, floor, lighting, landscape },
     objects: [{ id, catalogId, position, rotation, scale, customData, permissions: { interact } }] }
   ```
-  The catalogue maps `catalogId` to a GLB `model` or a procedural `builder`, plus an optional `interaction`, `light`, and default `permissions`. Milestone 4 moves rooms and the catalogue into Postgres without changing this shape.
+  The catalogue maps `catalogId` to a GLB `model` or a procedural `builder`, plus an optional `interaction`, `light`, and default `permissions`. Rooms are stored in Postgres in this same shape.
 - Catalogue items also describe how they're edited: `placement` (`floor`, `surface`, `wall`, `ceiling`, or `fixed`), `category` and `tags` for the Add tab, `recolor` (the GLB material, or builder option, that an owner's colour replaces), `defaults` (customData for new copies, such as a starter track), `addable: false` for one-per-room parts, `mount.drop` for ceiling items, `scale`, `support` (wall items small things can stand on), `text` ({ field, maxLength, label } for editable words), and `photos` ({ field, max } for frames and photo strings). An owner's colour is stored as a name from `ITEM_COLORS` in `customData.color`; size is the object's scale. Wall and ceiling models are re-anchored on load so their origin is on the wall or ceiling.
 - Lights: an item with a catalogue `light` gets a point light, and its parts marked `userData.glow` follow `customData.light` = { color (`LIGHT_COLORS`), brightness, effect (`LIGHT_EFFECTS`) } plus `customData.on`. Settings change in place without rebuilding; effects animate only while the light is on and never with reduced motion.
-- Photos are references: bundled images (`/static/images/...`) or uploads (`upload:<id>`). The engine never sees files; builders ask an injected `images.resolve(ref)` for a URL, and anything else resolves to nothing. Milestone 4 can move uploads to Supabase Storage behind the same interface.
+- Photos are references: bundled images (`/static/images/...`), photos in the owner's account (`photo:<id>`, served from `/photos/<id>`), or photos kept only in this browser (`upload:<id>`, from before signing in). The engine never sees files; builders ask an injected `images.resolve(ref)` for a URL, and anything else resolves to nothing.
 - The room's `appearance.landscape` picks the window painting and the outside scene. `ExteriorScene` has the same view interface as `RoomScene`, so the page swaps them through `SceneManager`; the only outside interaction is the front door (`enter`).
 - Every room shares one layout of zones: entrance (door with the owner's nameplate and online light), centre (bed, rug, seating), left wall (memories), right wall (collections), back wall (desk, TV), corners (music, plants), and a window. Appearance presets (`WALLPAPERS`, `FLOORS`, `LIGHTING_MOODS` in `room-config.js`) make the same foundation look different per owner.
-- Permissions: each object has an interact level (`everyone`, `followers`, `friends`, `owner`). `js/permissions.js` compares it with the viewer's relationship to the owner; unknown levels fail closed. The 3D engine only receives a `canInteract` callback, so it stays unaware of users.
+- Permissions: each object has an interact level (`everyone`, `followers`, `friends`, `owner`). `js/permissions.js` compares it with the viewer's relationship to the owner (from the server; followers and friends arrive with the hallway); unknown levels fail closed. The 3D engine only receives a `canInteract` callback, so it stays unaware of users.
 - Only the models a room references are downloaded. Each model loads once, is normalized (origin at floor centre, kit scale applied) and cloned per instance, so geometry is shared. Materials are recoloured by name to the room theme (`modelMaterials`), keeping a consistent palette.
 - A model that fails to load becomes a neutral placeholder and is logged; the room still opens.
 - Clicks are raycast against the whole scene so objects can't be clicked through others. Interactions fire on `click` after a short, still press, so camera drags never trigger them. Types map to handlers in `js/ui/interactions.js` (each needs an entry in `INTERACTION_VERBS`, which the tests enforce); add new types there.

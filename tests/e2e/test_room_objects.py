@@ -161,7 +161,7 @@ def test_clicking_a_lamp_toggles_its_light(page: Page, errors):
 
 def test_owner_only_objects_ignore_visitors(page: Page, errors):
     data = open_room(page)
-    assert data["viewer"] == {"relationship": "stranger"}
+    assert data["viewer"]["relationship"] == "stranger"
     assert data["scene"]["permissions"]["floor-lamp"] == "owner"
     assert point_for(page, "floor-lamp") is None, "visitors can't use the owner's floor lamp"
 

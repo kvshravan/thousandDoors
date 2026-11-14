@@ -1,4 +1,5 @@
 import { canInteract, normalizeRelationship } from '../permissions.js';
+import { api, errorMessage } from '../auth.js';
 import { Catalog, fetchJson, normalizeRoom } from '../three/catalog.js';
 import { Engine } from '../three/engine.js';
 import { ExteriorScene } from '../three/exterior-scene.js';
@@ -17,6 +18,7 @@ import { Panel } from '../ui/panel.js';
 import { PhotoViewer } from '../ui/photo-viewer.js';
 import { thingsPanel } from '../ui/panels.js';
 import { RoomStore } from '../ui/room-store.js';
+import { VisitorBook } from '../ui/visitor-book.js';
 import { EditorPanel } from '../ui/editor-panel.js';
 import { DEMO_PHOTOS, ImageStore, isPhotoRef } from '../ui/image-store.js';
 import { resolveAppearance } from '../three/room-config.js';
@@ -55,8 +57,15 @@ class RoomPage {
 
     const { catalogUrl, roomUrl, modelsUrl } = this.stage.dataset;
     this.urls = { catalogUrl, roomUrl, modelsUrl };
-    // Mock viewer until accounts exist (Milestone 4): ?as=stranger|follower|friend|owner.
-    this.viewer = { relationship: normalizeRelationship(new URLSearchParams(window.location.search).get('as')) };
+    // The server says who you are to the room's owner. In development, ?as=stranger|
+    // follower|friend|owner previews other relationships (and edits demo rooms in
+    // this browser only).
+    const debug = document.documentElement.dataset.debug === '1';
+    this.debug = debug;
+    this.previewAs = debug ? new URLSearchParams(window.location.search).get('as') : null;
+    this.viewer = { relationship: 'stranger', signedIn: false };
+    // 'account' saves edits to the server; 'browser' keeps a local preview; null can't edit.
+    this.saveMode = null;
 
     this.state = 'idle';
     this.engine = null;
@@ -64,6 +73,7 @@ class RoomPage {
     this.room = null;
     this.catalog = null;
     this.store = null;
+    this.book = null;
     this.lastInteraction = null;
 
     this.photoViewer = new PhotoViewer(root.querySelector('#photo-viewer'));
@@ -77,7 +87,7 @@ class RoomPage {
       music: this.music,
       leaveUrl: this.leaveUrl,
       get store() {
-        return page.store;
+        return page.book;
       },
       getScene: () => this.manager?.current ?? null,
       getRoom: () => this.room,
@@ -122,16 +132,29 @@ class RoomPage {
     this._setProgress(0);
 
     try {
-      const [catalogData, roomData] = await Promise.all([
+      const [catalogData, roomResult] = await Promise.all([
         fetchJson(this.urls.catalogUrl, 'the item catalogue'),
-        fetchJson(this.urls.roomUrl, 'the room'),
+        api(this.urls.roomUrl),
       ]);
+      if (!roomResult.ok) throw new Error(`Could not load the room (HTTP ${roomResult.status}).`);
+      const { room: roomData, viewer } = roomResult.data;
       const catalog = new Catalog(catalogData);
       this.catalog = catalog;
+      this.viewer = {
+        relationship: this.previewAs ? normalizeRelationship(this.previewAs) : viewer.relationship,
+        signedIn: viewer.signedIn,
+      };
+      this.saveMode = viewer.canEdit ? 'account' : this.viewer.relationship === 'owner' ? 'browser' : null;
+      this.images.account = this.saveMode === 'account';
       this.originalRoom = normalizeRoom(roomData);
       this.store = new RoomStore(this.originalRoom.roomId);
-      this.room = this._withSavedLayout(roomData);
+      // Browser-saved previews of demo rooms (development only) show to anyone in this
+      // browser; account rooms always show what's saved on the server.
+      const preview = this.debug && this.saveMode !== 'account';
+      this.room = preview ? this._withSavedLayout(roomData) : normalizeRoom(roomData);
       this._showNameplate(this.room);
+      this.book = new VisitorBook(this.originalRoom.roomId);
+      const visitors = this.book.load();
 
       const quality = detectQuality(new URLSearchParams(window.location.search).get('quality'));
       this.engine = new Engine(this.stage, { quality, onContextLost: () => this._fail('lost') });
@@ -141,11 +164,11 @@ class RoomPage {
         onProgress: (value) => this._setProgress(value),
       });
       if (!scene) return;
-      await this.engine.waitForFrame();
+      await Promise.all([this.engine.waitForFrame(), visitors]);
       if (this.manager?.current !== scene) return;
       this._syncVisitorCounts(scene);
       this._setState('ready');
-      this.editButton.hidden = this.viewer.relationship !== 'owner';
+      this.editButton.hidden = !this.saveMode;
       this.loading.classList.add('is-hidden');
       this.engine.canvas.addEventListener('pointerdown', this._onFirstInteraction, { once: true });
       this.engine.canvas.addEventListener('wheel', this._onFirstInteraction, { once: true, passive: true });
@@ -244,7 +267,7 @@ class RoomPage {
     }
     this.outside = outside;
     this.insideButton.hidden = !outside;
-    this.editButton.hidden = outside || this.viewer.relationship !== 'owner';
+    this.editButton.hidden = outside || !this.saveMode;
     this.engine.canvas.setAttribute('aria-label', outside ? `Outside ${this.room.name}, 3D view` : `${this.room.name}, 3D view`);
     this.loading.classList.add('is-hidden');
     this._setState('ready');
@@ -263,6 +286,7 @@ class RoomPage {
       music: this.music.state,
       editing: this.editing,
       outside: this.outside,
+      saveMode: this.saveMode,
       customized: Boolean(this.room?.customized),
       savedLayout: this.store?.loadLayout() ?? null,
       ui: {
@@ -330,7 +354,7 @@ class RoomPage {
 
   enterEditMode() {
     const scene = this.manager?.current;
-    if (this.editing || this.outside || this.state !== 'ready' || !scene || this.viewer.relationship !== 'owner') return false;
+    if (this.editing || this.outside || this.state !== 'ready' || !scene || !this.saveMode) return false;
     if (!this.editorPanel) {
       this.editorPanel = new EditorPanel(this.editorRoot, {
         catalog: this.catalog,
@@ -405,7 +429,10 @@ class RoomPage {
         editor.commitPlacement();
         break;
       case 'save':
-        this.saveEdits();
+        await this.saveEdits();
+        break;
+      case 'photos-migrate':
+        await this._movePhotosToAccount();
         break;
       case 'cancel':
         await this.cancelEdits();
@@ -430,10 +457,39 @@ class RoomPage {
   async _refreshPhotoLibrary() {
     try {
       const uploads = await this.images.list();
-      this.editorPanel?.setPhotoLibrary([...uploads, ...DEMO_PHOTOS]);
+      this.editorPanel?.setPhotoLibrary([...uploads, ...DEMO_PHOTOS], { account: this.saveMode === 'account' });
     } catch (error) {
       console.warn('[room] Could not read uploaded photos.', error);
     }
+  }
+
+  /**
+   * Uploads photos kept only in this browser to the owner's account, and points every
+   * frame and photo string in the room at the uploaded copies. Saving keeps the change.
+   */
+  async _movePhotosToAccount() {
+    const scene = this.manager?.current;
+    const editor = scene?.editor;
+    if (!editor || this.saveMode !== 'account') return;
+    editor._setMessage('Moving your photos…');
+    let moved;
+    try {
+      moved = await this._runBusy(() => this.images.moveToAccount());
+    } catch (error) {
+      editor._setMessage(error.message);
+      await this._refreshPhotoLibrary();
+      return;
+    }
+    const swap = (ref) => moved.get(ref) ?? ref;
+    for (const object of scene.serialize().objects) {
+      const data = object.customData ?? {};
+      const changes = {};
+      if (moved.has(data.imageUrl)) changes.imageUrl = swap(data.imageUrl);
+      if (Array.isArray(data.photos) && data.photos.some((ref) => moved.has(ref))) changes.photos = data.photos.map(swap);
+      if (Object.keys(changes).length > 0) await scene.restyleObject(object.id, changes);
+    }
+    await this._refreshPhotoLibrary();
+    editor._setMessage(`Moved ${moved.size} photo${moved.size === 1 ? '' : 's'} to your account. Save to keep the room using them.`);
   }
 
   /** Stores an uploaded photo and puts it on the selected frame or photo string. */
@@ -452,16 +508,28 @@ class RoomPage {
     if (editor.selectedId) await editor.usePhotoSelected(ref);
   }
 
-  saveEdits() {
+  async saveEdits() {
     const scene = this.manager?.current;
     if (!scene?.editing) return false;
     scene.editor.cancelPlacement();
     const layout = scene.serialize();
-    this.store.saveLayout(layout);
+    if (this.saveMode === 'account') {
+      scene.editor._setMessage('Saving…');
+      const result = await this._runBusy(() =>
+        api(`/api/rooms/${encodeURIComponent(this.room.roomId)}/layout`, { method: 'PUT', json: layout }),
+      );
+      if (!result.ok) {
+        scene.editor._setMessage(errorMessage(result, "Your room couldn't be saved. Try again."));
+        return false;
+      }
+    } else {
+      this.store.saveLayout(layout);
+    }
     this.room = normalizeRoom({ ...this.room, appearance: layout.appearance, objects: layout.objects });
     this.room.customized = true;
     this._leaveEditMode();
     this._syncVisitorCounts(scene);
+    this._announce(this.saveMode === 'account' ? 'Your room is saved.' : 'Saved in this browser.');
     return true;
   }
 
@@ -479,7 +547,7 @@ class RoomPage {
     this._editBusy = true;
     this.editorPanel?.setBusy(true);
     try {
-      await task();
+      return await task();
     } finally {
       this._editBusy = false;
       this.editorPanel?.setBusy(false);

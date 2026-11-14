@@ -45,6 +45,14 @@ ROOM_MODULES = (
     "/static/data/rooms/mira.json",
     "/static/data/rooms/jun.json",
     "/static/js/permissions.js",
+    "/static/js/auth.js",
+    "/static/js/app.js",
+    "/static/js/ui/visitor-book.js",
+    "/static/js/ui/image-store.js",
+    "/static/js/three/exterior-scene.js",
+    "/static/js/pages/signin.js",
+    "/static/js/pages/welcome.js",
+    "/static/data/templates/starter.json",
     "/static/models/furniture/bed-double.glb",
 )
 
@@ -71,14 +79,14 @@ def test_room_page_renders(client):
 def test_room_stage_points_at_data_and_models(client):
     html = client.get("/room").get_data(as_text=True)
     assert 'data-catalog-url="/static/data/catalog.json"' in html
-    assert 'data-room-url="/static/data/rooms/mira.json"' in html
+    assert 'data-room-url="/api/rooms/mira"' in html
     assert 'data-models-url="/static/models/"' in html
 
 
 def test_named_room_loads_its_own_data(client):
     response = client.get("/room/jun")
     assert response.status_code == 200
-    assert 'data-room-url="/static/data/rooms/jun.json"' in response.get_data(as_text=True)
+    assert 'data-room-url="/api/rooms/jun"' in response.get_data(as_text=True)
 
 
 @pytest.mark.parametrize("room_id", ["nobody", "Mira", "..%2Fcatalog", "-mira", "a" * 41])
@@ -115,5 +123,10 @@ def test_debug_hooks_enabled_in_testing(client):
 
 def test_debug_hooks_disabled_in_production(monkeypatch):
     monkeypatch.setattr("config.ProductionConfig.SECRET_KEY", "prod-secret")
-    client = create_app("production").test_client()
-    assert "data-debug" not in client.get("/room").get_data(as_text=True)
+    client = create_app(
+        "production",
+        SUPABASE_URL="https://example.supabase.co",
+        SUPABASE_PUBLISHABLE_KEY="sb_publishable_x",
+        DATABASE_URL="postgresql://user:pass@127.0.0.1:1/none",
+    ).test_client()
+    assert "data-debug" not in client.get("/signin").get_data(as_text=True)

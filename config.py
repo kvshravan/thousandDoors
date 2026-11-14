@@ -5,6 +5,10 @@ from dotenv import load_dotenv
 load_dotenv()
 
 
+def _env(name: str) -> str | None:
+    return os.getenv(name) or None
+
+
 class Config:
     ENV_NAME = "base"
     APP_NAME = os.getenv("APP_NAME", "1000 Doors")
@@ -14,6 +18,15 @@ class Config:
     DEBUG = False
     # Exposes window.__doors for automated browser tests.
     EXPOSE_DEBUG_HOOKS = False
+    # Uploads are shrunk in the browser; this bounds any request body.
+    MAX_CONTENT_LENGTH = 3 * 1024 * 1024
+
+    # Supabase. Without DATABASE_URL the app keeps data in memory (lost on restart).
+    SUPABASE_URL = _env("SUPABASE_URL")
+    SUPABASE_PUBLISHABLE_KEY = _env("SUPABASE_PUBLISHABLE_KEY")
+    SUPABASE_SECRET_KEY = _env("SUPABASE_SECRET_KEY")
+    SUPABASE_JWKS_URL = _env("SUPABASE_JWKS_URL")
+    DATABASE_URL = _env("DATABASE_URL")
 
 
 class DevelopmentConfig(Config):
@@ -27,6 +40,13 @@ class TestingConfig(Config):
     TESTING = True
     SECRET_KEY = "test-key"
     EXPOSE_DEBUG_HOOKS = True
+    # Tests never touch the real project: memory storage and a locally generated
+    # signing key stand in for Supabase.
+    SUPABASE_URL = "https://supabase.test"
+    SUPABASE_PUBLISHABLE_KEY = "sb_publishable_test"
+    SUPABASE_SECRET_KEY = None
+    SUPABASE_JWKS_URL = None
+    DATABASE_URL = None
 
 
 class ProductionConfig(Config):
