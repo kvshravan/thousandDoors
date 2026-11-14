@@ -9,6 +9,26 @@ from app import create_app
 # renderer so WebGL 2 works in tests and CI.
 WEBGL_ARGS = ["--use-angle=swiftshader", "--enable-unsafe-swiftshader", "--ignore-gpu-blocklist"]
 
+# With --slow-frames, animation frames arrive ~6 times a second, like on a slow CI
+# runner. Use it to catch code that assumes a fast frame rate.
+SLOW_FRAMES_SCRIPT = """
+window.requestAnimationFrame = (cb) => setTimeout(() => cb(performance.now()), 160);
+window.cancelAnimationFrame = (id) => clearTimeout(id);
+"""
+
+
+def pytest_addoption(parser):
+    parser.addoption(
+        "--slow-frames",
+        action="store_true",
+        help="Emulate a ~6 fps renderer in browser tests (like slow CI machines).",
+    )
+
+
+@pytest.fixture(scope="session")
+def slow_frames(pytestconfig) -> bool:
+    return pytestconfig.getoption("--slow-frames")
+
 
 def pytest_collection_modifyitems(items):
     for item in items:
@@ -50,5 +70,7 @@ def collect_errors(page):
 
 
 @pytest.fixture
-def errors(page):
+def errors(page, slow_frames):
+    if slow_frames:
+        page.add_init_script(SLOW_FRAMES_SCRIPT)
     return collect_errors(page)

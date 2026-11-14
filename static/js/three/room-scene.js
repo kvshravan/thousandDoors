@@ -7,6 +7,10 @@ import { buildRoomShell } from './props/architecture.js';
 import { PropKit } from './props/kit.js';
 import { CAMERA_SETTINGS, ROOM_DIMENSIONS, resolveAppearance } from './room-config.js';
 
+// Seated eye position and look-at point, in the seat's local space (front faces +z).
+const SEAT_EYE = [0, 1.15, 0.1];
+const SEAT_LOOK_AT = [0, 0.7, 2.3];
+
 /**
  * Renders one room from a normalized room config and a catalogue.
  * Knows nothing about pages, routes, users, or the database. Interactions are
@@ -46,6 +50,7 @@ export class RoomScene {
     this.objects = null;
     this.interactions = null;
     this.engine = null;
+    this.seatedOn = null;
     this._dirty = false;
   }
 
@@ -111,7 +116,30 @@ export class RoomScene {
   }
 
   resetView() {
+    this.seatedOn = null;
     this.controller?.resetView();
+  }
+
+  /** Calls an action exposed by an object's builder (see props/interactive.js). */
+  runAction(objectId, action, ...args) {
+    const record = this.objects?.get(objectId);
+    const fn = record?.controls?.actions?.[action];
+    if (!fn) return undefined;
+    const result = this.interactions ? this.interactions.withoutHighlight(() => fn(...args)) : fn(...args);
+    this._dirty = true;
+    return result;
+  }
+
+  /** Moves the camera to a seated view on a couch or chair, looking the way it faces. */
+  sitOn(objectId) {
+    const record = this.objects?.get(objectId);
+    if (!record || !this.controller) return false;
+    record.root.updateMatrixWorld(true);
+    const position = record.root.localToWorld(new THREE.Vector3(...SEAT_EYE));
+    const target = record.root.localToWorld(new THREE.Vector3(...SEAT_LOOK_AT));
+    this.seatedOn = objectId;
+    this.controller.flyTo({ position, target });
+    return true;
   }
 
   /** Toggles a lamp and returns its new state, or null if the object has no light. */
@@ -157,6 +185,7 @@ export class RoomScene {
       meshes,
       lights,
       hovered: this.interactions?.hovered?.id ?? null,
+      seatedOn: this.seatedOn,
       assets: this.loader?.getStats() ?? null,
       ...(this.objects?.getDebugInfo() ?? {}),
       camera: this.controller?.getDebugInfo() ?? null,

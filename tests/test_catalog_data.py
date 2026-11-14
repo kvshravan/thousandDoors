@@ -19,7 +19,19 @@ def _registered_names(path: Path, pattern: str) -> set[str]:
 
 
 BUILDERS = _registered_names(STATIC / "js/three/props/index.js", r"^\s+(\w+): build\w+,")
-INTERACTIONS = _registered_names(STATIC / "js/ui/interactions.js", r"^\s+(\w+): \(")
+
+
+def _frozen_keys(path: Path, name: str) -> set[str]:
+    source = path.read_text(encoding="utf-8")
+    block = re.search(rf"export const {name} = Object\.freeze\(\{{(.*?)\n\}}\);", source, re.S)
+    assert block, f"{name} not found in {path.name}"
+    return set(re.findall(r"^  (\w+): ", block.group(1), re.M))
+
+
+# Every interaction type has a verb (tooltip text); the browser tests check that the
+# registry's handlers match these keys exactly.
+INTERACTIONS = _frozen_keys(STATIC / "js/ui/interactions.js", "INTERACTION_VERBS")
+GIFT_TYPES = _frozen_keys(STATIC / "js/ui/room-store.js", "GIFTS")
 PERMISSION_LEVELS = {"everyone", "followers", "friends", "owner"}
 
 
@@ -36,12 +48,15 @@ APPEARANCE_PRESETS = {
     "floor": _presets("FLOORS"),
     "lighting": _presets("LIGHTING_MOODS"),
 }
+WINDOW_SCENES = _presets("WINDOW_SCENES")
 ROOM_OBJECTS = [(room_id, obj) for room_id, room in ROOMS.items() for obj in room["objects"]]
 
 
 def test_registries_were_parsed():
-    assert {"rug", "door", "window", "pictureFrame", "guestbook"} <= BUILDERS
-    assert {"photograph", "guestbook", "lamp"} <= INTERACTIONS
+    assert {"rug", "door", "window", "pictureFrame", "noticeboard", "chest"} <= BUILDERS
+    assert {"photograph", "noticeboard", "lamp", "music", "secret", "seat"} <= INTERACTIONS
+    assert {"flower", "tea"} <= GIFT_TYPES
+    assert {"day", "night"} <= WINDOW_SCENES
 
 
 def test_catalog_ids_are_unique():
@@ -69,6 +84,8 @@ def test_catalog_item_is_valid(item):
         assert item["builder"] in BUILDERS, f"unknown builder {item['builder']}"
     if "interaction" in item:
         assert item["interaction"] in INTERACTIONS, f"no handler for {item['interaction']}"
+    if "permissions" in item:
+        assert item["permissions"]["interact"] in PERMISSION_LEVELS
     if "light" in item:
         assert item["light"]["intensity"] > 0
         assert len(item["light"]["position"]) == 3
@@ -145,9 +162,32 @@ def test_room_object_is_valid(room_id, obj):
         assert custom.get("caption")
     if image := custom.get("imageUrl"):
         assert (ROOT / image.lstrip("/")).is_file(), f"missing image {image}"
-    if entry.get("interaction") == "guestbook":
-        for entry_ in custom.get("entries", []):
-            assert entry_["author"] and entry_["message"]
+    _check_interaction_data(entry.get("interaction"), custom)
+
+
+def _check_interaction_data(interaction, custom):
+    if interaction == "noticeboard":
+        for note in custom.get("entries", []):
+            assert note["author"] and note["message"]
+    elif interaction == "gifts":
+        for gift in custom.get("gifts", []):
+            assert gift["author"] and gift["gift"] in GIFT_TYPES
+    elif interaction == "music":
+        track = custom["track"]
+        assert track["title"] and track["artist"] and 40 <= track["tempo"] <= 200
+        assert track["notes"] and all(n is None or 21 <= n <= 108 for n in track["notes"])
+    elif interaction == "poster":
+        assert custom["title"] and isinstance(custom.get("items", []), list)
+    elif interaction == "collection":
+        for item in custom.get("items", []):
+            assert item["title"] and item["type"] in {"book", "game", "collectible", "record"}
+    elif interaction == "media":
+        assert custom["media"]["title"]
+        assert "embedUrl" not in custom["media"], "mock rooms must not embed external media"
+    elif interaction == "secret":
+        assert custom["secret"]["message"]
+    elif interaction == "window" and "scene" in custom:
+        assert custom["scene"] in WINDOW_SCENES
 
 
 def test_main_demo_room_uses_every_interaction():

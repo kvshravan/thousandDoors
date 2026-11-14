@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { WINDOW_SCENES } from '../room-config.js';
 import { createClockFaceTexture, createNameplateTexture, createRugTexture, createSkyTexture } from './textures.js';
 
 // Wall-mounted props use their origin as the point on the wall surface, front facing +z.
@@ -59,13 +60,35 @@ export function buildDoor(kit, { width = 1.05, height = 2.2, color = 'terracotta
   return door;
 }
 
-export function buildWindow(kit, { width = 2.0, height = 1.5 } = {}) {
+export function buildWindow(kit, { width = 2.0, height = 1.5, scene = null } = {}, { room } = {}) {
   const win = group('window');
-  const sky = kit.texture(createSkyTexture(kit.palette));
-  kit.part(win, kit.plane(width, height), kit.material('#ffffff', { map: sky, basic: true }), [0, 0, 0.01], null, {
+  const names = Object.keys(WINDOW_SCENES);
+  const lighting = room?.appearance?.lighting;
+  let current = names.includes(scene) ? scene : names.includes(lighting) ? lighting : 'day';
+  const skies = new Map();
+  const skyMaterial = (name) => {
+    if (!skies.has(name)) {
+      const texture = kit.texture(createSkyTexture({ ...kit.palette, ...WINDOW_SCENES[name] }));
+      skies.set(name, kit.material('#ffffff', { map: texture, basic: true }));
+    }
+    return skies.get(name);
+  };
+  const glass = kit.part(win, kit.plane(width, height), skyMaterial(current), [0, 0, 0.01], null, {
     castShadow: false,
     receiveShadow: false,
   });
+  const controls = {
+    state: { scene: current },
+    actions: {
+      cycle() {
+        current = names[(names.indexOf(current) + 1) % names.length];
+        glass.material = skyMaterial(current);
+        controls.state.scene = current;
+        return current;
+      },
+    },
+  };
+  win.userData.controls = controls;
 
   const frame = kit.material('baseboard', { roughness: 0.6 });
   const f = 0.09;
@@ -115,28 +138,6 @@ export async function buildPictureFrame(
     NO_CAST,
   );
   return frame;
-}
-
-export function buildGuestbook(kit) {
-  const stand = group('guestbook');
-  const wood = kit.material('woodMid');
-  kit.part(stand, kit.cylinder(0.2, 0.24, 0.05, 20), wood, [0, 0.025, 0]);
-  kit.part(stand, kit.cylinder(0.035, 0.045, 0.85, 10), wood, [0, 0.45, 0]);
-
-  const top = group('guestbook-top');
-  top.position.set(0, 0.95, 0);
-  top.rotation.x = -0.5;
-  kit.part(top, kit.rounded(0.6, 0.04, 0.44, 0.014), kit.material('woodMid'), [0, 0, 0]);
-  kit.part(top, kit.box(0.56, 0.012, 0.03), kit.material('woodDark'), [0, 0.024, 0.21]);
-  kit.part(top, kit.rounded(0.54, 0.022, 0.38, 0.008), kit.material('terracotta'), [0, 0.03, 0]);
-  const page = kit.rounded(0.25, 0.02, 0.35, 0.006);
-  const paper = kit.material('linen', { roughness: 0.95 });
-  kit.part(top, page, paper, [-0.13, 0.05, 0], [0, 0, 0.06]);
-  kit.part(top, page, paper, [0.13, 0.05, 0], [0, 0, -0.06]);
-  kit.part(top, kit.box(0.018, 0.004, 0.36), kit.material('mustard'), [0.02, 0.066, 0.02], null, NO_CAST);
-  kit.part(top, kit.cylinder(0.009, 0.009, 0.18, 6), kit.material('navy'), [0.19, 0.07, 0.06], [0, 0.6, Math.PI / 2], NO_CAST);
-  stand.add(top);
-  return stand;
 }
 
 export function buildWallClock(kit, { radius = 0.28 } = {}) {

@@ -68,8 +68,10 @@ export class ObjectManager {
     const lamps = {};
     const interactive = [];
     const permissions = {};
+    const states = {};
     for (const record of this.records.values()) {
       if (record.light) lamps[record.id] = record.lampOn;
+      if (record.controls) states[record.id] = { ...record.controls.state };
       if (record.interaction) {
         interactive.push(record.id);
         permissions[record.id] = record.permission;
@@ -81,6 +83,7 @@ export class ObjectManager {
       skipped: [...this.skipped].sort(),
       interactive: interactive.sort(),
       permissions,
+      states,
       lamps,
     };
   }
@@ -108,6 +111,7 @@ export class ObjectManager {
       name: entry.name,
       interaction: entry.interaction ?? null,
       permission: object.permissions?.interact ?? entry.permissions?.interact ?? null,
+      controls: content.userData.controls ?? null,
       data: object.customData,
       root: holder,
       glowMeshes,

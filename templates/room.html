@@ -33,6 +33,7 @@
   <nav class="room-actions" aria-label="Room actions">
     <a class="chip" href="{{ url_for('pages.index') }}" data-testid="back-link">← Back</a>
     <button class="chip" type="button" id="reset-view" data-testid="reset-view">Reset view</button>
+    <button class="chip chip-accent" type="button" id="stand-up" data-testid="stand-up" hidden>Stand up</button>
   </nav>
   <p class="room-hint" id="room-hint" data-testid="room-hint">Drag to look around</p>
   <p class="room-tooltip" id="room-tooltip" data-testid="room-tooltip" hidden></p>
@@ -47,14 +48,13 @@
   <p class="photo-caption" id="photo-caption" data-photo-caption></p>
 </dialog>
 
-<dialog class="room-dialog guestbook-dialog" id="guestbook-panel" data-testid="guestbook-panel" aria-labelledby="guestbook-title">
+<dialog class="room-dialog info-dialog" id="room-panel" data-testid="room-panel" aria-labelledby="room-panel-title">
   <form method="dialog" class="room-dialog-close-form">
-    <button class="room-dialog-close" type="submit" aria-label="Close guestbook">×</button>
+    <button class="room-dialog-close" type="submit" aria-label="Close">×</button>
   </form>
-  <h2 class="guestbook-title" id="guestbook-title" data-guestbook-title>Guestbook</h2>
-  <ul class="guestbook-list" data-guestbook-list></ul>
-  <p class="guestbook-empty" data-guestbook-empty hidden>No entries yet.</p>
-  <p class="guestbook-note">Signing guestbooks arrives with accounts.</p>
+  <p class="panel-kicker" data-panel-kicker hidden></p>
+  <h2 class="panel-title" id="room-panel-title" data-panel-title></h2>
+  <div class="panel-body" data-panel-body></div>
 </dialog>
 
 <div class="room-overlay room-loading" id="room-loading" data-testid="room-loading" role="status" aria-live="polite">

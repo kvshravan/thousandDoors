@@ -192,15 +192,15 @@ def test_permission_rules(page: Page, errors):
     assert errors == []
 
 
-def test_guestbook_shows_entries(page: Page, errors):
+def test_noticeboard_shows_seeded_notes(page: Page, errors):
     open_room(page)
-    point = bring_into_view(page, "guestbook")
+    point = bring_into_view(page, "noticeboard")
 
     page.mouse.click(point["x"], point["y"])
 
-    panel = page.get_by_test_id("guestbook-panel")
+    panel = page.get_by_test_id("room-panel")
     expect(panel).to_be_visible()
-    expect(panel.locator(".guestbook-entry")).to_have_count(3)
+    expect(panel.locator(".note")).to_have_count(3)
     expect(panel).to_contain_text("Teach me your ways")
     expect(panel).to_contain_text("— Jun")
     page.keyboard.press("Escape")

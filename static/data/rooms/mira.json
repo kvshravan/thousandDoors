@@ -80,41 +80,6 @@
       }
     },
     {
-      "id": "guestbook",
-      "catalogId": "guestbook",
-      "position": {
-        "x": -1.6,
-        "y": 0,
-        "z": 4.4
-      },
-      "rotation": {
-        "x": 0,
-        "y": 3.1416,
-        "z": 0
-      },
-      "scale": {
-        "x": 1.0,
-        "y": 1.0,
-        "z": 1.0
-      },
-      "customData": {
-        "entries": [
-          {
-            "author": "Jun",
-            "message": "Your plants are thriving. Teach me your ways!"
-          },
-          {
-            "author": "Ade",
-            "message": "Came for the sunset painting, stayed for the bed."
-          },
-          {
-            "author": "Priya",
-            "message": "Cozy. Ten out of ten would knock again."
-          }
-        ]
-      }
-    },
-    {
       "id": "entrance-plant",
       "catalogId": "potted-plant",
       "position": {
@@ -431,25 +396,6 @@
       }
     },
     {
-      "id": "radio",
-      "catalogId": "radio",
-      "position": {
-        "x": -3.35,
-        "y": 0.77,
-        "z": -4.72
-      },
-      "rotation": {
-        "x": 0,
-        "y": 0.0,
-        "z": 0
-      },
-      "scale": {
-        "x": 1.0,
-        "y": 1.0,
-        "z": 1.0
-      }
-    },
-    {
       "id": "desk",
       "catalogId": "desk",
       "position": {
@@ -584,6 +530,14 @@
         "x": 1.0,
         "y": 1.0,
         "z": 1.0
+      },
+      "customData": {
+        "media": {
+          "title": "Rain on a Greenhouse",
+          "kind": "Slow TV",
+          "year": 2025,
+          "description": "Ninety minutes of rain on glass. Mira falls asleep to it most nights."
+        }
       }
     },
     {
@@ -625,6 +579,31 @@
         "x": 1.0,
         "y": 1.0,
         "z": 1.0
+      },
+      "customData": {
+        "title": "Mira's bookshelf",
+        "items": [
+          {
+            "type": "book",
+            "title": "A Field Guide to Houseplants",
+            "by": "R. Okafor"
+          },
+          {
+            "type": "book",
+            "title": "Drawing With Ink",
+            "by": "S. Lindqvist"
+          },
+          {
+            "type": "book",
+            "title": "The Quiet Kiln",
+            "by": "M. Arai"
+          },
+          {
+            "type": "game",
+            "title": "Pocket Garden",
+            "by": "puzzle game"
+          }
+        ]
       }
     },
     {
@@ -644,6 +623,25 @@
         "x": 1.0,
         "y": 1.0,
         "z": 1.0
+      },
+      "customData": {
+        "title": "Tiny ceramic things",
+        "items": [
+          {
+            "type": "collectible",
+            "title": "Speckled thumb pot",
+            "by": "first ever"
+          },
+          {
+            "type": "collectible",
+            "title": "Blue whale salt dish"
+          },
+          {
+            "type": "collectible",
+            "title": "Market-find teacup",
+            "by": "chipped, loved"
+          }
+        ]
       }
     },
     {
@@ -777,6 +775,214 @@
         "x": 1.0,
         "y": 1.0,
         "z": 1.0
+      }
+    },
+    {
+      "id": "noticeboard",
+      "catalogId": "noticeboard",
+      "position": {
+        "x": -2.3,
+        "y": 1.5,
+        "z": 4.97
+      },
+      "rotation": {
+        "x": 0,
+        "y": 3.1416,
+        "z": 0
+      },
+      "scale": {
+        "x": 1.0,
+        "y": 1.0,
+        "z": 1.0
+      },
+      "customData": {
+        "entries": [
+          {
+            "author": "Jun",
+            "message": "Your plants are thriving. Teach me your ways!"
+          },
+          {
+            "author": "Ade",
+            "message": "Came for the sunset painting, stayed for the bed."
+          },
+          {
+            "author": "Priya",
+            "message": "Cozy. Ten out of ten would knock again."
+          }
+        ]
+      }
+    },
+    {
+      "id": "gift-table",
+      "catalogId": "gift-table",
+      "position": {
+        "x": -2.3,
+        "y": 0,
+        "z": 4.45
+      },
+      "rotation": {
+        "x": 0,
+        "y": 3.1416,
+        "z": 0
+      },
+      "scale": {
+        "x": 1.0,
+        "y": 1.0,
+        "z": 1.0
+      },
+      "customData": {
+        "gifts": [
+          {
+            "author": "Jun",
+            "gift": "flower"
+          }
+        ]
+      }
+    },
+    {
+      "id": "record-player",
+      "catalogId": "record-player",
+      "position": {
+        "x": -3.35,
+        "y": 0.77,
+        "z": -4.7
+      },
+      "rotation": {
+        "x": 0,
+        "y": 0.0,
+        "z": 0
+      },
+      "scale": {
+        "x": 1.0,
+        "y": 1.0,
+        "z": 1.0
+      },
+      "customData": {
+        "track": {
+          "title": "Morning Repotting",
+          "artist": "Mira's mixtape",
+          "tempo": 84,
+          "wave": "triangle",
+          "note": "A little loop Mira hums while watering the plants.",
+          "notes": [
+            60,
+            64,
+            67,
+            72,
+            67,
+            64,
+            62,
+            65,
+            69,
+            74,
+            69,
+            65,
+            59,
+            62,
+            67,
+            71,
+            67,
+            62,
+            60,
+            64,
+            67,
+            72,
+            76,
+            72
+          ]
+        }
+      }
+    },
+    {
+      "id": "poster-interests",
+      "catalogId": "poster",
+      "position": {
+        "x": -4.97,
+        "y": 2.25,
+        "z": -3.3
+      },
+      "rotation": {
+        "x": 0,
+        "y": 1.5708,
+        "z": 0
+      },
+      "scale": {
+        "x": 1.0,
+        "y": 1.0,
+        "z": 1.0
+      },
+      "customData": {
+        "title": "Things I love",
+        "subtitle": "Interests",
+        "motif": "leaf",
+        "accent": "sage",
+        "items": [
+          "Botanical illustration",
+          "Ceramics",
+          "Lo-fi playlists",
+          "Sunday markets"
+        ]
+      }
+    },
+    {
+      "id": "poster-films",
+      "catalogId": "poster",
+      "position": {
+        "x": -4.97,
+        "y": 2.25,
+        "z": 4.15
+      },
+      "rotation": {
+        "x": 0,
+        "y": 1.5708,
+        "z": 0
+      },
+      "scale": {
+        "x": 1.0,
+        "y": 1.0,
+        "z": 1.0
+      },
+      "customData": {
+        "title": "Movie night",
+        "subtitle": "Favourite films",
+        "motif": "film",
+        "accent": "navy",
+        "items": [
+          "The Lighthouse Keeper's Garden",
+          "Paper Boats",
+          "Somewhere Warm",
+          "Night Bus to the Sea"
+        ]
+      }
+    },
+    {
+      "id": "chest",
+      "catalogId": "secret-chest",
+      "position": {
+        "x": -4.5,
+        "y": 0,
+        "z": 2.1
+      },
+      "rotation": {
+        "x": 0,
+        "y": 1.5708,
+        "z": 0
+      },
+      "scale": {
+        "x": 1.0,
+        "y": 1.0,
+        "z": 1.0
+      },
+      "customData": {
+        "secret": {
+          "title": "Sketchbook No. 7",
+          "message": "If you found this, you're a real friend. These are the drawings I haven't shown anyone yet.",
+          "items": [
+            "A cat asleep on a radiator",
+            "Plans for a balcony garden",
+            "A comic about a shy cactus"
+          ]
+        }
       }
     }
   ]

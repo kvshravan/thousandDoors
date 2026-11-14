@@ -30,7 +30,11 @@ ROOM_MODULES = (
     "/static/js/three/props/index.js",
     "/static/js/ui/interactions.js",
     "/static/js/ui/photo-viewer.js",
-    "/static/js/ui/guestbook.js",
+    "/static/js/ui/panel.js",
+    "/static/js/ui/panels.js",
+    "/static/js/ui/music.js",
+    "/static/js/ui/room-store.js",
+    "/static/js/three/props/interactive.js",
     "/static/css/room.css",
     "/static/data/catalog.json",
     "/static/data/rooms/mira.json",
@@ -54,7 +58,7 @@ def test_room_page_renders(client):
     assert 'data-testid="room-loading"' in html
     assert 'data-testid="room-fallback"' in html
     assert 'data-testid="photo-viewer"' in html
-    assert 'data-testid="guestbook-panel"' in html
+    assert 'data-testid="room-panel"' in html
     assert "/static/js/pages/room.js" in html
 
 

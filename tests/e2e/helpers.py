@@ -82,3 +82,8 @@ def bring_into_view(page: Page, object_id: str, attempts: int = 12) -> dict:
         mouse_drag(page, 160, 0, steps=6)
         wait_camera_settled(page)
     raise AssertionError(f"{object_id} never came into view")
+
+
+def click_object(page: Page, object_id: str) -> None:
+    point = bring_into_view(page, object_id)
+    page.mouse.click(point["x"], point["y"])

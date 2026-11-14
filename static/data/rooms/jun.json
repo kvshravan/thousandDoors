@@ -63,33 +63,6 @@
       }
     },
     {
-      "id": "guestbook",
-      "catalogId": "guestbook",
-      "position": {
-        "x": -1.6,
-        "y": 0,
-        "z": 4.4
-      },
-      "rotation": {
-        "x": 0,
-        "y": 3.1416,
-        "z": 0
-      },
-      "scale": {
-        "x": 1.0,
-        "y": 1.0,
-        "z": 1.0
-      },
-      "customData": {
-        "entries": [
-          {
-            "author": "Mira",
-            "message": "That bassline on Friday. Wow."
-          }
-        ]
-      }
-    },
-    {
       "id": "rug",
       "catalogId": "rug-round",
       "position": {
@@ -317,25 +290,6 @@
       }
     },
     {
-      "id": "radio",
-      "catalogId": "radio",
-      "position": {
-        "x": -3.35,
-        "y": 0.77,
-        "z": -4.72
-      },
-      "rotation": {
-        "x": 0,
-        "y": 0.0,
-        "z": 0
-      },
-      "scale": {
-        "x": 1.0,
-        "y": 1.0,
-        "z": 1.0
-      }
-    },
-    {
       "id": "desk",
       "catalogId": "desk",
       "position": {
@@ -451,6 +405,14 @@
         "x": 1.0,
         "y": 1.0,
         "z": 1.0
+      },
+      "customData": {
+        "media": {
+          "title": "Synth Basics, Episode 4",
+          "kind": "Video",
+          "year": 2026,
+          "description": "Jun's favourite tutorial channel. Today: filters."
+        }
       }
     },
     {
@@ -489,6 +451,29 @@
         "x": 1.0,
         "y": 1.0,
         "z": 1.0
+      },
+      "customData": {
+        "title": "Game shelf",
+        "items": [
+          {
+            "type": "game",
+            "title": "Orbit Couriers",
+            "by": "co-op"
+          },
+          {
+            "type": "game",
+            "title": "Tiny Synth Studio"
+          },
+          {
+            "type": "record",
+            "title": "Neon Tide",
+            "by": "vinyl"
+          },
+          {
+            "type": "collectible",
+            "title": "Signed cassette"
+          }
+        ]
       }
     },
     {
@@ -584,6 +569,176 @@
         "x": 2.2,
         "y": 2.2,
         "z": 2.2
+      }
+    },
+    {
+      "id": "noticeboard",
+      "catalogId": "noticeboard",
+      "position": {
+        "x": -2.3,
+        "y": 1.5,
+        "z": 4.97
+      },
+      "rotation": {
+        "x": 0,
+        "y": 3.1416,
+        "z": 0
+      },
+      "scale": {
+        "x": 1.0,
+        "y": 1.0,
+        "z": 1.0
+      },
+      "customData": {
+        "entries": [
+          {
+            "author": "Mira",
+            "message": "That bassline on Friday. Wow."
+          }
+        ]
+      }
+    },
+    {
+      "id": "gift-table",
+      "catalogId": "gift-table",
+      "position": {
+        "x": -2.3,
+        "y": 0,
+        "z": 4.45
+      },
+      "rotation": {
+        "x": 0,
+        "y": 3.1416,
+        "z": 0
+      },
+      "scale": {
+        "x": 1.0,
+        "y": 1.0,
+        "z": 1.0
+      },
+      "customData": {
+        "gifts": [
+          {
+            "author": "Mira",
+            "gift": "tea"
+          }
+        ]
+      }
+    },
+    {
+      "id": "record-player",
+      "catalogId": "record-player",
+      "position": {
+        "x": -3.35,
+        "y": 0.77,
+        "z": -4.7
+      },
+      "rotation": {
+        "x": 0,
+        "y": 0.0,
+        "z": 0
+      },
+      "scale": {
+        "x": 1.0,
+        "y": 1.0,
+        "z": 1.0
+      },
+      "customData": {
+        "label": "terracotta",
+        "track": {
+          "title": "Midnight Loop",
+          "artist": "jun",
+          "tempo": 100,
+          "wave": "sine",
+          "note": "Work in progress. Headphones recommended.",
+          "notes": [
+            57,
+            60,
+            64,
+            69,
+            64,
+            60,
+            53,
+            57,
+            60,
+            65,
+            60,
+            57,
+            55,
+            59,
+            62,
+            67,
+            62,
+            59,
+            52,
+            56,
+            59,
+            64,
+            null,
+            null
+          ]
+        }
+      }
+    },
+    {
+      "id": "poster-records",
+      "catalogId": "poster",
+      "position": {
+        "x": -4.97,
+        "y": 2.25,
+        "z": -3.0
+      },
+      "rotation": {
+        "x": 0,
+        "y": 1.5708,
+        "z": 0
+      },
+      "scale": {
+        "x": 1.0,
+        "y": 1.0,
+        "z": 1.0
+      },
+      "customData": {
+        "title": "Late night records",
+        "subtitle": "Favourite albums",
+        "motif": "wave",
+        "accent": "terracotta",
+        "items": [
+          "Neon Tide",
+          "Static Garden",
+          "Low Hum",
+          "4 a.m. Bakery"
+        ]
+      }
+    },
+    {
+      "id": "chest",
+      "catalogId": "secret-chest",
+      "position": {
+        "x": -4.5,
+        "y": 0,
+        "z": 2.6
+      },
+      "rotation": {
+        "x": 0,
+        "y": 1.5708,
+        "z": 0
+      },
+      "scale": {
+        "x": 1.0,
+        "y": 1.0,
+        "z": 1.0
+      },
+      "customData": {
+        "secret": {
+          "title": "Unreleased demos",
+          "message": "Friends only. Rough sketches of songs that might never be finished.",
+          "items": [
+            "demo_07_rain_bass",
+            "untitled (bus stop)",
+            "the one with the kalimba"
+          ]
+        }
       }
     }
   ]

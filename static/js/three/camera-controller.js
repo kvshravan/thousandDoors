@@ -3,8 +3,9 @@ import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 
 const RESET_SPEED = 6;
 const RESET_EPSILON = 0.002;
-// Movements smaller than this (in room units, squared) are invisible and count as idle.
-const MOVE_EPSILON_SQ = 1e-10;
+// Movements smaller than this (0.1 mm, squared) are invisible and count as idle.
+const MOVE_EPSILON_SQ = 1e-8;
+const MIN_FRAME_S = 1 / 240;
 
 /**
  * Orbit-style camera that stays inside the room: limited zoom, limited tilt,
@@ -36,6 +37,7 @@ export class CameraController {
 
     this._changed = true;
     this._resetting = false;
+    this._goal = this.home;
     this.idle = false;
     this._lastPosition = new THREE.Vector3(Infinity, Infinity, Infinity);
     this._lastTarget = new THREE.Vector3(Infinity, Infinity, Infinity);
@@ -51,6 +53,10 @@ export class CameraController {
 
   /** Returns true when the camera moved and the frame should be re-rendered. */
   update(dt) {
+    // OrbitControls damps per frame; scale it by elapsed time so the camera glides and
+    // settles in the same time at 10 fps (software rendering) as at 120 fps.
+    const frames = Math.max(dt, MIN_FRAME_S) * 60;
+    this.controls.dampingFactor = 1 - (1 - this.settings.dampingFactor) ** frames;
     if (this._resetting) this._stepReset(dt);
     this.controls.update(dt);
     this._clampToBounds();
@@ -71,6 +77,12 @@ export class CameraController {
   }
 
   resetView() {
+    this.flyTo(this.home);
+  }
+
+  /** Smoothly moves the camera to { position, target } (THREE.Vector3s). A drag cancels it. */
+  flyTo({ position, target }) {
+    this._goal = { position: position.clone(), target: target.clone() };
     this._resetting = true;
   }
 
@@ -106,14 +118,14 @@ export class CameraController {
 
   _stepReset(dt) {
     const alpha = 1 - Math.exp(-RESET_SPEED * dt);
-    this.camera.position.lerp(this.home.position, alpha);
-    this.controls.target.lerp(this.home.target, alpha);
+    this.camera.position.lerp(this._goal.position, alpha);
+    this.controls.target.lerp(this._goal.target, alpha);
     const done =
-      this.camera.position.distanceTo(this.home.position) < RESET_EPSILON &&
-      this.controls.target.distanceTo(this.home.target) < RESET_EPSILON;
+      this.camera.position.distanceTo(this._goal.position) < RESET_EPSILON &&
+      this.controls.target.distanceTo(this._goal.target) < RESET_EPSILON;
     if (done) {
-      this.camera.position.copy(this.home.position);
-      this.controls.target.copy(this.home.target);
+      this.camera.position.copy(this._goal.position);
+      this.controls.target.copy(this._goal.target);
       this._resetting = false;
       this._changed = true;
     }

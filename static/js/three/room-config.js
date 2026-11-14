@@ -70,6 +70,14 @@ export const FLOORS = Object.freeze({
 
 const SUN_POSITION = [3.5, 7.5, -8];
 
+// Scenery shown through the window. A room starts with the scene matching its
+// lighting mood; visitors can cycle through them by clicking the window.
+export const WINDOW_SCENES = Object.freeze({
+  day: { skyTop: '#8fc3e3', skyBottom: '#fde2b8', sun: '#ffe7a8', hillNear: '#7f9e72', hillFar: '#a9c09a', stars: null },
+  evening: { skyTop: '#e58a6f', skyBottom: '#ffd19a', sun: '#ffb36b', hillNear: '#6b6f5a', hillFar: '#9a8c74', stars: null },
+  night: { skyTop: '#141a33', skyBottom: '#3e4a6b', sun: '#f1e4cf', hillNear: '#26304a', hillFar: '#34405e', stars: '#f1e4cf' },
+});
+
 export const LIGHTING_MOODS = Object.freeze({
   day: {
     hemisphere: { sky: '#fff3e2', ground: '#9a7a62', intensity: 1.9 },
@@ -81,21 +89,13 @@ export const LIGHTING_MOODS = Object.freeze({
     hemisphere: { sky: '#ffd9c2', ground: '#7a5a4a', intensity: 1.25 },
     sun: { color: '#ff9f6b', intensity: 1.7, position: SUN_POSITION, target: [0, 0, 0], shadowExtent: 6.5 },
     toneMappingExposure: 1.05,
-    palette: { skyTop: '#e58a6f', skyBottom: '#ffd19a', sun: '#ffb36b', hillNear: '#6b6f5a', hillFar: '#9a8c74' },
+    palette: { ...WINDOW_SCENES.evening },
   },
   night: {
     hemisphere: { sky: '#aab4e0', ground: '#3a2e40', intensity: 1.0 },
     sun: { color: '#9fb1ff', intensity: 0.5, position: SUN_POSITION, target: [0, 0, 0], shadowExtent: 6.5 },
     toneMappingExposure: 1.1,
-    palette: {
-      background: '#161022',
-      skyTop: '#141a33',
-      skyBottom: '#3e4a6b',
-      sun: '#f1e4cf',
-      hillNear: '#26304a',
-      hillFar: '#34405e',
-      stars: '#f1e4cf',
-    },
+    palette: { background: '#161022', ...WINDOW_SCENES.night },
   },
 });
 

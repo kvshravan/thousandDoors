@@ -4,9 +4,17 @@ import { Engine } from '../three/engine.js';
 import { detectQuality, isWebGL2Available } from '../three/quality.js';
 import { RoomScene } from '../three/room-scene.js';
 import { SceneManager } from '../three/scene-manager.js';
-import { GuestbookPanel } from '../ui/guestbook.js';
-import { createInteractionRegistry, handleInteraction, INTERACTION_VERBS } from '../ui/interactions.js';
+import {
+  createInteractionRegistry,
+  giftCount,
+  handleInteraction,
+  INTERACTION_VERBS,
+  noteCount,
+} from '../ui/interactions.js';
+import { MusicPlayer } from '../ui/music.js';
+import { Panel } from '../ui/panel.js';
 import { PhotoViewer } from '../ui/photo-viewer.js';
+import { RoomStore } from '../ui/room-store.js';
 
 const HINT_FADE_DELAY_MS = 2500;
 const TOOLTIP_OFFSET_PX = 16;
@@ -24,6 +32,8 @@ class RoomPage {
     this.nameplateStatus = root.querySelector('[data-room-status]');
     this.resetButton = root.querySelector('#reset-view');
     this.retryButton = root.querySelector('#room-retry');
+    this.standButton = root.querySelector('#stand-up');
+    this.leaveUrl = root.querySelector('[data-testid="back-link"]').getAttribute('href');
 
     const { catalogUrl, roomUrl, modelsUrl } = this.stage.dataset;
     this.urls = { catalogUrl, roomUrl, modelsUrl };
@@ -34,22 +44,35 @@ class RoomPage {
     this.engine = null;
     this.manager = null;
     this.room = null;
+    this.catalog = null;
+    this.store = null;
     this.lastInteraction = null;
 
     this.photoViewer = new PhotoViewer(root.querySelector('#photo-viewer'));
-    this.guestbook = new GuestbookPanel(root.querySelector('#guestbook-panel'));
-    this.registry = createInteractionRegistry({
+    this.panel = new Panel(root.querySelector('#room-panel'));
+    this._musicSource = null;
+    this.music = new MusicPlayer({ onChange: (state) => this._syncMusic(state) });
+    const page = this;
+    this.interactionContext = {
       photoViewer: this.photoViewer,
-      guestbook: this.guestbook,
+      panel: this.panel,
+      music: this.music,
+      leaveUrl: this.leaveUrl,
+      get store() {
+        return page.store;
+      },
       getScene: () => this.manager?.current ?? null,
-      getRoomName: () => this.room?.name ?? '',
-    });
+      getRoom: () => this.room,
+      sit: (objectId) => this._sit(objectId),
+    };
+    this.registry = createInteractionRegistry(this.interactionContext);
 
-    this._onReset = () => this.manager?.current?.resetView();
+    this._onReset = () => this._stand();
     this._onRetry = () => this.remount();
     this._onFirstInteraction = () => this._fadeHint();
     this.resetButton.addEventListener('click', this._onReset);
     this.retryButton.addEventListener('click', this._onRetry);
+    this.standButton.addEventListener('click', this._onReset);
 
     const coarse = window.matchMedia?.('(pointer: coarse)').matches;
     this.hint.textContent = coarse
@@ -79,7 +102,9 @@ class RoomPage {
         fetchJson(this.urls.roomUrl, 'the room'),
       ]);
       const catalog = new Catalog(catalogData);
+      this.catalog = catalog;
       this.room = normalizeRoom(roomData);
+      this.store = new RoomStore(this.room.roomId);
       this._showNameplate(this.room);
 
       const quality = detectQuality(new URLSearchParams(window.location.search).get('quality'));
@@ -100,6 +125,7 @@ class RoomPage {
       if (!scene) return;
       await this.engine.waitForFrame();
       if (this.manager?.current !== scene) return;
+      this._syncVisitorCounts(scene);
       this._setState('ready');
       this.loading.classList.add('is-hidden');
       this.engine.canvas.addEventListener('pointerdown', this._onFirstInteraction, { once: true });
@@ -112,7 +138,10 @@ class RoomPage {
 
   destroy() {
     this.photoViewer.close();
-    this.guestbook.close();
+    this.panel.close();
+    this.music.stop();
+    this._musicSource = null;
+    this.standButton.hidden = true;
     this._showTooltip(null);
     this.manager?.dispose();
     this.engine?.dispose();
@@ -136,9 +165,11 @@ class RoomPage {
       viewer: { ...this.viewer },
       owner: this.room ? { ...this.room.owner } : null,
       lastInteraction: this.lastInteraction,
+      music: this.music.state,
       ui: {
         photoOpen: this.photoViewer.isOpen,
-        guestbookOpen: this.guestbook.isOpen,
+        panel: this.panel.getDebugInfo(),
+        standUpVisible: !this.standButton.hidden,
         tooltip: this.tooltip.hidden ? null : this.tooltip.textContent,
       },
     };
@@ -169,6 +200,31 @@ class RoomPage {
       sum += (data[i] + data[i + 1] + data[i + 2]) / 3;
     }
     return { distinctColors: colors.size, meanBrightness: sum / (size * size) };
+  }
+
+  _sit(objectId) {
+    if (this.manager?.current?.sitOn(objectId)) this.standButton.hidden = false;
+  }
+
+  _stand() {
+    this.manager?.current?.resetView();
+    this.standButton.hidden = true;
+  }
+
+  _syncMusic(state) {
+    const scene = this.manager?.current;
+    if (this._musicSource && this._musicSource !== state.sourceId) scene?.runAction(this._musicSource, 'setPlaying', false);
+    if (state.sourceId) scene?.runAction(state.sourceId, 'setPlaying', state.playing);
+    this._musicSource = state.playing ? state.sourceId : null;
+  }
+
+  /** Shows notes and gifts left from this browser on the noticeboard and gift table. */
+  _syncVisitorCounts(scene) {
+    for (const object of this.room.objects) {
+      const type = this.catalog.get(object.catalogId)?.interaction;
+      if (type === 'noticeboard') scene.runAction(object.id, 'setCount', noteCount(this.interactionContext, object.customData));
+      if (type === 'gifts') scene.runAction(object.id, 'setCount', giftCount(this.interactionContext, object.customData));
+    }
   }
 
   _interact(event) {

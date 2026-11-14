@@ -1,7 +1,7 @@
 import pytest
 from playwright.sync_api import Browser, Page, expect
 
-from .conftest import collect_errors
+from .conftest import SLOW_FRAMES_SCRIPT, collect_errors
 from .helpers import (
     angle_delta,
     assert_camera_within_limits,
@@ -20,8 +20,10 @@ PHONE = {
 
 
 @pytest.fixture
-def phone_page(browser: Browser, base_url: str):
+def phone_page(browser: Browser, base_url: str, slow_frames: bool):
     context = browser.new_context(base_url=base_url, **PHONE)
+    if slow_frames:
+        context.add_init_script(SLOW_FRAMES_SCRIPT)
     page = context.new_page()
     yield page
     context.close()

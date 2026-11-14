@@ -11,7 +11,7 @@ Stack: Python Flask, HTML/CSS, vanilla JavaScript, Three.js r187 (vendored, load
 | 0 | Project setup | ✅ Done |
 | 1 | First 3D room | ✅ Done |
 | 2 | Asset loading and object interactions | ✅ Done |
-| 3 | Personal Room MVP: 3a zoned layout + owner/appearance/permissions data ✅, 3b room objects, 3c customization mode, 3d keyboard access and polish | In progress |
+| 3 | Personal Room MVP: 3a zoned layout + owner/appearance/permissions data ✅, 3b interactive room objects ✅, 3c customization mode, 3d keyboard access and polish | In progress |
 
 ## Local setup (Windows)
 
@@ -31,7 +31,27 @@ Open http://127.0.0.1:5000 and choose **Step inside Mira's room**, or go straigh
 Room page options (development only, until accounts exist):
 
 - `?quality=low|medium|high` overrides the automatic graphics quality.
-- `?as=stranger|follower|friend|owner` sets who you are to the room's owner. Objects only respond if their permission allows it (Mira's floor lamp is owner-only).
+- `?as=stranger|follower|friend|owner` sets who you are to the room's owner. Objects only respond if their permission allows it (Mira's floor lamp is owner-only; the secret chest is friends-only).
+
+### Things to try in a room
+
+| Object | What happens |
+|---|---|
+| Desk or laptop | The owner's profile: name, status, bio, interests |
+| Photo frames | Photo viewer |
+| Posters | Interests, favourite films or albums |
+| Bookshelves | Books, games, and collectibles on display |
+| Record player | Plays the owner's track (a short synthesized loop); the record spins |
+| TV | What's on |
+| Noticeboard (by the door) | Read notes and pin your own |
+| Gift table (by the door) | Leave a flower, cookie, star, or tea |
+| Couch and armchair | Sit down; **Stand up** returns to the room view |
+| Old chest | Hidden notes, friends only (`?as=friend`) |
+| Window | Changes the view: day, evening, night |
+| Lamps | Switch on and off |
+| Door | Nameplate and the way out |
+
+Notes and gifts are saved in your browser (localStorage, per room) until accounts arrive.
 
 On macOS/Linux, activate with `source .venv/bin/activate` and use `cp` instead of `Copy-Item`.
 
@@ -43,9 +63,10 @@ ruff format --check .
 pytest                 # everything, including browser tests
 pytest -m "not e2e"    # fast server-side tests only
 pytest tests/e2e --headed   # watch the browser tests run
+pytest tests/e2e --slow-frames   # emulate a ~6 fps renderer, like a slow CI runner
 ```
 
-Browser tests (`tests/e2e/`) start the app on a random port and drive headless Chromium with Playwright. WebGL runs on the SwiftShader software renderer, so no GPU is needed. They check that the room renders, resizes, responds to mouse and touch, keeps the camera inside the room, pauses when the tab is hidden, cleans up GPU resources, and falls back gracefully without WebGL. They also check that only the models a room uses are downloaded, every object sits inside the room, hover highlighting, clicking photos, lamps, and the guestbook, tapping on phones, a placeholder when a model fails, and the error panel when the catalogue fails.
+Browser tests (`tests/e2e/`) start the app on a random port and drive headless Chromium with Playwright. WebGL runs on the SwiftShader software renderer, so no GPU is needed. They check that the room renders, resizes, responds to mouse and touch, keeps the camera inside the room, pauses when the tab is hidden, cleans up GPU resources, and falls back gracefully without WebGL. They also check that only the models a room uses are downloaded, every object sits inside the room, hover highlighting, every object interaction (profile, posters, shelves, TV, music, noticeboard posting, gifts, sitting, the friends-only chest, window scenes, the door), that visitor text can't inject HTML, tapping on phones, a placeholder when a model fails, and the error panel when the catalogue fails.
 
 `tests/test_catalog_data.py` validates `static/data/`: every model file exists and is a GLB, every builder and interaction type is registered in the JavaScript, every room's appearance uses known presets, and every room object points at a real catalogue item and image with a valid permission level.
 
@@ -93,8 +114,10 @@ static/
     interaction-manager.js Raycast hover highlight and click/tap selection
     room-config.js        Dimensions, palette (incl. model recolouring), lighting, camera limits
     quality.js            WebGL 2 detection and device quality presets
-    props/                Procedural room shell and decor (door, window, frames, clock, rug, guestbook)
-  js/ui/          HTML panels: photo viewer, guestbook, interaction registry
+    props/                Procedural room shell, decor (door, window, frames, clock, rug), and
+                          interactive props (poster, record player, noticeboard, gift table, chest)
+  js/ui/          HTML side: interaction registry, panel contents, photo viewer, music player,
+                  per-room browser storage for notes and gifts
   models/furniture/  GLB furniture (Kenney Furniture Kit, CC0; see LICENSE-kenney.txt)
   images/demo/    Original SVG artwork used as demo photos
   vendor/three/   Pinned Three.js r187 (see VERSION)
@@ -119,7 +142,9 @@ tests/            pytest suite; tests/e2e/ has the Playwright browser tests
 - Permissions: each object has an interact level (`everyone`, `followers`, `friends`, `owner`). `js/permissions.js` compares it with the viewer's relationship to the owner; unknown levels fail closed. The 3D engine only receives a `canInteract` callback, so it stays unaware of users.
 - Only the models a room references are downloaded. Each model loads once, is normalized (origin at floor centre, kit scale applied) and cloned per instance, so geometry is shared. Materials are recoloured by name to the room theme (`modelMaterials`), keeping a consistent palette.
 - A model that fails to load becomes a neutral placeholder and is logged; the room still opens.
-- Clicks are raycast against the whole scene so objects can't be clicked through others. Interactions fire on `click` after a short, still press, so camera drags never trigger them. Types map to handlers in `js/ui/interactions.js`; add new types there.
+- Clicks are raycast against the whole scene so objects can't be clicked through others. Interactions fire on `click` after a short, still press, so camera drags never trigger them. Types map to handlers in `js/ui/interactions.js` (each needs an entry in `INTERACTION_VERBS`, which the tests enforce); add new types there.
+- Interactive props expose `userData.controls = { state, actions }` (for example the chest's `setOpen`). The page calls them through `RoomScene.runAction(objectId, action)`, so UI code never touches meshes, and the state shows up in debug info for tests.
+- Camera damping is scaled by frame time, so the camera glides and settles in the same time at 6 fps (CI software rendering) as at 120 fps.
 - `PropKit` caches geometries, materials, and textures so repeated parts share GPU resources.
 - HTML overlays (nameplate, buttons, tooltip, dialogs, loading, errors, WebGL fallback) are separate from the canvas.
 

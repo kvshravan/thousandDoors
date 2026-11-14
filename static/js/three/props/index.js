@@ -1,17 +1,9 @@
-import {
-  buildDoor,
-  buildDoorMat,
-  buildGuestbook,
-  buildPendantLamp,
-  buildPictureFrame,
-  buildRug,
-  buildWallClock,
-  buildWindow,
-} from './decor.js';
+import { buildDoor, buildDoorMat, buildPendantLamp, buildPictureFrame, buildRug, buildWallClock, buildWindow } from './decor.js';
+import { buildChest, buildGiftTable, buildNoticeboard, buildPoster, buildRecordPlayer } from './interactive.js';
 
 /**
  * Procedural builders referenced by catalogue entries ({ "builder": "door" }).
- * Signature: (kit, options, { loader }) => THREE.Object3D | Promise<THREE.Object3D>.
+ * Signature: (kit, options, { loader, room }) => THREE.Object3D | Promise<THREE.Object3D>.
  * Furniture comes from GLB models instead; see static/data/catalog.json.
  */
 export const PROP_BUILDERS = Object.freeze({
@@ -22,5 +14,9 @@ export const PROP_BUILDERS = Object.freeze({
   pictureFrame: buildPictureFrame,
   wallClock: buildWallClock,
   pendantLamp: buildPendantLamp,
-  guestbook: buildGuestbook,
+  poster: buildPoster,
+  recordPlayer: buildRecordPlayer,
+  noticeboard: buildNoticeboard,
+  giftTable: buildGiftTable,
+  chest: buildChest,
 });

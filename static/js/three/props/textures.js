@@ -163,6 +163,82 @@ export function createNameplateTexture(palette, username, online) {
   return texture;
 }
 
+function wrapLines(ctx, text, maxWidth) {
+  const lines = [];
+  let line = '';
+  for (const word of String(text).split(/\s+/).filter(Boolean)) {
+    const candidate = line ? `${line} ${word}` : word;
+    if (ctx.measureText(candidate).width > maxWidth && line) {
+      lines.push(line);
+      line = word;
+    } else {
+      line = candidate;
+    }
+  }
+  if (line) lines.push(line);
+  return lines;
+}
+
+const POSTER_MOTIFS = {
+  sun(ctx, w, h, ink) {
+    ctx.fillStyle = ink;
+    ctx.beginPath();
+    ctx.arc(w * 0.5, h * 0.32, w * 0.24, 0, Math.PI * 2);
+    ctx.fill();
+  },
+  film(ctx, w, h, ink) {
+    ctx.fillStyle = ink;
+    ctx.fillRect(w * 0.12, h * 0.12, w * 0.76, h * 0.36);
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.35)';
+    for (let i = 0; i < 7; i += 1) {
+      ctx.fillRect(w * (0.16 + i * 0.1), h * 0.14, w * 0.05, h * 0.03);
+      ctx.fillRect(w * (0.16 + i * 0.1), h * 0.43, w * 0.05, h * 0.03);
+    }
+  },
+  leaf(ctx, w, h, ink) {
+    ctx.fillStyle = ink;
+    ctx.save();
+    ctx.translate(w * 0.5, h * 0.3);
+    ctx.rotate(-0.6);
+    ctx.beginPath();
+    ctx.ellipse(0, 0, w * 0.12, w * 0.28, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+  },
+  wave(ctx, w, h, ink) {
+    ctx.strokeStyle = ink;
+    ctx.lineWidth = 10;
+    ctx.lineCap = 'round';
+    for (let row = 0; row < 3; row += 1) {
+      ctx.beginPath();
+      for (let x = w * 0.1; x <= w * 0.9; x += 4) {
+        const y = h * (0.2 + row * 0.1) + Math.sin((x / w) * Math.PI * 4) * 8;
+        if (x === w * 0.1) ctx.moveTo(x, y);
+        else ctx.lineTo(x, y);
+      }
+      ctx.stroke();
+    }
+  },
+};
+
+export function createPosterTexture(palette, { title = '', subtitle = '', accent = 'terracotta', motif = 'sun' }) {
+  return canvasTexture(256, 360, (ctx, w, h) => {
+    ctx.fillStyle = palette[accent] ?? accent;
+    ctx.fillRect(0, 0, w, h);
+    (POSTER_MOTIFS[motif] ?? POSTER_MOTIFS.sun)(ctx, w, h, palette.cream);
+
+    ctx.fillStyle = palette.cream;
+    ctx.textAlign = 'center';
+    ctx.font = '800 34px "Segoe UI", system-ui, sans-serif';
+    const lines = wrapLines(ctx, title.toUpperCase(), w - 32).slice(0, 3);
+    lines.forEach((line, i) => ctx.fillText(line, w / 2, h * 0.66 + i * 38));
+    if (subtitle) {
+      ctx.font = '500 18px "Segoe UI", system-ui, sans-serif';
+      ctx.fillText(subtitle, w / 2, h * 0.66 + lines.length * 38 + 8);
+    }
+  });
+}
+
 export function createClockFaceTexture(palette) {
   return canvasTexture(256, 256, (ctx, w, h) => {
     ctx.fillStyle = palette.cream;

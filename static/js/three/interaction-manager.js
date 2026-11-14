@@ -160,7 +160,11 @@ export class InteractionManager {
     this._clearTap();
     if (!tap) return;
     const record = this.pick(tap.x, tap.y);
-    if (record) this.onSelect?.(record);
+    if (!record) return;
+    // Interactions often move the camera or open a panel, so drop any stale hover.
+    this._pendingHover = null;
+    this._setHovered(null);
+    this.onSelect?.(record);
   }
 
   _clearTap() {
