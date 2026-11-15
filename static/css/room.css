@@ -402,6 +402,18 @@ body.is-editing .topbar .account {
   font-size: 0.9rem;
 }
 
+.panel-visits {
+  margin: 0.75rem 0 0;
+  color: var(--glow);
+  font-size: 0.88rem;
+}
+
+.profile-city {
+  margin: 0.6rem 0 0;
+  color: var(--ink-soft);
+  font-size: 0.9rem;
+}
+
 .panel-chips {
   display: flex;
   flex-wrap: wrap;
@@ -478,6 +490,32 @@ body.is-editing .topbar .account {
 
 .tv-embed {
   padding: 0;
+}
+
+.song-embed {
+  display: block;
+  width: 100%;
+  height: 152px;
+  border: 0;
+  border-radius: 12px;
+  background: #1d1320;
+}
+
+.song-embed.is-tall {
+  height: 352px;
+}
+
+.song-soundcloud {
+  height: 166px;
+}
+
+.song-soundcloud.is-tall {
+  height: 380px;
+}
+
+.song-youtube {
+  height: auto;
+  aspect-ratio: 16 / 9;
 }
 
 .tv-screen-kicker {
@@ -580,6 +618,7 @@ body.is-editing .topbar .account {
 }
 
 .panel-form input,
+.panel-form select,
 .panel-form textarea {
   width: 100%;
   padding: 0.6rem 0.75rem;

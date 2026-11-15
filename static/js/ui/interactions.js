@@ -9,8 +9,12 @@ import {
   photosPanel,
   posterPanel,
   profilePanel,
+  profileForm,
   secretPanel,
+  songBody,
 } from './panels.js';
+import { isMediaRef } from '../media.js';
+import { cityName, loadCities } from '../cities.js';
 
 const WINDOW_VIEWS = { day: 'a sunny day', evening: 'the evening sky', night: 'the night sky' };
 
@@ -40,11 +44,11 @@ export function createInteractionRegistry(ctx) {
       const on = scene()?.toggleLamp(objectId);
       if (typeof on === 'boolean') ctx.announce?.(`${name} switched ${on ? 'on' : 'off'}.`);
     },
-    profile: () => ctx.panel.open(profilePanel(owner())),
+    profile: () => openProfile(ctx),
     poster: ({ data, name }) => ctx.panel.open(posterPanel(data, name)),
     collection: ({ data, name }) => ctx.panel.open(collectionPanel(data, name)),
     media: ({ data, name }) => ctx.panel.open(mediaPanel(data, name)),
-    door: () => ctx.panel.open(doorPanel(owner(), ctx.leaveUrl, ctx.stepOutside)),
+    door: () => ctx.panel.open(doorPanel(owner(), ctx.leaveUrl, ctx.stepOutside, ctx.getRoom().visits)),
     window: ({ objectId }) => {
       const view = scene()?.runAction(objectId, 'cycle');
       if (view) ctx.announce?.(`The window now shows ${WINDOW_VIEWS[view] ?? view}.`);
@@ -96,7 +100,60 @@ export function giftCount(ctx, data) {
   return (data.gifts ?? []).length + (ctx.store?.list('gifts').length ?? 0);
 }
 
+function openProfile(ctx) {
+  const room = ctx.getRoom();
+  let cities = null;
+  let editing = false;
+  const panelFor = () =>
+    profilePanel(room.owner, {
+      visits: room.visits,
+      cityLabel: cities ? cityName(cities, room.owner.city) : '',
+      onEdit: ctx.profile?.canEdit() ? () => edit() : null,
+    });
+  const show = () => {
+    editing = false;
+    ctx.panel.open(panelFor());
+  };
+  const edit = (status = '', busy = false) => {
+    editing = true;
+    ctx.panel.setBody(
+      profileForm(room.owner, {
+        status,
+        busy,
+        cities: cities?.cities ?? [],
+        onCancel: show,
+        onSave: async (fields) => {
+          edit('', true);
+          const error = await ctx.profile.save(fields);
+          if (error) edit(error);
+          else {
+            show();
+            ctx.announce?.('Your profile is updated.');
+          }
+        },
+      }),
+    );
+  };
+  show();
+  // The city list is small; fetch it once, then show the owner's city (and fill the
+  // form's list if it's already open).
+  loadCities()
+    .then((data) => {
+      cities = data;
+      if (!ctx.panel.isOpen || ctx.panel.kind !== 'profile') return;
+      if (editing) edit();
+      else if (room.owner.city) ctx.panel.setBody(panelFor().body);
+    })
+    .catch(() => {});
+}
+
 function openMusic(ctx, objectId, data) {
+  if (isMediaRef(data.song)) {
+    // A real song: the provider's player does the playing.
+    ctx.music.stop();
+    ctx.panel.open({ kind: 'music', kicker: 'Record player', title: `On the record player`, body: songBody(data.song) });
+    return;
+  }
   const track = data.track ?? { title: 'Silence', artist: '', notes: [] };
   const render = () => {
     const playing = ctx.music.playing && ctx.music.sourceId === objectId;

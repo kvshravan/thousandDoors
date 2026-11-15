@@ -1,5 +1,6 @@
 import json
 import re
+from pathlib import Path
 
 import pytest
 
@@ -151,7 +152,9 @@ def test_hallway_page_carries_its_doors(client):
     match = re.search(
         r'<script type="application/json" id="hallway-doors">(.*?)</script>', html, re.S
     )
-    assert {door["id"] for door in json.loads(match.group(1))} == {"mira", "jun"}
+    doors = json.loads(match.group(1))
+    rooms = {p.stem for p in (Path(client.application.static_folder) / "data/rooms").glob("*.json")}
+    assert {door["id"] for door in doors} == rooms
     assert 'href="/room/jun"' in html, "the doors are plain links too (keyboard, no WebGL)"
 
 

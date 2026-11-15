@@ -13,6 +13,11 @@ const BRASS = [0.86, 0.66, 0.34];
 const LIT = new THREE.Color('#ffc978');
 const UNLIT = new THREE.Color('#33406e');
 const HIGHLIGHT = new THREE.Color('#ffffff');
+// Doors of people near you: a gold aura, a warmer door, and a brighter lamp.
+const AURA = new THREE.Color('#ffb44d').multiplyScalar(1.9);
+const NEAR_TINT = new THREE.Color('#ffd27a');
+const NEAR_LAMP = new THREE.Color('#ffe3a8').multiplyScalar(1.5);
+const BLACK = new THREE.Color(0, 0, 0);
 // Unclaimed doors: a bright jumble of colours, a little dimmer than real rooms' doors.
 const UNCLAIMED = [
   '#c8483f',
@@ -179,6 +184,7 @@ export class DoorFleet {
           sx: door ? 1 : 0.9 + seed * 0.22,
           sy: door ? 1 : 0.95 + ((seed * 7) % 1) * 0.12,
           hidden: false,
+          near: false,
         };
         this.slots.push(slot);
         if (door) this.byRoom.set(door.id, slot);
@@ -238,6 +244,28 @@ export class DoorFleet {
     this.lamps.frustumCulled = false;
     this.group.add(this.lamps);
     for (const slot of this.slots) this._paintLamp(slot, false);
+
+    // A soft gold aura for doors near you. It lies in the door's own plane and is
+    // bigger than the door, so the door hides its middle and only a halo shows. Doors
+    // that aren't near get black, which adds nothing.
+    this.auraTexture = auraTexture();
+    this.auraGeometry = new THREE.PlaneGeometry(DOOR.width * 2.8, DOOR.height * 1.8).translate(0, -DOOR.hang - DOOR.height / 2, 0);
+    this.auraMaterial = new THREE.MeshBasicMaterial({
+      map: this.auraTexture,
+      transparent: true,
+      depthWrite: false,
+      blending: THREE.AdditiveBlending,
+      side: THREE.DoubleSide,
+      toneMapped: false,
+    });
+    this.aura = new THREE.InstancedMesh(this.auraGeometry, this.auraMaterial, count);
+    this.aura.name = 'door-auras';
+    this.aura.instanceMatrix = this.doors.instanceMatrix;
+    this.aura.frustumCulled = false;
+    for (let i = 0; i < count; i += 1) this.aura.setColorAt(i, BLACK);
+    this.aura.visible = false;
+    this.group.add(this.aura);
+    this.nearCount = 0;
 
     this.highlighted = null;
     this._pose = railPose();
@@ -326,19 +354,50 @@ export class DoorFleet {
     const previous = this.highlighted;
     this.highlighted = slot;
     if (previous) {
-      this.doors.setColorAt(previous.index, previous.base);
+      this.doors.setColorAt(previous.index, this._tint(previous));
       this._paintLamp(previous, false);
     }
     if (slot) {
-      this.doors.setColorAt(slot.index, slot.base.clone().lerp(HIGHLIGHT, 0.32));
+      this.doors.setColorAt(slot.index, this._tint(slot).lerp(HIGHLIGHT, 0.32));
       this._paintLamp(slot, true);
     }
     this.doors.instanceColor.needsUpdate = true;
     this.lampGeometry.attributes.color.needsUpdate = true;
   }
 
+  /**
+   * Makes the doors of these rooms glow (people who live near you); an empty set
+   * clears it. Returns how many doors glow.
+   */
+  setNear(roomIds) {
+    let count = 0;
+    for (const slot of this.slots) {
+      slot.near = Boolean(slot.door && roomIds.has(slot.door.id));
+      if (slot.near) count += 1;
+      this.doors.setColorAt(slot.index, slot === this.highlighted ? this._tint(slot).lerp(HIGHLIGHT, 0.32) : this._tint(slot));
+      this.aura.setColorAt(slot.index, slot.near ? AURA : BLACK);
+      this._paintLamp(slot, slot === this.highlighted);
+    }
+    this.doors.instanceColor.needsUpdate = true;
+    this.aura.instanceColor.needsUpdate = true;
+    this.lampGeometry.attributes.color.needsUpdate = true;
+    this.aura.visible = count > 0;
+    this.nearCount = count;
+    return count;
+  }
+
+  /** Breathes the auras in and out (0..1); a steady glow with reduced motion. */
+  setAuraStrength(strength) {
+    this.auraMaterial.opacity = strength;
+  }
+
+  _tint(slot) {
+    return slot.near ? slot.base.clone().lerp(NEAR_TINT, 0.22) : slot.base.clone();
+  }
+
   _paintLamp(slot, bright) {
     const color = slot.door ? LIT.clone() : UNLIT.clone();
+    if (slot.near) color.copy(NEAR_LAMP);
     if (bright) color.copy(LIT).multiplyScalar(1.6);
     this.lampColors.set([color.r, color.g, color.b], slot.index * 3);
   }
@@ -353,17 +412,37 @@ export class DoorFleet {
       this.metalGeometry,
       this.pickGeometry,
       this.lampGeometry,
+      this.auraGeometry,
+      this.auraTexture,
       this.doorMaterial,
       this.metalMaterial,
       this.picker.material,
       this.lampMaterial,
+      this.auraMaterial,
     ]) {
       thing.dispose();
     }
     this.doors.dispose();
     this.metal.dispose();
     this.picker.dispose();
+    this.aura.dispose();
   }
+}
+
+/** A soft rounded glow, brightest just outside a door's outline. */
+function auraTexture() {
+  const canvas = document.createElement('canvas');
+  canvas.width = 128;
+  canvas.height = 160;
+  const ctx = canvas.getContext('2d');
+  ctx.filter = 'blur(16px)';
+  ctx.fillStyle = '#ffffff';
+  ctx.beginPath();
+  ctx.roundRect(36, 30, 56, 100, 18);
+  ctx.fill();
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.colorSpace = THREE.SRGBColorSpace;
+  return texture;
 }
 
 function nameplate(text) {

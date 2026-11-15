@@ -23,6 +23,14 @@ PHOTO_REF = re.compile(
     r"^(/static/images/[\w\-/]+\.(svg|png|jpe?g|webp)|photo:[0-9a-f-]{36}|upload:[\w-]{8,64})$"
 )
 SAFE_EMBED = re.compile(r"^https://www\.youtube-nocookie\.com/embed/[\w-]{6,20}$")
+# Songs and videos are stored as references, never URLs (see static/js/media.js).
+MEDIA_FIELDS = {"song": {"youtube", "spotify", "soundcloud"}, "video": {"youtube"}}
+SPOTIFY_KINDS = frozenset({"track", "album", "playlist", "episode", "show", "artist"})
+MEDIA_IDS = {
+    "youtube": re.compile(r"^[\w-]{11}$"),
+    "spotify": re.compile(r"^[A-Za-z0-9]{22}$"),
+    "soundcloud": re.compile(r"^[a-z0-9_-]{1,64}/(sets/)?[a-z0-9_-]{1,120}$"),
+}
 PERMISSION_LEVELS = frozenset({"everyone", "followers", "friends", "owner"})
 APPEARANCE_KEYS = {
     "theme": "THEMES",
@@ -59,6 +67,21 @@ def presets(static_folder: str) -> dict[str, frozenset[str]]:
 def catalog_ids(static_folder: str) -> frozenset[str]:
     data = json.loads((Path(static_folder) / "data" / "catalog.json").read_text(encoding="utf-8"))
     return frozenset(item["id"] for item in data["items"])
+
+
+@lru_cache(maxsize=4)
+def city_ids(static_folder: str) -> frozenset[str]:
+    data = json.loads((Path(static_folder) / "data" / "cities.json").read_text(encoding="utf-8"))
+    return frozenset(city["id"] for city in data["cities"])
+
+
+def check_city(value: object, static_folder: str) -> str | None:
+    """A city id from the list, or None to not say."""
+    if value in (None, ""):
+        return None
+    if not isinstance(value, str) or value not in city_ids(static_folder):
+        raise LayoutError("Pick a city from the list.")
+    return value
 
 
 def demo_rooms(static_folder: str) -> list[dict]:
@@ -121,6 +144,24 @@ def _check_refs(custom: dict) -> None:
     if isinstance(media, dict) and "embedUrl" in media:
         if not (isinstance(media["embedUrl"], str) and SAFE_EMBED.fullmatch(media["embedUrl"])):
             raise LayoutError("Only privacy-enhanced YouTube embeds are allowed.")
+    for field, providers in MEDIA_FIELDS.items():
+        if field in custom and not _is_media_ref(custom[field], providers):
+            raise LayoutError("That song or video link isn't one we can play.")
+
+
+def _is_media_ref(ref: object, providers: set[str]) -> bool:
+    if not isinstance(ref, dict) or set(ref) != {"provider", "kind", "id"}:
+        return False
+    provider, kind, ident = ref["provider"], ref["kind"], ref["id"]
+    if provider not in providers or not isinstance(ident, str):
+        return False
+    if not MEDIA_IDS[provider].fullmatch(ident):
+        return False
+    if provider == "youtube":
+        return kind == "video"
+    if provider == "spotify":
+        return kind in SPOTIFY_KINDS
+    return kind == ("playlist" if "/sets/" in ident else "track")
 
 
 def validate_layout(data: object, static_folder: str) -> tuple[dict, list[dict]]:
@@ -205,4 +246,5 @@ def owner_card(profile: dict | None, demo_owner: dict | None = None) -> dict:
         "status": profile.get("status", ""),
         "online": False,
         "interests": list(profile.get("interests") or []),
+        "city": profile.get("city"),
     }

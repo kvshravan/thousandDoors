@@ -245,4 +245,28 @@ def test_the_hallway_lists_doors_with_their_colour(store, two_rooms):
     assert room_id in ids[:2] and other_id in ids[:2], "the newest changes come first"
     assert ids.index("mira") > 1, "demo rooms come last"
     door = next(d for d in doors if d["id"] == room_id)
-    assert door == {"id": room_id, "name": "Owner", "status": "", "color": "plum", "demo": False}
+    assert door == {
+        "id": room_id,
+        "name": "Owner",
+        "status": "",
+        "color": "plum",
+        "demo": False,
+        "visits": 0,
+        "city": None,
+    }
+
+
+def test_visits_count_once_and_cannot_be_forged(db, store, two_rooms):
+    owner, room_id, other, _ = two_rooms
+    assert store.room(room_id, owner, visitor=f"u:{owner.id}")[0]["visits"] == 0, "not the owner"
+    assert store.room(room_id, other, visitor=f"u:{other.id}")[0]["visits"] == 1
+    assert store.room(room_id, other, visitor=f"u:{other.id}")[0]["visits"] == 1, "only once"
+    assert store.room(room_id, None, visitor="a:" + "0" * 32)[0]["visits"] == 2
+    assert store.room("no-such-room", None, visitor="a:" + "1" * 32) is None
+
+    # Visits live where Supabase's Data API can't reach, and the count isn't editable.
+    for user in (None, other, owner):
+        with pytest.raises(errors.InsufficientPrivilege), acting_as(db, user):
+            db.execute("select * from private.room_visits")
+    with pytest.raises(errors.InsufficientPrivilege), acting_as(db, owner):
+        db.execute("update public.rooms set visits = 999 where id = %s", [room_id])

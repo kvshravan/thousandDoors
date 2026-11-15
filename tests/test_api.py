@@ -12,6 +12,7 @@ from backend.auth import TokenVerifier
 
 ROOT = Path(__file__).resolve().parent.parent
 MIRA = json.loads((ROOT / "static/data/rooms/mira.json").read_text(encoding="utf-8"))
+DEMO_IDS = {p.stem for p in (ROOT / "static/data/rooms").glob("*.json")}
 SAM = "00000000-0000-4000-8000-00000000000a"
 ALEX = "00000000-0000-4000-8000-00000000000b"
 PNG = b"\x89PNG\r\n\x1a\n" + b"\x00" * 64
@@ -204,7 +205,7 @@ def test_demo_room_data_is_a_valid_layout(app):
 
 
 def test_the_hallway_lists_every_door_newest_first(client, app):
-    assert {d["id"] for d in client.get("/api/doors").json["doors"]} == {"mira", "jun"}
+    assert {d["id"] for d in client.get("/api/doors").json["doors"]} == DEMO_IDS
 
     make_room(client, app, SAM, "sam", "Sam")
     make_room(client, app, ALEX, "alex", "Alex")
@@ -214,11 +215,89 @@ def test_the_hallway_lists_every_door_newest_first(client, app):
 
     doors = client.get("/api/doors").json["doors"]
     assert [d["id"] for d in doors][:2] == ["sam", "alex"], "newest first, demo rooms last"
-    assert doors[0] == {"id": "sam", "name": "Sam", "status": "", "color": "teal", "demo": False}
+    assert doors[0] == {
+        "id": "sam",
+        "name": "Sam",
+        "status": "",
+        "color": "teal",
+        "demo": False,
+        "visits": 1,  # layout_of() visited it
+        "city": None,
+    }
     assert doors[1]["color"] is None, "an unpainted door keeps its original colour"
     mira = next(d for d in doors if d["id"] == "mira")
     assert mira["demo"] is True and mira["name"] == "Mira"
-    assert set(mira) == {"id", "name", "status", "color", "demo"}, "nothing else leaks"
+    assert mira["city"] == "bengaluru"
+    keys = {"id", "name", "status", "color", "demo", "visits", "city"}
+    assert set(mira) == keys, "nothing else leaks"
+
+
+def _with_custom(layout: dict, custom: dict) -> dict:
+    first = next(o for o in layout["objects"] if o["catalogId"] != "door")
+    first["customData"] = {**first.get("customData", {}), **custom}
+    return layout
+
+
+@pytest.mark.parametrize(
+    "custom",
+    [
+        {"song": {"provider": "spotify", "kind": "track", "id": "4uLU6hMCjMI75M1A2tKUQC"}},
+        {"song": {"provider": "youtube", "kind": "video", "id": "dQw4w9WgXcQ"}},
+        {"song": {"provider": "soundcloud", "kind": "track", "id": "artist-name/a-song"}},
+        {"song": {"provider": "soundcloud", "kind": "playlist", "id": "artist/sets/mix_2"}},
+        {"video": {"provider": "youtube", "kind": "video", "id": "dQw4w9WgXcQ"}},
+    ],
+)
+def test_song_and_video_links_are_stored_as_references(client, app, custom):
+    make_room(client, app)
+    layout = _with_custom(layout_of(client, "sam"), custom)
+    response = client.put("/api/rooms/sam/layout", headers=headers(app), json=layout)
+    assert response.status_code == 200, response.json
+    saved = _with_custom(layout_of(client, "sam"), {})
+    first = next(o for o in saved["objects"] if o["catalogId"] != "door")
+    assert {k: first["customData"][k] for k in custom} == custom
+
+
+@pytest.mark.parametrize(
+    "custom",
+    [
+        {"song": "https://open.spotify.com/track/4uLU6hMCjMI75M1A2tKUQC"},
+        {"song": {"provider": "vimeo", "kind": "video", "id": "12345678901"}},
+        {"song": {"provider": "youtube", "kind": "video", "id": "javascript:x"}},
+        {"song": {"provider": "spotify", "kind": "user", "id": "4uLU6hMCjMI75M1A2tKUQC"}},
+        {"song": {"provider": "soundcloud", "kind": "track", "id": "../../evil.example/x"}},
+        {"song": {"provider": "youtube", "kind": "video", "id": "dQw4w9WgXcQ", "url": "x"}},
+        {"video": {"provider": "spotify", "kind": "track", "id": "4uLU6hMCjMI75M1A2tKUQC"}},
+    ],
+)
+def test_bad_song_and_video_links_are_refused(client, app, custom):
+    make_room(client, app)
+    layout = _with_custom(layout_of(client, "sam"), custom)
+    response = client.put("/api/rooms/sam/layout", headers=headers(app), json=layout)
+    assert response.status_code == 400
+    assert "song or video link" in response.json["error"]["message"]
+
+
+def test_each_visitor_counts_once_and_the_owner_never(client, app):
+    make_room(client, app)
+    assert client.get("/api/rooms/sam", headers=headers(app)).json["room"]["visits"] == 0
+
+    stranger = app.test_client()
+    first = stranger.get("/api/rooms/sam")
+    assert first.json["room"]["visits"] == 1
+    cookie = first.headers["Set-Cookie"]
+    assert "doors_visitor=" in cookie and "HttpOnly" in cookie and "SameSite=Lax" in cookie
+    assert stranger.get("/api/rooms/sam").json["room"]["visits"] == 1, "same browser"
+    assert "Set-Cookie" not in stranger.get("/api/rooms/sam").headers
+
+    assert app.test_client().get("/api/rooms/sam").json["room"]["visits"] == 2, "another browser"
+    member = app.test_client()
+    for _ in range(2):
+        room = member.get("/api/rooms/sam", headers=headers(app, ALEX, "alex@example.com")).json
+    assert room["room"]["visits"] == 3, "a member counts once, whichever browser"
+    assert client.get("/api/rooms/sam", headers=headers(app)).json["room"]["visits"] == 3
+    door = next(d for d in client.get("/api/doors").json["doors"] if d["id"] == "sam")
+    assert door["visits"] == 3
 
 
 # ---- Notes and gifts ----
@@ -386,3 +465,20 @@ def test_production_refuses_to_start_without_supabase(monkeypatch):
     monkeypatch.setattr("config.ProductionConfig.SECRET_KEY", "prod-secret")
     with pytest.raises(RuntimeError, match="DATABASE_URL"):
         create_app("production", **{**PRODUCTION_SETTINGS, "DATABASE_URL": None})
+
+
+def test_your_city_is_optional_and_from_the_list(client, app):
+    make_room(client, app)
+    for bad in ("atlantis", "Mumbai", 7, ["mumbai"]):
+        response = client.patch("/api/me/profile", headers=headers(app), json={"city": bad})
+        assert response.status_code == 400, bad
+        assert "city from the list" in response.json["error"]["message"]
+
+    response = client.patch("/api/me/profile", headers=headers(app), json={"city": "pune"})
+    assert response.json["profile"]["city"] == "pune"
+    assert client.get("/api/rooms/sam").json["room"]["owner"]["city"] == "pune"
+    door = next(d for d in client.get("/api/doors").json["doors"] if d["id"] == "sam")
+    assert door["city"] == "pune"
+
+    response = client.patch("/api/me/profile", headers=headers(app), json={"city": ""})
+    assert response.json["profile"]["city"] is None, "choosing not to say clears it"

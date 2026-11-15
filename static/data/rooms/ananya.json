@@ -1,0 +1,641 @@
+{
+  "roomId": "ananya",
+  "name": "Ananya's room",
+  "description": "Plants on every surface",
+  "owner": {
+    "username": "ananya",
+    "displayName": "Ananya",
+    "bio": "Plant doctor for my whole building. Currently propagating 31 cuttings.",
+    "status": "Repotting, again",
+    "online": true,
+    "interests": [
+      "plants",
+      "pottery",
+      "running",
+      "lo-fi"
+    ],
+    "city": "gurugram"
+  },
+  "appearance": {
+    "theme": "cozy",
+    "wallpaper": "cream",
+    "floor": "birch",
+    "lighting": "day",
+    "landscape": "countryside"
+  },
+  "objects": [
+    {
+      "id": "door",
+      "catalogId": "door",
+      "position": {
+        "x": 0,
+        "y": 0,
+        "z": 4.97
+      },
+      "rotation": {
+        "x": 0,
+        "y": 3.1416,
+        "z": 0
+      },
+      "scale": {
+        "x": 1.0,
+        "y": 1.0,
+        "z": 1.0
+      },
+      "customData": {
+        "color": "forest"
+      }
+    },
+    {
+      "id": "door-mat",
+      "catalogId": "door-mat",
+      "position": {
+        "x": 0,
+        "y": 0,
+        "z": 4.45
+      },
+      "rotation": {
+        "x": 0,
+        "y": 3.1416,
+        "z": 0
+      },
+      "scale": {
+        "x": 1.0,
+        "y": 1.0,
+        "z": 1.0
+      }
+    },
+    {
+      "id": "entrance-plant",
+      "catalogId": "potted-plant",
+      "position": {
+        "x": 4.4,
+        "y": 0,
+        "z": 4.4
+      },
+      "rotation": {
+        "x": 0,
+        "y": 0.0,
+        "z": 0
+      },
+      "scale": {
+        "x": 1.0,
+        "y": 1.0,
+        "z": 1.0
+      }
+    },
+    {
+      "id": "rug",
+      "catalogId": "rug-round",
+      "position": {
+        "x": 0.6,
+        "y": 0,
+        "z": -0.4
+      },
+      "rotation": {
+        "x": 0,
+        "y": 0.0,
+        "z": 0
+      },
+      "scale": {
+        "x": 1.0,
+        "y": 1.0,
+        "z": 1.0
+      }
+    },
+    {
+      "id": "bed",
+      "catalogId": "bed-double",
+      "position": {
+        "x": -3.84,
+        "y": 0,
+        "z": -0.4
+      },
+      "rotation": {
+        "x": 0,
+        "y": 1.5708,
+        "z": 0
+      },
+      "scale": {
+        "x": 1.0,
+        "y": 1.0,
+        "z": 1.0
+      },
+      "customData": {
+        "color": "cream"
+      }
+    },
+    {
+      "id": "nightstand",
+      "catalogId": "side-table-drawers",
+      "position": {
+        "x": -4.75,
+        "y": 0,
+        "z": -2.0
+      },
+      "rotation": {
+        "x": 0,
+        "y": 1.5708,
+        "z": 0
+      },
+      "scale": {
+        "x": 1.0,
+        "y": 1.0,
+        "z": 1.0
+      }
+    },
+    {
+      "id": "bedside-lamp",
+      "catalogId": "lamp-round-table",
+      "position": {
+        "x": -4.75,
+        "y": 0.77,
+        "z": -2.0
+      },
+      "rotation": {
+        "x": 0,
+        "y": 1.5708,
+        "z": 0
+      },
+      "scale": {
+        "x": 1.0,
+        "y": 1.0,
+        "z": 1.0
+      }
+    },
+    {
+      "id": "couch",
+      "catalogId": "lounge-sofa",
+      "position": {
+        "x": 1.8,
+        "y": 0,
+        "z": 1.0
+      },
+      "rotation": {
+        "x": 0,
+        "y": 3.1416,
+        "z": 0
+      },
+      "scale": {
+        "x": 1.0,
+        "y": 1.0,
+        "z": 1.0
+      },
+      "customData": {
+        "color": "sage"
+      }
+    },
+    {
+      "id": "coffee-table",
+      "catalogId": "table-coffee",
+      "position": {
+        "x": 1.8,
+        "y": 0,
+        "z": -0.1
+      },
+      "rotation": {
+        "x": 0,
+        "y": 0.0,
+        "z": 0
+      },
+      "scale": {
+        "x": 1.0,
+        "y": 1.0,
+        "z": 1.0
+      }
+    },
+    {
+      "id": "pendant",
+      "catalogId": "pendant-lamp",
+      "position": {
+        "x": 0.6,
+        "y": 4,
+        "z": -0.4
+      },
+      "rotation": {
+        "x": 0,
+        "y": 0.0,
+        "z": 0
+      },
+      "scale": {
+        "x": 1.0,
+        "y": 1.0,
+        "z": 1.0
+      },
+      "customData": {
+        "color": "forest"
+      }
+    },
+    {
+      "id": "photo-sunset",
+      "catalogId": "picture-frame",
+      "position": {
+        "x": -4.97,
+        "y": 2.3,
+        "z": -0.4
+      },
+      "rotation": {
+        "x": 0,
+        "y": 1.5708,
+        "z": 0
+      },
+      "scale": {
+        "x": 1.0,
+        "y": 1.0,
+        "z": 1.0
+      },
+      "customData": {
+        "imageUrl": "/static/images/demo/sunset-hills.svg",
+        "caption": "A favourite place"
+      }
+    },
+    {
+      "id": "corner-plant",
+      "catalogId": "potted-plant",
+      "position": {
+        "x": -4.45,
+        "y": 0,
+        "z": -4.45
+      },
+      "rotation": {
+        "x": 0,
+        "y": 0.0,
+        "z": 0
+      },
+      "scale": {
+        "x": 1.4,
+        "y": 1.4,
+        "z": 1.4
+      }
+    },
+    {
+      "id": "desk",
+      "catalogId": "desk",
+      "position": {
+        "x": -1.2,
+        "y": 0,
+        "z": -4.55
+      },
+      "rotation": {
+        "x": 0,
+        "y": 0.0,
+        "z": 0
+      },
+      "scale": {
+        "x": 1.0,
+        "y": 1.0,
+        "z": 1.0
+      },
+      "customData": {
+        "color": "woodLight"
+      }
+    },
+    {
+      "id": "laptop",
+      "catalogId": "laptop",
+      "position": {
+        "x": -1.35,
+        "y": 0.77,
+        "z": -4.55
+      },
+      "rotation": {
+        "x": 0,
+        "y": 0.0,
+        "z": 0
+      },
+      "scale": {
+        "x": 1.0,
+        "y": 1.0,
+        "z": 1.0
+      }
+    },
+    {
+      "id": "desk-chair",
+      "catalogId": "chair-desk",
+      "position": {
+        "x": -1.2,
+        "y": 0,
+        "z": -3.75
+      },
+      "rotation": {
+        "x": 0,
+        "y": 3.02,
+        "z": 0
+      },
+      "scale": {
+        "x": 1.0,
+        "y": 1.0,
+        "z": 1.0
+      }
+    },
+    {
+      "id": "window",
+      "catalogId": "window",
+      "position": {
+        "x": 1.2,
+        "y": 2.15,
+        "z": -4.97
+      },
+      "rotation": {
+        "x": 0,
+        "y": 0.0,
+        "z": 0
+      },
+      "scale": {
+        "x": 1.0,
+        "y": 1.0,
+        "z": 1.0
+      }
+    },
+    {
+      "id": "tv-cabinet",
+      "catalogId": "cabinet-television",
+      "position": {
+        "x": 3.55,
+        "y": 0,
+        "z": -4.72
+      },
+      "rotation": {
+        "x": 0,
+        "y": 0.0,
+        "z": 0
+      },
+      "scale": {
+        "x": 1.0,
+        "y": 1.0,
+        "z": 1.0
+      }
+    },
+    {
+      "id": "floor-lamp",
+      "catalogId": "lamp-square-floor",
+      "position": {
+        "x": 4.6,
+        "y": 0,
+        "z": -4.6
+      },
+      "rotation": {
+        "x": 0,
+        "y": 0.0,
+        "z": 0
+      },
+      "scale": {
+        "x": 1.0,
+        "y": 1.0,
+        "z": 1.0
+      }
+    },
+    {
+      "id": "bookcase-1",
+      "catalogId": "bookcase-open",
+      "position": {
+        "x": 4.72,
+        "y": 0,
+        "z": -1.6
+      },
+      "rotation": {
+        "x": 0,
+        "y": -1.5708,
+        "z": 0
+      },
+      "scale": {
+        "x": 1.0,
+        "y": 1.0,
+        "z": 1.0
+      },
+      "customData": {
+        "title": "My shelf",
+        "items": []
+      }
+    },
+    {
+      "id": "noticeboard",
+      "catalogId": "noticeboard",
+      "position": {
+        "x": -2.3,
+        "y": 1.5,
+        "z": 4.97
+      },
+      "rotation": {
+        "x": 0,
+        "y": 3.1416,
+        "z": 0
+      },
+      "scale": {
+        "x": 1.0,
+        "y": 1.0,
+        "z": 1.0
+      },
+      "customData": {
+        "entries": []
+      }
+    },
+    {
+      "id": "gift-table",
+      "catalogId": "gift-table",
+      "position": {
+        "x": -2.3,
+        "y": 0,
+        "z": 4.45
+      },
+      "rotation": {
+        "x": 0,
+        "y": 3.1416,
+        "z": 0
+      },
+      "scale": {
+        "x": 1.0,
+        "y": 1.0,
+        "z": 1.0
+      },
+      "customData": {
+        "gifts": []
+      }
+    },
+    {
+      "id": "music-table",
+      "catalogId": "side-table",
+      "position": {
+        "x": -3.35,
+        "y": 0,
+        "z": -4.7
+      },
+      "rotation": {
+        "x": 0,
+        "y": 0.0,
+        "z": 0
+      },
+      "scale": {
+        "x": 1.0,
+        "y": 1.0,
+        "z": 1.0
+      }
+    },
+    {
+      "id": "record-player",
+      "catalogId": "record-player",
+      "position": {
+        "x": -3.35,
+        "y": 0.77,
+        "z": -4.7
+      },
+      "rotation": {
+        "x": 0,
+        "y": 0.0,
+        "z": 0
+      },
+      "scale": {
+        "x": 1.0,
+        "y": 1.0,
+        "z": 1.0
+      },
+      "customData": {
+        "track": {
+          "title": "First Song",
+          "artist": "Your record",
+          "tempo": 92,
+          "wave": "triangle",
+          "note": "A short loop to start your collection.",
+          "notes": [
+            60,
+            64,
+            67,
+            71,
+            72,
+            71,
+            67,
+            64,
+            62,
+            65,
+            69,
+            72,
+            74,
+            72,
+            69,
+            65
+          ]
+        }
+      }
+    },
+    {
+      "id": "tv",
+      "catalogId": "television-modern",
+      "position": {
+        "x": 3.55,
+        "y": 0.62,
+        "z": -4.75
+      },
+      "rotation": {
+        "x": 0,
+        "y": 0.0,
+        "z": 0
+      },
+      "scale": {
+        "x": 1.0,
+        "y": 1.0,
+        "z": 1.0
+      },
+      "customData": {
+        "media": {
+          "title": "A day in a greenhouse",
+          "kind": "Documentary"
+        }
+      }
+    },
+    {
+      "id": "desk-plant",
+      "catalogId": "plant-small-1",
+      "position": {
+        "x": -0.65,
+        "y": 0.77,
+        "z": -4.7
+      },
+      "rotation": {
+        "x": 0,
+        "y": 0.0,
+        "z": 0
+      },
+      "scale": {
+        "x": 1.0,
+        "y": 1.0,
+        "z": 1.0
+      }
+    },
+    {
+      "id": "poster-interests",
+      "catalogId": "poster",
+      "position": {
+        "x": -4.97,
+        "y": 2.25,
+        "z": -3.3
+      },
+      "rotation": {
+        "x": 0,
+        "y": 1.5708,
+        "z": 0
+      },
+      "scale": {
+        "x": 1.0,
+        "y": 1.0,
+        "z": 1.0
+      },
+      "customData": {
+        "title": "Plant club",
+        "subtitle": "Growing",
+        "motif": "leaf",
+        "accent": "sage",
+        "items": [
+          "Monstera",
+          "Pothos (x9)",
+          "Tulsi",
+          "Snake plant"
+        ]
+      }
+    },
+    {
+      "id": "photo-string",
+      "catalogId": "photo-string",
+      "position": {
+        "x": 4.97,
+        "y": 2.55,
+        "z": 3.0
+      },
+      "rotation": {
+        "x": 0,
+        "y": -1.5708,
+        "z": 0
+      },
+      "scale": {
+        "x": 1,
+        "y": 1,
+        "z": 1
+      },
+      "customData": {
+        "label": "Pottery",
+        "photos": [
+          "/static/images/demo/blocks.svg",
+          "/static/images/demo/sunset-hills.svg"
+        ]
+      }
+    },
+    {
+      "id": "armchair",
+      "catalogId": "lounge-chair",
+      "position": {
+        "x": -0.6,
+        "y": 0,
+        "z": 0.9
+      },
+      "rotation": {
+        "x": 0,
+        "y": 2.5416,
+        "z": 0
+      },
+      "scale": {
+        "x": 1.0,
+        "y": 1.0,
+        "z": 1.0
+      }
+    }
+  ]
+}

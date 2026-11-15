@@ -1,4 +1,7 @@
+import json
 import re
+from functools import lru_cache
+from pathlib import Path
 
 from flask import (
     Blueprint,
@@ -24,6 +27,15 @@ def _store():
     return current_app.extensions["doors.store"]
 
 
+def cities_data() -> dict:
+    return _cities(current_app.static_folder)
+
+
+@lru_cache(maxsize=4)
+def _cities(static_folder: str) -> dict:
+    return json.loads((Path(static_folder) / "data" / "cities.json").read_text(encoding="utf-8"))
+
+
 @pages_bp.get("/")
 def index():
     return render_template("index.html")
@@ -39,8 +51,8 @@ def room(room_id: str):
 
 @pages_bp.get("/hallway")
 def hallway():
-    # The doors come with the page: one database query, no extra request.
-    return render_template("hallway.html", doors=_store().list_doors())
+    # The doors (and the city list) come with the page: one query, no extra request.
+    return render_template("hallway.html", doors=_store().list_doors(), cities=cities_data())
 
 
 @pages_bp.get("/signin")

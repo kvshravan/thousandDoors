@@ -85,6 +85,7 @@ def _document(row: dict, profile: dict | None) -> dict:
         "owner": owner_card(profile, row.get("demo_owner")),
         "appearance": row["appearance"],
         "objects": row["objects"],
+        "visits": row.get("visits", 0),
     }
 
 
@@ -104,6 +105,8 @@ def _door(row: dict, card: dict, color: str | None) -> dict:
         "status": card.get("status", ""),
         "color": color,
         "demo": bool(row["is_demo"]),
+        "visits": row.get("visits", 0),
+        "city": card.get("city"),
     }
 
 
@@ -135,6 +138,7 @@ class MemoryStore:
         self.profiles: dict[str, dict] = {}
         self.entries: dict[str, list[dict]] = {"notes": [], "gifts": []}
         self.photos: dict[str, dict] = {}
+        self.visits: set[tuple[str, str]] = set()
         self._next_id = 1
         for room in demo_rooms(static_folder):
             self.rooms[room["roomId"]] = {
@@ -165,11 +169,22 @@ class MemoryStore:
         ]
 
     def room(
-        self, room_id: str, user: User | None, *, with_visitors: bool = False
+        self,
+        room_id: str,
+        user: User | None,
+        *,
+        with_visitors: bool = False,
+        visitor: str | None = None,
     ) -> tuple[dict, dict] | tuple[dict, dict, dict] | None:
+        """The room and viewer. `visitor` ("u:<id>" or "a:<hash>") counts a visit first."""
         row = self.rooms.get(room_id)
         if not row:
             return None
+        if visitor and visitor != f"u:{row['owner_id']}":
+            with self._lock:
+                if (room_id, visitor) not in self.visits:
+                    self.visits.add((room_id, visitor))
+                    row["visits"] = row.get("visits", 0) + 1
         profile = self._profile_by_id(row["owner_id"])
         found = (copy.deepcopy(_document(row, profile)), _viewer(row, user))
         if not with_visitors:
@@ -376,7 +391,7 @@ class PostgresStore:
         with self._as(None) as conn:
             cur = conn.execute(
                 """
-                select r.id, r.name, r.is_demo, r.demo_owner, to_jsonb(p) as profile,
+                select r.id, r.name, r.is_demo, r.demo_owner, r.visits, to_jsonb(p) as profile,
                   (select o -> 'customData' ->> 'color'
                    from jsonb_array_elements(r.objects) o
                    where o ->> 'catalogId' = 'door' limit 1) as door_color
@@ -393,9 +408,17 @@ class PostgresStore:
         ]
 
     def room(
-        self, room_id: str, user: User | None, *, with_visitors: bool = False
+        self,
+        room_id: str,
+        user: User | None,
+        *,
+        with_visitors: bool = False,
+        visitor: str | None = None,
     ) -> tuple[dict, dict] | tuple[dict, dict, dict] | None:
-        """The room document and viewer; with_visitors adds its notes and gifts (one query)."""
+        """The room document and viewer; with_visitors adds its notes and gifts (one query).
+
+        `visitor` ("u:<id>" or "a:<hash>") counts a visit first, in the same round trip.
+        """
         visitors = (
             f", ({_RECENT_JSON.format(table='notes', value='message')}) as notes"
             f", ({_RECENT_JSON.format(table='gifts', value='gift')}) as gifts"
@@ -403,6 +426,8 @@ class PostgresStore:
             else ""
         )
         with self._as(user) as conn:
+            if visitor:
+                conn.execute("select private.record_visit(%s, %s)", [room_id, visitor])
             cur = conn.execute(
                 "select r.*, to_jsonb(p) as profile" + visitors + " from public.rooms r "
                 "left join public.profiles p on p.id = r.owner_id where r.id = %(id)s",
@@ -477,7 +502,7 @@ class PostgresStore:
             return profile
 
     def update_profile(self, user: User, fields: dict) -> dict:
-        columns = {"display_name", "bio", "status", "interests"}
+        columns = {"display_name", "bio", "status", "interests", "city"}
         sets = {key: value for key, value in fields.items() if key in columns}
         with self._as(user) as conn:
             assignments = ", ".join(f"{key} = %s" for key in sets)

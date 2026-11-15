@@ -78,8 +78,11 @@ export function normalizeRoom(data) {
       status: String(owner.status ?? ''),
       online: Boolean(owner.online),
       interests: Array.isArray(owner.interests) ? owner.interests.map(String) : [],
+      city: typeof owner.city === 'string' ? owner.city : '',
     },
     appearance: { ...(data.appearance ?? {}), ...(data.theme ? { theme: data.theme } : {}) },
     objects,
+    // How many different people have visited (not part of the layout).
+    visits: Number.isFinite(data.visits) ? data.visits : null,
   };
 }

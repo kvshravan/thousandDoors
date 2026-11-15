@@ -135,8 +135,9 @@ def test_keyboard_only_visitor_can_use_objects(page: Page, errors):
 
     page.get_by_test_id("things-list").click()
     page.get_by_role("button", name=re.compile("^Table lamp")).click()
+    # The lamp first, then what's read out, so a failure says which one went wrong.
+    page.wait_for_function("() => window.__doors.info().scene.lamps['bedside-lamp'] === false")
     announced(page, "Table lamp switched off.")
-    assert info(page)["scene"]["lamps"]["bedside-lamp"] is False
 
     page.get_by_test_id("things-list").click()
     page.get_by_role("button", name=re.compile("^Window")).click()

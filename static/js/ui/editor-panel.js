@@ -12,6 +12,7 @@ import {
 } from '../three/room-config.js';
 import { h } from './dom.js';
 import { DEMO_PHOTOS } from './image-store.js';
+import { PROVIDERS, sourceUrl } from '../media.js';
 
 // Catalogue categories, in the order they're shown. Others go at the end.
 const CATEGORIES = [
@@ -121,6 +122,11 @@ export class EditorPanel {
     });
     this.itemPanel.addEventListener('submit', (event) => {
       event.preventDefault();
+      const link = event.target.querySelector('[data-link-input]');
+      if (link) {
+        this.onCommand('link', link.value);
+        return;
+      }
       const input = event.target.querySelector('[data-text-input]');
       if (input) this.onCommand('text', input.value);
     });
@@ -505,6 +511,7 @@ export class EditorPanel {
           selected.canResize,
           selected.light,
           selected.text?.value,
+          selected.link?.value && JSON.stringify(selected.link.value),
           selected.photos?.value,
           this.library.map((photo) => photo.ref),
         ])
@@ -523,6 +530,7 @@ export class EditorPanel {
       selected.canResize && this._sizeGroup(selected),
       selected.light && this._lightGroup(selected.light),
       selected.text && this._textGroup(selected.text),
+      selected.link && this._linkGroup(selected.link),
       selected.photos && this._photoGroup(selected.photos),
     ].filter(Boolean);
     if (groups.length === 0) {
@@ -649,6 +657,36 @@ export class EditorPanel {
         }),
         h('button', { className: 'chip chip-accent', type: 'submit', text: 'Update', dataset: { key: 'text-submit' } }),
       ),
+    );
+  }
+
+  /** A song or video link: paste it, or remove the current one. */
+  _linkGroup(link) {
+    const names = link.providers.map((p) => PROVIDERS[p]);
+    const where = names.length > 1 ? `${names.slice(0, -1).join(', ')} or ${names.at(-1)}` : names[0];
+    return this._section(
+      link.label ?? 'Link',
+      h(
+        'form',
+        { className: 'editor-text', dataset: { linkForm: '' } },
+        h('input', {
+          className: 'editor-search',
+          type: 'url',
+          value: sourceUrl(link.value),
+          placeholder: `Paste a ${where} link`,
+          'aria-label': link.label ?? 'Link',
+          autocomplete: 'off',
+          dataset: { linkInput: '', key: 'link-input', testid: 'editor-link' },
+        }),
+        h('button', { className: 'chip chip-accent', type: 'submit', text: 'Use', dataset: { key: 'link-submit' } }),
+      ),
+      link.value &&
+        h('button', {
+          className: 'editor-link',
+          type: 'button',
+          text: `Remove the ${PROVIDERS[link.value.provider]} link`,
+          dataset: { editorCommand: 'link-clear', key: 'link-clear', testid: 'editor-link-clear' },
+        }),
     );
   }
 

@@ -422,6 +422,95 @@
       "customData": {
         "gifts": []
       }
+    },
+    {
+      "id": "music-table",
+      "catalogId": "side-table",
+      "position": {
+        "x": -3.35,
+        "y": 0,
+        "z": -4.7
+      },
+      "rotation": {
+        "x": 0,
+        "y": 0.0,
+        "z": 0
+      },
+      "scale": {
+        "x": 1.0,
+        "y": 1.0,
+        "z": 1.0
+      }
+    },
+    {
+      "id": "record-player",
+      "catalogId": "record-player",
+      "position": {
+        "x": -3.35,
+        "y": 0.77,
+        "z": -4.7
+      },
+      "rotation": {
+        "x": 0,
+        "y": 0.0,
+        "z": 0
+      },
+      "scale": {
+        "x": 1.0,
+        "y": 1.0,
+        "z": 1.0
+      },
+      "customData": {
+        "track": {
+          "title": "First Song",
+          "artist": "Your record",
+          "tempo": 92,
+          "wave": "triangle",
+          "note": "A short loop to start your collection.",
+          "notes": [
+            60,
+            64,
+            67,
+            71,
+            72,
+            71,
+            67,
+            64,
+            62,
+            65,
+            69,
+            72,
+            74,
+            72,
+            69,
+            65
+          ]
+        }
+      }
+    },
+    {
+      "id": "tv",
+      "catalogId": "television-modern",
+      "position": {
+        "x": 3.55,
+        "y": 0.62,
+        "z": -4.75
+      },
+      "rotation": {
+        "x": 0,
+        "y": 0.0,
+        "z": 0
+      },
+      "scale": {
+        "x": 1.0,
+        "y": 1.0,
+        "z": 1.0
+      },
+      "customData": {
+        "media": {
+          "title": "Nothing on yet"
+        }
+      }
     }
   ]
 }

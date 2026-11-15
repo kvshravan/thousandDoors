@@ -3,11 +3,22 @@ import { doorColor } from '../three/hallway/doors.js';
 import { HallwayControls, HallwayScene } from '../three/hallway/hallway-scene.js';
 import { detectQuality, isWebGL2Available } from '../three/quality.js';
 import { HallwayMusic } from '../ui/hallway-music.js';
+import { me } from '../auth.js';
+import { citiesNear, cityName } from '../cities.js';
 
 const prefersReducedMotion = () => window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false;
 const CLAIM_URL = '/welcome';
 const FADE_MS = 450;
 const MUSIC_KEY = 'doors:hallway-music';
+const CITY_KEY = 'doors:city';
+
+function savedCity() {
+  try {
+    return window.localStorage.getItem(CITY_KEY) || '';
+  } catch {
+    return '';
+  }
+}
 
 /** Colours the little door swatches in the server-rendered lists. */
 function paintSwatches(root) {
@@ -35,6 +46,11 @@ class HallwayPage {
     this.music = new HallwayMusic();
     this._setUpMusic();
     this.doors = JSON.parse(root.querySelector('#hallway-doors').textContent);
+    this.cities = JSON.parse(root.querySelector('#hallway-cities').textContent);
+    this.citySelect = this.dialog.querySelector('[data-city-select]');
+    this.nearCountBadge = root.querySelector('[data-near-count]');
+    this.city = '';
+    this.near = new Set();
     this.reducedMotion = prefersReducedMotion();
     this.state = 'idle';
     this.engine = null;
@@ -46,11 +62,14 @@ class HallwayPage {
     paintSwatches(root);
     root.addEventListener('click', (event) => this._onClick(event));
     this.search.addEventListener('input', () => this._filter());
+    this.citySelect.addEventListener('change', () => this._chooseCity(this.citySelect.value));
     document.addEventListener('keydown', (event) => this._onKey(event));
     // Coming back with the browser's Back button can restore the page mid-arrival.
     window.addEventListener('pageshow', (event) => {
       if (event.persisted) this._resetArrival();
     });
+    // Before the vault is built, so doors near you get the rails nearest you.
+    this._setCity(savedCity(), { sort: true });
   }
 
   mount() {
@@ -64,6 +83,7 @@ class HallwayPage {
     const quality = detectQuality(override);
     this.engine = new Engine(this.stage, { quality, onContextLost: () => this._lost() });
     this.view = new HallwayScene({ quality, doors: this.doors, reducedMotion: this.reducedMotion });
+    this.view.setNear(this.near);
     this.engine.setView(this.view);
     this.engine.start();
 
@@ -82,6 +102,54 @@ class HallwayPage {
       this.rideButton.title = 'Riding is off while your device asks for reduced motion.';
     }
     this.state = 'ready';
+    this._useProfileCity();
+  }
+
+  // ---- Doors near you ----
+
+  /** Signed in with a city on your profile, and none picked in this browser: use it. */
+  async _useProfileCity() {
+    if (savedCity()) return;
+    const city = (await me())?.profile?.city;
+    if (city && !savedCity()) this._setCity(city);
+  }
+
+  _chooseCity(cityId) {
+    try {
+      if (cityId) window.localStorage.setItem(CITY_KEY, cityId);
+      else window.localStorage.removeItem(CITY_KEY);
+    } catch {
+      // Not remembered; it still works for this visit.
+    }
+    this._setCity(cityId);
+    const count = this.near.size;
+    this._announce(cityId ? `${count} ${count === 1 ? 'door glows' : 'doors glow'} near ${cityName(this.cities, cityId)}.` : 'Nearby doors are off.');
+  }
+
+  /**
+   * Which doors are near `cityId` (none if empty). With sort, those doors move to the
+   * front of the door list, so the vault puts them on the rails closest to you.
+   */
+  _setCity(cityId, { sort = false } = {}) {
+    this.city = this.cities.cities.some((city) => city.id === cityId) ? cityId : '';
+    const cities = citiesNear(this.cities, this.city);
+    this.near = new Set(this.doors.filter((door) => door.city && cities.has(door.city)).map((door) => door.id));
+    if (sort) this.doors = [...this.doors.filter((d) => this.near.has(d.id)), ...this.doors.filter((d) => !this.near.has(d.id))];
+    this.citySelect.value = this.city;
+    this.view?.setNear(this.near);
+    this.nearCountBadge.hidden = this.near.size === 0;
+    this.nearCountBadge.textContent = `${this.near.size} near you`;
+    for (const list of this.root.querySelectorAll('[data-door-list]')) {
+      const items = [...list.children];
+      for (const item of items) {
+        const near = this.near.has(item.dataset.room);
+        item.classList.toggle('is-near', near);
+        item.querySelector('[data-near-badge]').hidden = !near;
+      }
+      // Near doors first, otherwise in the server's order.
+      items.sort((a, b) => Number(this.near.has(b.dataset.room)) - Number(this.near.has(a.dataset.room)) || a.dataset.order - b.dataset.order);
+      list.append(...items);
+    }
   }
 
   // ---- Picking doors ----
@@ -127,8 +195,13 @@ class HallwayPage {
     this.tooltip.hidden = true;
     const { door } = slot;
     this.card.querySelector('[data-card-name]').textContent = door ? `${door.name}’s door` : 'An unclaimed door';
+    const visits = door?.visits ? ` · ${door.visits.toLocaleString()} ${door.visits === 1 ? 'visitor' : 'visitors'}` : '';
+    const where = door?.city ? `${this.near.has(door.id) ? 'Near you · ' : ''}${cityName(this.cities, door.city)}` : '';
+    this.card.querySelector('[data-card-where]').textContent = where;
+    this.card.querySelector('[data-card-where]').hidden = !where;
+    this.card.classList.toggle('is-near', Boolean(door && this.near.has(door.id)));
     this.card.querySelector('[data-card-status]').textContent = door
-      ? door.status || 'Knock and step inside.'
+      ? `${door.status || 'Knock and step inside.'}${visits}`
       : 'Nobody lives here yet. Make it yours.';
     this.card.querySelector('[data-card-swatch]').style.background = door ? doorColor(door.color) : slot.base.getStyle();
     const visit = this.card.querySelector('[data-card-visit]');
@@ -327,6 +400,7 @@ class HallwayPage {
       engine: this.engine?.getDebugInfo() ?? null,
       scene: this.view?.getDebugInfo() ?? null,
       selected: this.selected ? (this.selected.door?.id ?? 'unclaimed') : null,
+      city: this.city,
       music: this.music.state,
     };
   }

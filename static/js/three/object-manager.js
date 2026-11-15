@@ -365,6 +365,7 @@ export class ObjectManager {
       support: Boolean(entry?.support) || ((entry?.placement ?? 'floor') === 'floor' && !entry?.flat),
       recolor: entry?.recolor ?? null,
       textOption: entry?.text ?? null,
+      linkOption: entry?.link ?? null,
       photoOption: entry?.photos ?? null,
       controls: null,
       data: object.customData,

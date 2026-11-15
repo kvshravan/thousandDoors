@@ -1,13 +1,24 @@
 """JSON API used by the room, sign-in, and welcome pages. All responses are JSON; errors
 look like { "error": { "code": "...", "message": "..." } }."""
 
+import hashlib
+import hmac
+import re
+import secrets
 import uuid
 
 from flask import Blueprint, current_app, jsonify, request
 
 from backend.auth import current_user, require_user
 from backend.photos import EXTENSIONS, PhotoError, sniff
-from backend.rooms import LayoutError, check_username, clean_text, starter_room, validate_layout
+from backend.rooms import (
+    LayoutError,
+    check_city,
+    check_username,
+    clean_text,
+    starter_room,
+    validate_layout,
+)
 from backend.store import NotFound, StoreError
 
 api_bp = Blueprint("api", __name__, url_prefix="/api")
@@ -55,6 +66,7 @@ def profile_json(profile: dict | None) -> dict | None:
         "bio": profile.get("bio", ""),
         "status": profile.get("status", ""),
         "interests": list(profile.get("interests") or []),
+        "city": profile.get("city"),
     }
 
 
@@ -102,6 +114,8 @@ def update_profile():
     if "interests" in data:
         interests = data["interests"] if isinstance(data["interests"], list) else []
         fields["interests"] = [t for t in (clean_text(i, 30) for i in interests[:12]) if t]
+    if "city" in data:
+        fields["city"] = check_city(data["city"], current_app.static_folder)
     if not fields:
         raise LayoutError("Nothing to change.")
     return jsonify(profile=profile_json(store().update_profile(current_user(), fields)))
@@ -118,12 +132,45 @@ def list_doors():
 
 @api_bp.get("/rooms/<room_id>")
 def get_room(room_id: str):
-    # The room page gets everything it needs in one request (one database query).
-    found = store().room(room_id, current_user(), with_visitors=True)
+    # The room page gets everything it needs in one request (one database query),
+    # and opening a room counts as a visit.
+    user = current_user()
+    visitor, new_cookie = visitor_key(user)
+    found = store().room(room_id, user, with_visitors=True, visitor=visitor)
     if not found:
         raise NotFound("No such room.")
     room, viewer, visitors = found
-    return jsonify(room=room, viewer=viewer, visitors=visitors)
+    response = jsonify(room=room, viewer=viewer, visitors=visitors)
+    if new_cookie:
+        response.set_cookie(
+            VISITOR_COOKIE,
+            new_cookie,
+            max_age=VISITOR_COOKIE_AGE,
+            httponly=True,
+            samesite="Lax",
+            secure=request.is_secure,
+        )
+    return response
+
+
+VISITOR_COOKIE = "doors_visitor"
+VISITOR_COOKIE_AGE = 2 * 365 * 24 * 3600
+VISITOR_TOKEN = re.compile(r"^[A-Za-z0-9_-]{20,64}$")
+
+
+def visitor_key(user) -> tuple[str, str | None]:
+    """Who's visiting, for counting: the member, or a random browser cookie (hashed with
+    the app's secret, so the stored key can't be traced back to the cookie). Returns
+    (key, a new cookie to set or None)."""
+    if user:
+        return f"u:{user.id}", None
+    token = request.cookies.get(VISITOR_COOKIE, "")
+    new_cookie = None
+    if not VISITOR_TOKEN.fullmatch(token):
+        token = new_cookie = secrets.token_urlsafe(24)
+    secret = current_app.config["SECRET_KEY"].encode()
+    digest = hmac.new(secret, token.encode(), hashlib.sha256).hexdigest()[:32]
+    return f"a:{digest}", new_cookie
 
 
 @api_bp.put("/rooms/<room_id>/layout")

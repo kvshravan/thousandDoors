@@ -122,7 +122,12 @@ def test_catalog_item_is_valid(item):
         assert item["text"]["field"] and 1 <= item["text"]["maxLength"] <= 40
     if "photos" in item:
         assert item["photos"]["field"] in {"imageUrl", "photos"}
-        assert item["placement"] == "wall"
+    if "link" in item:
+        from backend.rooms import MEDIA_FIELDS
+
+        field = item["link"]["field"]
+        assert field in MEDIA_FIELDS, "the server must know how to check this field"
+        assert set(item["link"]["providers"]) <= MEDIA_FIELDS[field]
     if item.get("support"):
         assert item["placement"] == "wall", "floor furniture is a support already"
 
@@ -195,6 +200,18 @@ def test_there_are_at_least_two_rooms():
     assert {"mira", "jun"} <= set(ROOMS)
 
 
+CITIES = json.loads((STATIC / "data" / "cities.json").read_text(encoding="utf-8"))
+CITY_IDS = {city["id"] for city in CITIES["cities"]}
+
+
+def test_city_list_is_valid():
+    ids = [city["id"] for city in CITIES["cities"]]
+    assert len(ids) == len(set(ids))
+    assert all(re.fullmatch(r"[a-z0-9][a-z0-9-]{1,39}", city_id) for city_id in ids)
+    for city in CITIES["cities"]:
+        assert city["name"] and -90 <= city["lat"] <= 90 and -180 <= city["lon"] <= 180
+
+
 @pytest.mark.parametrize("room_id", sorted(ROOMS))
 def test_room_metadata_is_valid(room_id):
     room = ROOMS[room_id]
@@ -207,6 +224,7 @@ def test_room_metadata_is_valid(room_id):
     assert all(isinstance(tag, str) for tag in owner["interests"])
     for key, value in room["appearance"].items():
         assert value in APPEARANCE_PRESETS[key], f"unknown {key} {value!r}"
+    assert owner.get("city") in CITY_IDS, "demo rooms live in a city from the list"
 
 
 @pytest.mark.parametrize("room_id", sorted(ROOMS))

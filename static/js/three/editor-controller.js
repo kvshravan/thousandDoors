@@ -355,6 +355,18 @@ export class EditorController {
     return this._changeData({ [option.field]: clean }, `The ${record.name.toLowerCase()} now says “${clean}”.`);
   }
 
+  /**
+   * Sets the selected item's song or video ({ provider, kind, id }, already checked
+   * by the page), or removes it with null.
+   */
+  async setLinkSelected(ref, label = '') {
+    const record = this._selected();
+    const option = record?.linkOption;
+    if (!option) return false;
+    const message = ref ? `The ${record.name.toLowerCase()} now plays ${label || 'your link'}.` : `Removed the link from the ${record.name.toLowerCase()}.`;
+    return this._changeData({ [option.field]: ref ? { provider: ref.provider, kind: ref.kind, id: ref.id } : null }, message);
+  }
+
   /** Puts a photo on the selected frame, or adds it to the selected photo string. */
   async usePhotoSelected(ref) {
     const record = this._selected();
@@ -525,6 +537,7 @@ export class EditorController {
       size: sizeForScale(record.root.scale.x),
       light: this.objects.lightState(record),
       text: record.textOption ? { ...record.textOption, value: String(record.data[record.textOption.field] ?? '') } : null,
+      link: record.linkOption ? { ...record.linkOption, value: record.data[record.linkOption.field] ?? null } : null,
       photos: photoField ? { ...record.photoOption, value: photos } : null,
       children: this._children.map((child) => child.id),
     };

@@ -1,5 +1,6 @@
 import { h } from './dom.js';
 import { GIFTS, MAX_MESSAGE_LENGTH } from './room-store.js';
+import { embedUrl, PROVIDERS, sourceUrl } from '../media.js';
 
 // Builders for the content shown in the interaction panel. All text goes through
 // h(), which uses textContent, so room data and visitor input can't inject HTML.
@@ -9,6 +10,29 @@ const SAFE_EMBED = /^https:\/\/www\.youtube-nocookie\.com\/embed\/[\w-]{6,20}$/;
 
 export function isSafeEmbedUrl(url) {
   return typeof url === 'string' && SAFE_EMBED.test(url);
+}
+
+/** A provider's player. `src` always comes from embedUrl() or isSafeEmbedUrl(). */
+function embedFrame(src, title, className) {
+  return h('iframe', {
+    className,
+    src,
+    title,
+    allow: 'autoplay; clipboard-write; encrypted-media; picture-in-picture',
+    referrerpolicy: 'strict-origin-when-cross-origin',
+    allowfullscreen: true,
+    loading: 'lazy',
+    dataset: { testid: 'media-embed' },
+  });
+}
+
+/** The record player's song: the provider's own player, sized for it. */
+export function songBody(ref) {
+  const tall = ref.kind !== 'track' && ref.kind !== 'video' && ref.kind !== 'episode';
+  return [
+    embedFrame(embedUrl(ref), `${PROVIDERS[ref.provider]} player`, `song-embed song-${ref.provider}${tall ? ' is-tall' : ''}`),
+    h('p', { className: 'panel-footnote' }, h('a', { href: sourceUrl(ref), target: '_blank', rel: 'noopener noreferrer', text: `Open in ${PROVIDERS[ref.provider]}` })),
+  ];
 }
 
 function statusLine(owner) {
@@ -24,7 +48,14 @@ function chips(items) {
   return h('ul', { className: 'panel-chips' }, items.map((item) => h('li', { text: item })));
 }
 
-export function profilePanel(owner) {
+function visitLine(visits) {
+  if (!Number.isFinite(visits)) return null;
+  const text = visits === 1 ? '1 visitor so far' : `${visits.toLocaleString()} visitors so far`;
+  return h('p', { className: 'panel-visits', dataset: { testid: 'visit-count' }, text });
+}
+
+/** onEdit is given only to the room's owner; cityLabel is the owner's city, if shared. */
+export function profilePanel(owner, { visits = null, onEdit = null, cityLabel = '' } = {}) {
   const name = owner.displayName || owner.username;
   return {
     kind: 'profile',
@@ -37,10 +68,65 @@ export function profilePanel(owner) {
         h('span', { className: 'profile-avatar', 'aria-hidden': 'true', text: name.slice(0, 1).toUpperCase() }),
         h('div', {}, h('p', { className: 'profile-handle', text: `@${owner.username}` }), statusLine(owner)),
       ),
+      cityLabel && h('p', { className: 'profile-city', dataset: { testid: 'profile-city-label' }, text: `Lives in ${cityLabel}` }),
       owner.bio && h('p', { className: 'panel-text', text: owner.bio }),
       owner.interests.length > 0 && [h('h3', { className: 'panel-subhead', text: 'Into' }), chips(owner.interests)],
+      visitLine(visits),
+      onEdit &&
+        h('div', { className: 'panel-actions' }, h('button', { className: 'button', type: 'button', dataset: { testid: 'edit-profile' }, text: 'Edit your profile', onClick: onEdit })),
     ],
   };
+}
+
+function field(label, input) {
+  return h('label', { className: 'form-field' }, h('span', { text: label }), input);
+}
+
+/** The owner's profile form. onSave gets { displayName, status, bio, interests, city }. */
+export function profileForm(owner, { status = '', busy = false, cities = [], onSave, onCancel }) {
+  const name = h('input', { name: 'displayName', maxlength: 40, value: owner.displayName, autocomplete: 'nickname', dataset: { testid: 'profile-name' } });
+  const mood = h('input', { name: 'status', maxlength: 80, value: owner.status, placeholder: 'What are you up to?', dataset: { testid: 'profile-status' } });
+  const bio = h('textarea', { name: 'bio', rows: '3', maxlength: 280, placeholder: 'A little about you', dataset: { testid: 'profile-bio' } });
+  bio.value = owner.bio;
+  const interests = h('input', {
+    name: 'interests',
+    maxlength: 400,
+    value: owner.interests.join(', '),
+    placeholder: 'plants, jazz, film',
+    dataset: { testid: 'profile-interests' },
+  });
+  const city = h(
+    'select',
+    { name: 'city', dataset: { testid: 'profile-city' } },
+    h('option', { value: '', text: "Don't show" }),
+    [...cities].sort((a, b) => a.name.localeCompare(b.name)).map((c) => h('option', { value: c.id, text: c.name })),
+  );
+  city.value = owner.city ?? '';
+  return [
+    plainForm(
+      'profile-form',
+      () =>
+        onSave({
+          displayName: name.value,
+          status: mood.value,
+          bio: bio.value,
+          interests: interests.value.split(',').map((item) => item.trim()).filter(Boolean).slice(0, 12),
+          city: city.value || null,
+        }),
+      field('Display name', name),
+      field('Status', mood),
+      field('About you', bio),
+      field('Interests (separated by commas)', interests),
+      field('Your city (doors near you glow for people there)', city),
+      h(
+        'div',
+        { className: 'panel-actions' },
+        h('button', { className: 'button', type: 'submit', disabled: busy, dataset: { testid: 'profile-save' }, text: busy ? 'Saving…' : 'Save' }),
+        h('button', { className: 'button button-quiet', type: 'button', text: 'Cancel', onClick: onCancel }),
+      ),
+    ),
+    status && h('p', { className: 'panel-status-message', role: 'status', text: status }),
+  ];
 }
 
 export function posterPanel(data, fallbackTitle) {
@@ -83,22 +169,17 @@ export function collectionPanel(data, fallbackTitle) {
 export function mediaPanel(data, fallbackTitle) {
   const media = data.media ?? {};
   const title = media.title || fallbackTitle;
-  const screen = isSafeEmbedUrl(media.embedUrl)
-    ? h('iframe', {
-        className: 'tv-embed',
-        src: media.embedUrl,
-        title,
-        allow: 'encrypted-media; picture-in-picture',
-        referrerpolicy: 'strict-origin-when-cross-origin',
-        allowfullscreen: true,
-        loading: 'lazy',
-      })
-    : h(
-        'div',
-        { className: 'tv-screen', role: 'img', 'aria-label': `Now showing: ${title}` },
-        h('span', { className: 'tv-screen-kicker', text: 'Now showing' }),
-        h('span', { className: 'tv-screen-title', text: title }),
-      );
+  const video = embedUrl(data.video);
+  const legacy = isSafeEmbedUrl(media.embedUrl) ? media.embedUrl : null;
+  const screen =
+    video || legacy
+      ? embedFrame(video || legacy, title, 'tv-embed')
+      : h(
+          'div',
+          { className: 'tv-screen', role: 'img', 'aria-label': `Now showing: ${title}` },
+          h('span', { className: 'tv-screen-kicker', text: 'Now showing' }),
+          h('span', { className: 'tv-screen-title', text: title }),
+        );
   return {
     kind: 'media',
     kicker: 'On the TV',
@@ -158,7 +239,7 @@ export function thingsPanel(items, verbs, onChoose) {
   };
 }
 
-export function doorPanel(owner, leaveUrl, onStepOutside = null) {
+export function doorPanel(owner, leaveUrl, onStepOutside = null, visits = null) {
   return {
     kind: 'door',
     kicker: 'Front door',
@@ -166,6 +247,7 @@ export function doorPanel(owner, leaveUrl, onStepOutside = null) {
     body: [
       statusLine(owner),
       h('p', { className: 'panel-text', text: `This is ${owner.displayName || owner.username}'s door. Knocking arrives with the hallway.` }),
+      visitLine(visits),
       h(
         'div',
         { className: 'panel-actions' },

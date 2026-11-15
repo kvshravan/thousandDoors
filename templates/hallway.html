@@ -11,6 +11,7 @@
 <p class="sr-only" id="hallway-keys-help">Arrow keys look around, plus and minus zoom. Use “Find a door” to pick a room to visit.</p>
 <p class="sr-only" id="hallway-announcer" data-testid="hallway-announcer" role="status" aria-live="polite"></p>
 <script type="application/json" id="hallway-doors">{{ doors | tojson }}</script>
+<script type="application/json" id="hallway-cities">{{ cities | tojson }}</script>
 
 <div class="hallway-ride" id="hallway-ride" data-testid="ride-hud" hidden>
   <span class="hallway-ride-label">Riding</span>
@@ -25,6 +26,7 @@
 <section class="door-card" id="door-card" data-testid="door-card" aria-labelledby="door-card-name" hidden>
   <span class="door-card-swatch" data-card-swatch aria-hidden="true"></span>
   <div class="door-card-text">
+    <p class="door-card-where" data-card-where data-testid="door-where" hidden></p>
     <h2 class="door-card-name" id="door-card-name" data-card-name></h2>
     <p class="door-card-status" data-card-status></p>
   </div>
@@ -40,7 +42,7 @@
     <button type="button" aria-pressed="true" data-action="overview" data-testid="mode-overview">Look around</button>
     <button type="button" aria-pressed="false" data-action="ride" data-testid="mode-ride">Ride a door</button>
   </div>
-  <button type="button" class="hallway-find" data-action="find" data-testid="find-door" aria-haspopup="dialog">Find a door</button>
+  <button type="button" class="hallway-find" data-action="find" data-testid="find-door" aria-haspopup="dialog">Find a door<span class="hallway-near-count" data-near-count data-testid="near-count" hidden></span></button>
   <button type="button" class="hallway-sound" data-action="sound" data-testid="sound-toggle" aria-pressed="true" aria-label="Music" hidden><span aria-hidden="true">♪</span><span class="hallway-sound-label" aria-hidden="true">Music</span></button>
 </nav>
 
@@ -49,6 +51,15 @@
     <button class="hallway-dialog-close" type="submit" aria-label="Close">×</button>
   </form>
   <h2 id="find-title">Find a door</h2>
+  <label class="hallway-city">
+    <span>Doors near</span>
+    <select data-city-select data-testid="city-select">
+      <option value="">Choose your city</option>
+      {% for city in cities.cities | sort(attribute="name") %}
+      <option value="{{ city.id }}">{{ city.name }}</option>
+      {% endfor %}
+    </select>
+  </label>
   <input class="hallway-search" type="search" placeholder="Search by name" aria-label="Search doors" autocomplete="off" data-testid="find-search">
   {% include "_door_list.html" %}
 </dialog>

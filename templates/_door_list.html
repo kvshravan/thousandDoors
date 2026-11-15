@@ -1,12 +1,13 @@
 <ul class="door-list" data-door-list>
   {% for door in doors %}
-  <li class="door-list-item" data-name="{{ door.name | lower }} {{ door.id }}">
+  <li class="door-list-item" data-name="{{ door.name | lower }} {{ door.id }}" data-room="{{ door.id }}" data-order="{{ loop.index }}">
     <a class="door-list-link" href="{{ url_for('pages.room', room_id=door.id) }}" data-room="{{ door.id }}" data-color="{{ door.color or '' }}">
       <span class="door-list-swatch" aria-hidden="true"></span>
       <span class="door-list-text">
         <span class="door-list-name">{{ door.name }}</span>
         {% if door.status %}<span class="door-list-status">{{ door.status }}</span>{% endif %}
       </span>
+      <span class="door-list-near" data-near-badge hidden>Near you</span>
     </a>
   </li>
   {% endfor %}

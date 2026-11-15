@@ -1,9 +1,17 @@
+import json
 import re
+from pathlib import Path
 
 from playwright.sync_api import Browser, Page, expect
 
 from .helpers import axe_violations, sign_in
 from .test_room import DISABLE_WEBGL
+
+ROOMS = Path(__file__).resolve().parents[2] / "static" / "data" / "rooms"
+DEMO = {
+    p.stem: json.loads(p.read_text(encoding="utf-8"))["owner"]["displayName"]
+    for p in ROOMS.glob("*.json")
+}
 
 READY = (
     "() => window.__hallway && ['ready', 'unsupported', 'error'].includes(window.__hallway.state)"
@@ -43,7 +51,7 @@ def test_the_hallway_is_full_of_doors_on_moving_rails(page: Page, errors):
     assert data["state"] == "ready"
     assert info["mode"] == "overview"
     assert info["doors"] >= 300
-    assert info["claimed"] == 2, "Mira's and Jun's doors are among them"
+    assert info["claimed"] == len(DEMO), "every demo room's door is among them"
     assert {r["id"] for r in info["rails"]} >= {"swoop", "coaster"}
 
     before = scene(page)["time"]
@@ -60,7 +68,7 @@ def test_every_door_is_also_a_link(page: Page, errors):
     dialog = page.get_by_test_id("find-dialog")
     expect(dialog).to_be_visible()
     links = dialog.get_by_role("link")
-    assert links.count() >= 3, "two rooms and the claim link"
+    assert links.count() == len(DEMO) + 1, "every room and the claim link"
     expect(dialog.get_by_role("link", name=re.compile("Mira"))).to_have_attribute("href", "/room")
     expect(dialog.get_by_role("link", name=re.compile("Jun"))).to_have_attribute(
         "href", "/room/jun"
@@ -81,13 +89,12 @@ def test_picking_a_door_and_going_through_it(page: Page, errors):
 
     card = page.get_by_test_id("door-card")
     expect(card).to_be_visible()
-    name = "Mira" if point["id"] == "mira" else "Jun"
-    expect(card).to_contain_text(f"{name}’s door")
+    expect(card).to_contain_text(f"{DEMO[point['id']]}’s door")
     visit_quickly(page)
     page.get_by_test_id("door-visit").click()
 
     page.wait_for_function("() => window.__hallway?.info().scene.arrival?.door", timeout=10_000)
-    page.wait_for_url(re.compile(r"/room(/jun)?$"), timeout=30_000)
+    page.wait_for_url(re.compile(r"/room(/\w+)?$"), timeout=30_000)
     page.wait_for_function("() => window.__doors?.state === 'ready'", timeout=30_000)
     assert "from=hallway" not in page.url, "a reload shouldn't replay the arrival"
     expect(page.get_by_test_id("room-loading")).to_be_hidden()
@@ -116,10 +123,8 @@ def test_riding_a_door_and_hopping_to_another(page: Page, errors):
     expect(page.get_by_test_id("mode-ride")).to_have_attribute("aria-pressed", "true")
     page.wait_for_function("() => window.__hallway.info().scene.mode === 'ride'", timeout=15_000)
     first = scene(page)
-    assert first["rider"] in ("mira", "jun"), "rides a real door on the coaster when there is one"
-    expect(page.get_by_test_id("ride-name")).to_have_text(
-        "Mira" if first["rider"] == "mira" else "Jun"
-    )
+    assert first["rider"] in DEMO, "rides a real door on the coaster when there is one"
+    expect(page.get_by_test_id("ride-name")).to_have_text(DEMO[first["rider"]])
 
     # The camera travels with the door.
     start = first["camera"]["position"]
@@ -238,7 +243,7 @@ def test_without_webgl_the_doors_are_a_list(page: Page, errors):
 def test_your_own_door_hangs_in_the_hallway(page: Page, errors):
     sign_in(page, username="sam", display_name="Sam")
     data = open_hallway(page)
-    assert data["scene"]["claimed"] == 3
+    assert data["scene"]["claimed"] == len(DEMO) + 1
     page.get_by_test_id("find-door").click()
     expect(page.get_by_role("link", name=re.compile("Sam"))).to_have_attribute("href", "/room/sam")
     assert errors == []
@@ -270,8 +275,52 @@ def test_the_home_page_has_rails_behind_the_words(page: Page, errors):
     expect(page.get_by_test_id("home-stage")).to_have_class(re.compile("is-ready"))
     info = page.evaluate("() => window.__home.info()")
     assert info["scene"]["mode"] == "hero"
-    assert info["scene"]["claimed"] == 2
+    assert info["scene"]["claimed"] == len(DEMO)
     # The doors are only decoration: the buttons over them still work.
     page.get_by_test_id("enter-hallway").click()
     expect(page).to_have_url(re.compile(r"/hallway$"))
+    assert errors == []
+
+
+def test_doors_near_your_city_glow(page: Page, errors):
+    page.add_init_script("localStorage.setItem('doors:city', 'delhi')")
+    data = open_hallway(page)
+    # Kabir lives in Delhi and Ananya in Gurugram, about 25 km away; nobody else is near.
+    assert data["city"] == "delhi"
+    assert sorted(data["scene"]["near"]) == ["ananya", "kabir"]
+    expect(page.get_by_test_id("near-count")).to_have_text("2 near you")
+
+    point = bring_into_view(page, "ananya")
+    page.mouse.click(point["x"], point["y"])
+    expect(page.get_by_test_id("door-where")).to_have_text("Near you · Gurugram")
+    page.keyboard.press("Escape")
+
+    page.get_by_test_id("find-door").click()
+    names = page.locator("#find-dialog .door-list-name").all_inner_texts()
+    assert sorted(names[:2]) == ["Ananya", "Kabir"], "near doors come first"
+    expect(page.locator("#find-dialog [data-near-badge]:visible")).to_have_count(2)
+
+    page.get_by_test_id("city-select").select_option("london")
+    assert scene(page)["near"] == ["meera"]
+    expect(page.get_by_test_id("near-count")).to_have_text("1 near you")
+    assert page.evaluate("() => localStorage.getItem('doors:city')") == "london"
+
+    page.get_by_test_id("city-select").select_option("")
+    assert scene(page)["near"] == []
+    expect(page.get_by_test_id("near-count")).to_be_hidden()
+    assert errors == []
+
+
+def test_your_profile_city_lights_up_your_neighbours(page: Page, errors):
+    session = sign_in(page, username="sam", display_name="Sam")
+    response = page.request.patch(
+        "/api/me/profile",
+        data={"city": "mumbai"},
+        headers={"Authorization": f"Bearer {session['access_token']}"},
+    )
+    assert response.ok, response.text()
+    data = open_hallway(page)
+    page.wait_for_function("() => window.__hallway.info().city === 'mumbai'")
+    assert sorted(scene(page)["near"]) == ["jun", "priya", "sam"]
+    assert data["scene"]["claimed"] == len(DEMO) + 1
     assert errors == []

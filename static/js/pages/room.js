@@ -22,6 +22,7 @@ import { VisitorBook } from '../ui/visitor-book.js';
 import { EditorPanel } from '../ui/editor-panel.js';
 import { DEMO_PHOTOS, ImageStore, isPhotoRef } from '../ui/image-store.js';
 import { resolveAppearance } from '../three/room-config.js';
+import { parseMediaLink, PROVIDERS } from '../media.js';
 
 const HINT_FADE_DELAY_MS = 2500;
 const TOOLTIP_OFFSET_PX = 16;
@@ -96,6 +97,10 @@ class RoomPage {
       sit: (objectId) => this._sit(objectId),
       stepOutside: () => this.stepOutside(),
       announce: (message) => this._announce(message),
+      profile: {
+        canEdit: () => this.saveMode === 'account',
+        save: (fields) => this._saveProfile(fields),
+      },
     };
     this.registry = createInteractionRegistry(this.interactionContext);
 
@@ -423,6 +428,21 @@ class RoomPage {
       case 'text':
         await editor.setTextSelected(value);
         break;
+      case 'link': {
+        const option = editor.getState().selected?.link;
+        if (!option) break;
+        const ref = parseMediaLink(value);
+        if (!ref || !option.providers.includes(ref.provider)) {
+          const names = option.providers.map((p) => PROVIDERS[p]).join(', ');
+          editor._setMessage(value.trim() ? `That doesn't look like a ${names} link.` : `Paste a ${names} link first.`);
+          break;
+        }
+        await editor.setLinkSelected(ref, `that ${PROVIDERS[ref.provider]} ${ref.kind}`);
+        break;
+      }
+      case 'link-clear':
+        await editor.setLinkSelected(null);
+        break;
       case 'photo-use':
         if (isPhotoRef(value)) await editor.usePhotoSelected(value);
         break;
@@ -695,6 +715,16 @@ class RoomPage {
     const maxX = window.innerWidth - this.tooltip.offsetWidth - 8;
     const maxY = window.innerHeight - this.tooltip.offsetHeight - 8;
     this.tooltip.style.transform = `translate(${Math.min(point.x + TOOLTIP_OFFSET_PX, maxX)}px, ${Math.min(point.y + TOOLTIP_OFFSET_PX, maxY)}px)`;
+  }
+
+  /** Saves the owner's profile from the desk. Returns an error message, or null. */
+  async _saveProfile(fields) {
+    const result = await api('/api/me/profile', { method: 'PATCH', json: fields });
+    if (!result.ok) return errorMessage(result, "Your profile couldn't be saved. Try again.");
+    const { displayName, bio, status, interests, city } = result.data.profile;
+    for (const room of [this.room, this.originalRoom]) Object.assign(room.owner, { displayName, bio, status, interests, city: city ?? '' });
+    this._showNameplate(this.room);
+    return null;
   }
 
   _showNameplate(room) {

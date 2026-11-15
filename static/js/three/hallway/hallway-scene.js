@@ -116,6 +116,9 @@ export class HallwayScene {
     this.idle += dt;
     if (step > 0) this.fleet.update(this.time);
     this.vault.update(step);
+    if (this.fleet.nearCount > 0) {
+      this.fleet.setAuraStrength(this.reducedMotion ? 0.85 : 0.72 + 0.28 * Math.sin(this.time * 2.1));
+    }
 
     if (this.arrival) this._updateArrival(dt * this.arrivalRate);
     else if (this.transition) this._updateTransition(dt);
@@ -443,6 +446,14 @@ export class HallwayScene {
     this.dirty = true;
   }
 
+  /** Makes the doors of these room ids glow; returns how many do. */
+  setNear(roomIds) {
+    const count = this.fleet.setNear(roomIds);
+    this.fleet.setAuraStrength(0.85);
+    this.dirty = true;
+    return count;
+  }
+
   /** Where a door's middle is on screen (client pixels), or null if it isn't clickable there. */
   screenPoint(slot, canvas) {
     const pose = this.fleet.pose(slot, this.time, this._pose);
@@ -463,6 +474,7 @@ export class HallwayScene {
       timeScale: this.timeScale,
       doors: this.fleet.count,
       claimed: this.fleet.byRoom.size,
+      near: this.fleet.slots.filter((slot) => slot.near).map((slot) => slot.door.id),
       rails: this.rails.map((rail) => ({ id: rail.id, slots: rail.slots, length: Math.round(rail.length) })),
       rider: this.rider ? (this.rider.door?.id ?? `unclaimed:${this.rider.index}`) : null,
       arrival: this.arrival ? { phase: this.arrival.phase, door: this.arrival.slot.door?.id ?? null } : null,

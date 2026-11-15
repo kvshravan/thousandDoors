@@ -15,6 +15,8 @@ Stack: Python Flask, HTML/CSS, vanilla JavaScript, Three.js r187 (vendored, load
 | 3e | Richer rooms: about 120 things to add (furniture, instruments, lights, tech, hobbies, decor) with search; colours and sizes; placing on furniture, walls, and ceiling; light colours, brightness, and effects; neon text; photo string lights with your own uploads; six landscapes seen through the window and from outside the house | ✅ Done |
 | 4 | Accounts and database: Google or magic-link sign-in, choose a username and get a starter room, rooms saved to Postgres with row-level security, shared notes and gifts, photos in Supabase Storage; hosted on Azure App Service | ✅ Done |
 | 5 | The hallway: a vault of rails with every room's door gliding along them (plus unclaimed ones), ride a door, pick one and go through it into the room; rails behind the home page; original music | ✅ Done |
+| 6a | Real media and your profile: YouTube, Spotify, and SoundCloud on the record player, YouTube on the TV; edit your profile from the desk; a count of different visitors on each door; doors of people in your city glow in the hallway; eight demo rooms | ✅ Done |
+| 6b | A room from your photos: AI reads a few photos and furnishes an editable room to match | Planned |
 
 ## Local setup (Windows)
 
@@ -67,6 +69,7 @@ Room page options (development only):
 - **Pick a door**: hover shows whose it is; click or tap opens its card. **Open the door** glides it to the landing on a short rail, swings it open onto warm light, and takes you through into the room (the room's loading screen continues that light). An unclaimed door offers **Claim it**.
 - **Ride a door**: rides a claimed door on the coaster, leaning into the bends; tap any other door to hop onto it, **Open it** to go in, **Hop off** to fly back to the landing.
 - **Find a door**: a searchable list of every room as plain links, for the keyboard and screen readers; it's also what you get without WebGL.
+- **Doors near you**: choose your city in **Find a door** (or set it on your profile, and the hallway uses it when you're signed in). Doors of people within about 25 km glow gold with a brighter lamp, come first on the rails closest to you and in the list, and their card says "Near you". Only a city is ever stored, and only if its owner picked one (`static/data/cities.json`; "near" means the cities' centres are within `radiusKm`). Try Delhi (Kabir, and Ananya in Gurugram), Bengaluru, Mumbai, or London.
 - **Sound**: an empty, echoing void, synthesized live with Web Audio (no audio files): a low hum and slow, dark minor chords in a long echo. Riding is a little brighter, and the door you open creaks on its hinges before the sound fades as you go through. It's on by default and starts with your first click or key press (browsers wait for one); turning it off with **♪ Music** is remembered.
 - With reduced motion, the doors stay still, riding is off, and choosing a door goes straight in.
 
@@ -74,12 +77,12 @@ Room page options (development only):
 
 | Object | What happens |
 |---|---|
-| Desk or laptop | The owner's profile: name, status, bio, interests |
+| Desk or laptop | The owner's profile: name, status, bio, interests, and how many people have visited; the owner can **Edit your profile** right there, including which city they live in (or not to say) |
 | Photo frames | Photo viewer |
 | Posters | Interests, favourite films or albums |
 | Bookshelves | Books, games, and collectibles on display |
-| Record player | Plays the owner's track (a short synthesized loop); the record spins |
-| TV | What's on |
+| Record player | Plays the owner's song from YouTube, Spotify, or SoundCloud (a track, album, or playlist) in that service's player; without one, a short synthesized loop and a spinning record |
+| TV | The owner's YouTube video, or what's on |
 | Noticeboard (by the door) | Read notes and pin your own |
 | Gift table (by the door) | Leave a flower, cookie, star, or tea |
 | Couch and armchair | Sit down; **Stand up** returns to the room view |
@@ -87,7 +90,7 @@ Room page options (development only):
 | Window | Changes the view: day, evening, night (of the room's landscape) |
 | Lamps, fairy lights, neon, candles | Switch on and off |
 | Photo string lights (Mira's right wall) | The pegged photos, up close |
-| Door | Nameplate, **Step outside** to see the house in its landscape, and the way out |
+| Door | Nameplate, the visitor count, **Step outside** to see the house in its landscape, and the way out |
 
 Notes and gifts are shared: they're saved on the server, so every visitor sees them.
 
@@ -117,6 +120,7 @@ Open a room as its owner (`/room?as=owner`) and choose **Edit room**:
   - colour (16 colours, or its original one) and size (small, medium, large);
   - for lights: on/off, light colour (including rainbow bulbs), brightness, and effect (steady, pulse, twinkle, flicker; effects stay still with the OS reduce-motion setting);
   - for neon signs and posters: the words;
+  - for the record player and TV: paste a song or video link (YouTube, Spotify, or SoundCloud for the record player; YouTube for the TV), or remove it;
   - for frames and photo strings: the photo(s), from the bundled pictures or your own uploads. Uploads are shrunk to 512 px in the browser, checked by the server, and stored in Supabase Storage, so every visitor sees them. Photos uploaded before signing in (kept in the browser) show a **Move to your account** button.
   The door can be recoloured but not moved; the colour shows outside the house too.
 - **Turn and remove**: the toolbar buttons, or **R** / **Shift+R** to turn, **Delete** to remove, arrow keys to nudge, **Escape** to deselect or cancel. When you add an item from the catalogue by keyboard, focus moves to the 3D view: arrows move it and **Enter** places it.
@@ -143,7 +147,9 @@ Browser tests (`tests/e2e/`) start the app on a random port and drive headless C
 
 Accessibility tests run [axe-core](https://github.com/dequelabs/axe-core) (vendored in `tests/e2e/vendor/`, test-only) on each page, open panel, and the editor. They also drive the camera, the things list, and the editor using only the keyboard, and check reduced motion and the phone layout. Performance tests hold each room and each outside landscape to a budget (draw calls, triangles, geometries, textures, download size, request count) and check that nothing is fetched from outside the app. `test_room_customize.py` adds every catalogue item once, and covers light settings, neon text, photo uploads (kept across reloads), frames, landscapes, and stepping outside and back in.
 
-`tests/e2e/test_hallway.py` covers the hallway: doors on moving rails within a rendering budget, the door list and its search, picking a door and arriving in its room, claiming an unclaimed door, riding and hopping between doors, finding a door by keyboard, sound on by default (audible once started, silent and remembered when turned off), axe checks with the card and list open, reduced motion, the list without WebGL, your own door appearing, tapping on a phone, and the home page's rails.
+`tests/e2e/test_room_media.py` covers pasted links (which ones become references, and which are refused), setting a song and a video in the editor and seeing them as a visitor (the providers' players are stubbed, so nothing loads from outside), editing your profile from the desk, and the visitor count on the door.
+
+`tests/e2e/test_hallway.py` covers the hallway: doors on moving rails within a rendering budget, the door list and its search, picking a door and arriving in its room, claiming an unclaimed door, riding and hopping between doors, finding a door by keyboard, sound on by default (audible once started, silent and remembered when turned off), axe checks with the card and list open, reduced motion, the list without WebGL, doors near the city you choose (and near the city on your profile), your own door appearing, tapping on a phone, and the home page's rails.
 
 `tests/test_catalog_data.py` validates `static/data/`: every model file exists and is a GLB, every builder and interaction type is registered in the JavaScript, every room's appearance uses known presets, and every room object points at a real catalogue item and image with a valid permission level.
 
@@ -236,19 +242,22 @@ static/
   vendor/three/   Pinned Three.js r187 (see VERSION)
   css/            Styles; room.css holds the 3D page overlays and dialogs
 migrations/       SQL migrations, applied in order by `flask db upgrade`
-tools/            Developer scripts (render_thumbnails.py: thumbnails for procedural props)
+tools/            Developer scripts (render_thumbnails.py: thumbnails for procedural props;
+                  make_demo_rooms.py: the demo rooms other than Mira's and Jun's, built from the
+                  starter room)
 tests/            pytest suite; tests/e2e/ has the Playwright browser tests (and vendor/axe.min.js);
                   tests/sql/ the Supabase stand-in for testing against plain Postgres
 ```
 
 ### Backend architecture notes
 
-- `backend/api.py` is the JSON API: `/api/me`, `/api/me/profile`, `/api/doors` (every room's door for the hallway: id, name, status, colour), `/api/rooms/<id>` (+ `/layout`, `/notes`, `/gifts`), and `/api/photos`. `/photos/<id>` redirects to the photo in Storage. Errors are `{ "error": { "code", "message" } }`. The `/hallway` page embeds the same door list, so it needs no extra request; the door's colour is picked out of the room in the database, so whole rooms aren't sent.
+- `backend/api.py` is the JSON API: `/api/me`, `/api/me/profile`, `/api/doors` (every room's door for the hallway: id, name, status, colour), `/api/rooms/<id>` (+ `/layout`, `/notes`, `/gifts`), and `/api/photos`. Opening a room counts a visit: once per member, or once per browser (a random `doors_visitor` cookie, stored only as a keyed hash), never the owner. Visits go through `private.record_visit()` (migration 0002) in the same round trip as loading the room; the `private` schema isn't exposed by Supabase's Data API, and owners can't edit the count. `/photos/<id>` redirects to the photo in Storage. Errors are `{ "error": { "code", "message" } }`. The `/hallway` page embeds the same door list, so it needs no extra request; the door's colour is picked out of the room in the database, so whole rooms aren't sent.
 - Flask is the only client of the database. The browser signs in with Supabase Auth and sends its access token; `backend/auth.py` verifies it against the project's public keys (JWKS, ES256), so the server holds no signing secret.
 - `backend/store.py` has `PostgresStore` and `MemoryStore` with the same methods. `PostgresStore` runs every query as the requesting user (`set local role authenticated` plus their JWT claims, or `anon`), so the row-level security policies in `migrations/0001_rooms.sql` apply to every request, not just to Supabase's Data API. Privileges are granted column by column: owners can change a room's contents but not its id or owner.
 - `backend/rooms.py` validates everything the editor sends (catalogue ids, ranges, photo references, embeds, sizes) and keeps one source of truth by reading the presets from `room-config.js`. A room is stored as one JSON document, in the same shape as the demo room files.
 - Photos are checked by their bytes, stored at `<user id>/<photo id>.<ext>` in the public `photos` bucket using the secret key, and recorded in `public.photos`. A frame or photo string refers to one as `photo:<id>`.
-- Demo rooms (Mira, Jun) have no owner. `flask db seed` refreshes them from `static/data/rooms/` without touching anyone's room.
+- Songs and videos are stored as references (`{ provider, kind, id }` in `customData.song` / `customData.video`), never as URLs. `static/js/media.js` turns a pasted link into one and rebuilds the provider's embed address from it; `backend/rooms.py` checks references with the same rules, so a saved room can't point an iframe anywhere else.
+- Demo rooms (Mira, Jun, and six more made by `tools/make_demo_rooms.py`) have no owner; each lives in a city. `flask db seed` refreshes them from `static/data/rooms/` without touching anyone's room.
 
 ### 3D architecture notes
 
