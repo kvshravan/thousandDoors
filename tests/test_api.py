@@ -203,6 +203,24 @@ def test_demo_room_data_is_a_valid_layout(app):
     assert len(objects) == len(MIRA["objects"]) and appearance == MIRA["appearance"]
 
 
+def test_the_hallway_lists_every_door_newest_first(client, app):
+    assert {d["id"] for d in client.get("/api/doors").json["doors"]} == {"mira", "jun"}
+
+    make_room(client, app, SAM, "sam", "Sam")
+    make_room(client, app, ALEX, "alex", "Alex")
+    layout = layout_of(client, "sam")
+    next(o for o in layout["objects"] if o["catalogId"] == "door")["customData"] = {"color": "teal"}
+    assert client.put("/api/rooms/sam/layout", headers=headers(app), json=layout).status_code == 200
+
+    doors = client.get("/api/doors").json["doors"]
+    assert [d["id"] for d in doors][:2] == ["sam", "alex"], "newest first, demo rooms last"
+    assert doors[0] == {"id": "sam", "name": "Sam", "status": "", "color": "teal", "demo": False}
+    assert doors[1]["color"] is None, "an unpainted door keeps its original colour"
+    mira = next(d for d in doors if d["id"] == "mira")
+    assert mira["demo"] is True and mira["name"] == "Mira"
+    assert set(mira) == {"id", "name", "status", "color", "demo"}, "nothing else leaks"
+
+
 # ---- Notes and gifts ----
 
 

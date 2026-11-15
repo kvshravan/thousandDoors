@@ -37,6 +37,12 @@ def room(room_id: str):
     return render_template("room.html", room_id=room_id)
 
 
+@pages_bp.get("/hallway")
+def hallway():
+    # The doors come with the page: one database query, no extra request.
+    return render_template("hallway.html", doors=_store().list_doors())
+
+
 @pages_bp.get("/signin")
 def signin():
     providers = [(key, OAUTH_PROVIDERS[key]) for key in current_app.config["AUTH_PROVIDERS"]]

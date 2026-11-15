@@ -1,15 +1,23 @@
 {% extends "base.html" %}
 {% block body_class %}page-home{% endblock %}
+{% block head %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/hallway.css') }}">
+{% include "_three.html" %}
+{% endblock %}
 {% block content %}
-<section class="hero">
-  <div class="hero-door" aria-hidden="true">
-    <div class="hero-door-light"></div>
-    <div class="hero-door-knob"></div>
+<div class="home-stage" id="home-stage" data-doors-url="{{ url_for('api.list_doors') }}" data-testid="home-stage" aria-hidden="true"></div>
+<div class="home-shade" aria-hidden="true"></div>
+<section class="home-hero">
+  <p class="home-kicker">A social network made of rooms</p>
+  <h1 class="home-title">Every door<br>is <em>a room.</em></h1>
+  <p class="home-lede">Claim your door, decorate the room behind it, then ride the rails and knock on a thousand others.</p>
+  <div class="home-actions">
+    <a class="pill pill-big" href="{{ url_for('pages.welcome') }}" data-testid="open-your-door">Open your door</a>
+    <a class="pill pill-quiet pill-big" href="{{ url_for('pages.hallway') }}" data-testid="enter-hallway">Explore the hallway</a>
   </div>
-  <h1>Every person is a door.</h1>
-  <p class="lede">Build a cozy little room that says who you are, then wander the hallway and visit everyone else's.</p>
-  <a class="button" href="{{ url_for('pages.room') }}" data-testid="enter-room">Step inside Mira's room</a>
-  <p class="hero-alt">or <a href="{{ url_for('pages.room', room_id='jun') }}" data-testid="enter-room-jun">knock on Jun's door</a></p>
-  <p class="status" data-testid="app-status">The hallway is still under construction.</p>
+  <p class="home-alt" data-testid="app-status">Or peek inside <a href="{{ url_for('pages.room') }}" data-testid="enter-room">Mira’s room</a> or <a href="{{ url_for('pages.room', room_id='jun') }}" data-testid="enter-room-jun">Jun’s</a>.</p>
 </section>
+{% endblock %}
+{% block scripts %}
+<script type="module" src="{{ url_for('static', filename='js/pages/home.js') }}"></script>
 {% endblock %}

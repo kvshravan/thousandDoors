@@ -254,5 +254,5 @@ def test_door_shows_nameplate_and_leads_out(page: Page, errors, base_url):
     expect(panel(page)).to_contain_text("Front door")
     page.get_by_test_id("leave-room").click()
 
-    expect(page).to_have_url(f"{base_url}/")
+    expect(page).to_have_url(f"{base_url}/hallway")
     assert errors == []

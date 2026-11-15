@@ -173,6 +173,17 @@ body.is-editing .topbar .account {
   pointer-events: none;
 }
 
+/* Arriving from the hallway: the warm light behind the door, fading into the room. */
+.room-loading.is-arrival {
+  background: radial-gradient(circle at 50% 55%, #fff4dc 0%, #ffd9a0 45%, #2b1d2e 100%);
+  color: #5a3a40;
+  transition: opacity 0.9s ease, visibility 0.9s;
+}
+
+.room-loading.is-arrival .loading-door {
+  display: none;
+}
+
 .loading-door {
   width: 56px;
   height: 88px;
@@ -621,15 +632,6 @@ body.is-editing .topbar .account {
   margin: 0;
   color: var(--ink-soft);
   font-size: 0.8rem;
-}
-
-.sr-only {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  overflow: hidden;
-  clip: rect(0 0 0 0);
-  white-space: nowrap;
 }
 
 @media (prefers-reduced-motion: reduce) {

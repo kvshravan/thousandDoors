@@ -1,0 +1,10 @@
+<script type="importmap">
+{
+  "imports": {
+    "three": "{{ url_for('static', filename='vendor/three/build/three.module.min.js') }}",
+    "three/addons/": "{{ url_for('static', filename='vendor/three/examples/jsm/') }}"
+  }
+}
+</script>
+<link rel="modulepreload" href="{{ url_for('static', filename='vendor/three/build/three.module.min.js') }}">
+<link rel="modulepreload" href="{{ url_for('static', filename='vendor/three/build/three.core.js') }}">

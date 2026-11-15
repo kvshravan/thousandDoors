@@ -110,6 +110,12 @@ def update_profile():
 # ---- Rooms ----
 
 
+@api_bp.get("/doors")
+def list_doors():
+    """Every room's door for the hallway: id, owner's name and status, door colour."""
+    return jsonify(doors=store().list_doors())
+
+
 @api_bp.get("/rooms/<room_id>")
 def get_room(room_id: str):
     # The room page gets everything it needs in one request (one database query).

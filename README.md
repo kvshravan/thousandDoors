@@ -13,7 +13,8 @@ Stack: Python Flask, HTML/CSS, vanilla JavaScript, Three.js r187 (vendored, load
 | 2 | Asset loading and object interactions | ✅ Done |
 | 3 | Personal Room MVP: zoned layout and room data, interactive objects, customization mode, keyboard access and polish | ✅ Done |
 | 3e | Richer rooms: about 120 things to add (furniture, instruments, lights, tech, hobbies, decor) with search; colours and sizes; placing on furniture, walls, and ceiling; light colours, brightness, and effects; neon text; photo string lights with your own uploads; six landscapes seen through the window and from outside the house | ✅ Done |
-| 4 | Accounts and database: magic-link sign-in, choose a username and get a starter room, rooms saved to Postgres with row-level security, shared notes and gifts, photos in Supabase Storage | ✅ Done |
+| 4 | Accounts and database: Google or magic-link sign-in, choose a username and get a starter room, rooms saved to Postgres with row-level security, shared notes and gifts, photos in Supabase Storage; hosted on Azure App Service | ✅ Done |
+| 5 | The hallway: a vault of rails with every room's door gliding along them (plus unclaimed ones), ride a door, pick one and go through it into the room; rails behind the home page; original music | ✅ Done |
 
 ## Local setup (Windows)
 
@@ -57,6 +58,17 @@ Room page options (development only):
 
 - `?quality=low|medium|high` overrides the automatic graphics quality.
 - `?as=stranger|follower|friend|owner` previews the room as someone else. Objects only respond if their permission allows it (Mira's floor lamp is owner-only; the secret chest is friends-only). `?as=owner` on a demo room lets you try the editor, saving only in this browser.
+
+### The hallway
+
+`/hallway` is a vast vault where every room's door hangs from rails and glides along them: a sweeping rail in front of the landing, a coaster that climbs and dives, and long lanes running off into the fog, with walls of stored doors behind. Lit lamps mark claimed rooms; the rest are unclaimed doors (so the vault is full from day one). The home page shows the same rails behind its headline.
+
+- **Look around**: drag (or one finger) to look, scroll or pinch to zoom, arrow keys too. The view drifts slowly when left alone.
+- **Pick a door**: hover shows whose it is; click or tap opens its card. **Open the door** glides it to the landing on a short rail, swings it open onto warm light, and takes you through into the room (the room's loading screen continues that light). An unclaimed door offers **Claim it**.
+- **Ride a door**: rides a claimed door on the coaster, leaning into the bends; tap any other door to hop onto it, **Open it** to go in, **Hop off** to fly back to the landing.
+- **Find a door**: a searchable list of every room as plain links, for the keyboard and screen readers; it's also what you get without WebGL.
+- **Sound**: an empty, echoing void, synthesized live with Web Audio (no audio files): a low hum and slow, dark minor chords in a long echo. Riding is a little brighter, and the door you open creaks on its hinges before the sound fades as you go through. It's on by default and starts with your first click or key press (browsers wait for one); turning it off with **♪ Music** is remembered.
+- With reduced motion, the doors stay still, riding is off, and choosing a door goes straight in.
 
 ### Things to try in a room
 
@@ -131,6 +143,8 @@ Browser tests (`tests/e2e/`) start the app on a random port and drive headless C
 
 Accessibility tests run [axe-core](https://github.com/dequelabs/axe-core) (vendored in `tests/e2e/vendor/`, test-only) on each page, open panel, and the editor. They also drive the camera, the things list, and the editor using only the keyboard, and check reduced motion and the phone layout. Performance tests hold each room and each outside landscape to a budget (draw calls, triangles, geometries, textures, download size, request count) and check that nothing is fetched from outside the app. `test_room_customize.py` adds every catalogue item once, and covers light settings, neon text, photo uploads (kept across reloads), frames, landscapes, and stepping outside and back in.
 
+`tests/e2e/test_hallway.py` covers the hallway: doors on moving rails within a rendering budget, the door list and its search, picking a door and arriving in its room, claiming an unclaimed door, riding and hopping between doors, finding a door by keyboard, sound on by default (audible once started, silent and remembered when turned off), axe checks with the card and list open, reduced motion, the list without WebGL, your own door appearing, tapping on a phone, and the home page's rails.
+
 `tests/test_catalog_data.py` validates `static/data/`: every model file exists and is a GLB, every builder and interaction type is registered in the JavaScript, every room's appearance uses known presets, and every room object points at a real catalogue item and image with a valid permission level.
 
 `tests/test_api.py` covers the API on the in-memory store: tokens (expired, wrong issuer, unsigned, forged, anon), usernames, starter rooms, who may edit, layout validation (unknown items, out-of-range positions, outside photo URLs, unsafe embeds, missing door, too many objects), notes and gifts with their hourly limit, and photo uploads judged by their bytes. `tests/e2e/test_accounts.py` drives magic-link and Google sign-in (Supabase's endpoints are intercepted), choosing a username, saving and seeing a room from another browser, failed saves, moving browser photos to the account, token refresh, and signing out. Tests never touch your Supabase project: they use memory storage and a signing key generated at startup.
@@ -201,15 +215,20 @@ static/
     room-config.js        Dimensions, palette (incl. model recolouring), lighting, item colours
                           and sizes, light colours and effects, landscapes, camera limits
     quality.js            WebGL 2 detection and device quality presets
+    hallway/              The hallway: rails.js (closed rails with arc-length lookup and door
+                          swing), doors.js (the instanced door fleet, the arriving door model),
+                          vault.js (walls, windows, light, dust, rail meshes, the landing), and
+                          hallway-scene.js (camera modes, arrival, picking, input)
     props/                Procedural room shell, decor (door, window, frames, clock, rug),
                           interactive props, instruments, glowing things (fairy lights, neon,
                           photo string), hobbies and tech, window landscapes (landscapes.js),
                           and the houses and scenery outside (outdoors.js)
   js/ui/          HTML side: interaction registry, panel contents, editor panel, photo viewer, music player,
-                  visitor notes and gifts (visitor-book.js), photos (image-store.js), demo layout preview
+                  visitor notes and gifts (visitor-book.js), photos (image-store.js), demo layout preview,
+                  the hallway's music (hallway-music.js)
   js/auth.js      Magic-link sign-in with Supabase Auth (no supabase-js), sessions, calls to the API
   js/app.js       Every page: finishes a sign-in arriving from an email link, shows the account links
-  js/pages/       Page scripts: room.js, signin.js, welcome.js
+  js/pages/       Page scripts: room.js, hallway.js, home.js, signin.js, welcome.js
   data/templates/starter.json  The furnished room each new member starts with
   models/furniture/  GLB furniture (Kenney Furniture Kit, CC0; see LICENSE-kenney.txt) and its thumbnails
   models/props/thumbs/  Catalogue thumbnails for procedural props (made by tools/render_thumbnails.py)
@@ -224,7 +243,7 @@ tests/            pytest suite; tests/e2e/ has the Playwright browser tests (and
 
 ### Backend architecture notes
 
-- `backend/api.py` is the JSON API: `/api/me`, `/api/me/profile`, `/api/rooms/<id>` (+ `/layout`, `/notes`, `/gifts`), and `/api/photos`. `/photos/<id>` redirects to the photo in Storage. Errors are `{ "error": { "code", "message" } }`.
+- `backend/api.py` is the JSON API: `/api/me`, `/api/me/profile`, `/api/doors` (every room's door for the hallway: id, name, status, colour), `/api/rooms/<id>` (+ `/layout`, `/notes`, `/gifts`), and `/api/photos`. `/photos/<id>` redirects to the photo in Storage. Errors are `{ "error": { "code", "message" } }`. The `/hallway` page embeds the same door list, so it needs no extra request; the door's colour is picked out of the room in the database, so whole rooms aren't sent.
 - Flask is the only client of the database. The browser signs in with Supabase Auth and sends its access token; `backend/auth.py` verifies it against the project's public keys (JWKS, ES256), so the server holds no signing secret.
 - `backend/store.py` has `PostgresStore` and `MemoryStore` with the same methods. `PostgresStore` runs every query as the requesting user (`set local role authenticated` plus their JWT claims, or `anon`), so the row-level security policies in `migrations/0001_rooms.sql` apply to every request, not just to Supabase's Data API. Privileges are granted column by column: owners can change a room's contents but not its id or owner.
 - `backend/rooms.py` validates everything the editor sends (catalogue ids, ranges, photo references, embeds, sizes) and keeps one source of truth by reading the presets from `room-config.js`. A room is stored as one JSON document, in the same shape as the demo room files.
@@ -256,6 +275,7 @@ tests/            pytest suite; tests/e2e/ has the Playwright browser tests (and
 - Camera damping is scaled by frame time, so the camera glides and settles in the same time at 6 fps (CI software rendering) as at 120 fps. Programmatic moves (`flyTo`, used for reset, sitting, and keyboard orbit/zoom) discard leftover drag momentum so they land exactly.
 - `PropKit` caches geometries, materials, and textures so repeated parts share GPU resources.
 - HTML overlays (nameplate, buttons, tooltip, dialogs, loading, errors, WebGL fallback) are separate from the canvas.
+- The hallway draws every door with two instanced meshes (the painted door, and its hanger and knob) that share one matrix per door, plus a point cloud of lamps, so a thousand doors cost a handful of draw calls. Shades are baked into vertex colours and multiplied by each door's colour. Each rail precomputes an arc-length table of points, headings, and how far a door swings out on each bend at that rail's speed, so placing every door each frame is a lookup. Picking raycasts simple boxes that share the same matrices. The door you choose is swapped for a standalone model with a hinged leaf for the arrival.
 
 ## Credits
 

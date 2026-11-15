@@ -228,3 +228,21 @@ def test_everyone_can_read_rooms_and_notes(db, two_rooms):
         assert (
             db.execute("select count(*) as n from public.rooms where is_demo").fetchone()["n"] >= 2
         )
+
+
+def test_the_hallway_lists_doors_with_their_colour(store, two_rooms):
+    owner, room_id, _, other_id = two_rooms
+    room, _ = store.room(room_id, owner)
+    objects = [
+        {**o, "customData": {"color": "plum"}} if o["catalogId"] == "door" else o
+        for o in room["objects"]
+    ]
+    store.save_layout(room_id, owner, room["appearance"], objects)
+
+    doors = store.list_doors()
+    ids = [d["id"] for d in doors]
+    # Both rooms were changed in this test's transaction, where now() doesn't move.
+    assert room_id in ids[:2] and other_id in ids[:2], "the newest changes come first"
+    assert ids.index("mira") > 1, "demo rooms come last"
+    door = next(d for d in doors if d["id"] == room_id)
+    assert door == {"id": room_id, "name": "Owner", "status": "", "color": "plum", "demo": False}

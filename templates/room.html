@@ -3,16 +3,7 @@
 {% block body_class %}page-room{% endblock %}
 {% block head %}
 <link rel="stylesheet" href="{{ url_for('static', filename='css/room.css') }}">
-<script type="importmap">
-{
-  "imports": {
-    "three": "{{ url_for('static', filename='vendor/three/build/three.module.min.js') }}",
-    "three/addons/": "{{ url_for('static', filename='vendor/three/examples/jsm/') }}"
-  }
-}
-</script>
-<link rel="modulepreload" href="{{ url_for('static', filename='vendor/three/build/three.module.min.js') }}">
-<link rel="modulepreload" href="{{ url_for('static', filename='vendor/three/build/three.core.js') }}">
+{% include "_three.html" %}
 {% endblock %}
 {% block content %}
 <div
@@ -31,7 +22,7 @@
     <span class="room-nameplate-sub" data-room-status hidden></span>
   </div>
   <nav class="room-actions" aria-label="Room actions">
-    <a class="chip" href="{{ url_for('pages.index') }}" data-testid="back-link"><span class="chip-icon" aria-hidden="true">←</span>Back</a>
+    <a class="chip" href="{{ url_for('pages.hallway') }}" data-testid="back-link"><span class="chip-icon" aria-hidden="true">←</span>Hallway</a>
     <button class="chip" type="button" id="things-list" data-testid="things-list" aria-haspopup="dialog"><span class="chip-icon" aria-hidden="true">☰</span><span class="chip-label">Things here</span></button>
     <button class="chip" type="button" id="reset-view" data-testid="reset-view"><span class="chip-icon" aria-hidden="true">⟲</span><span class="chip-label">Reset view</span></button>
     <button class="chip chip-accent" type="button" id="go-inside" data-testid="go-inside" hidden><span class="chip-icon" aria-hidden="true">⌂</span><span class="chip-label">Go inside</span></button>

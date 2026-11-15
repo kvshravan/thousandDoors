@@ -10,6 +10,7 @@ import atexit
 import copy
 import json
 import threading
+import time
 import uuid
 from contextlib import contextmanager, suppress
 from datetime import UTC, datetime, timedelta
@@ -23,6 +24,8 @@ from backend.auth import User
 from backend.rooms import demo_rooms, owner_card
 
 MAX_LISTED = 100
+# Doors shown in the hallway, most recently updated first (demo rooms last).
+MAX_DOORS = 500
 # Notes or gifts one person may leave in one room per hour.
 HOURLY_LIMIT = 20
 # A room's most recent notes or gifts as a JSON array, oldest first. Needs %(id)s and
@@ -85,6 +88,25 @@ def _document(row: dict, profile: dict | None) -> dict:
     }
 
 
+def _door_color(objects: list) -> str | None:
+    """The colour name of a room's front door, or None for its original colour."""
+    for obj in objects or []:
+        if isinstance(obj, dict) and obj.get("catalogId") == "door":
+            color = (obj.get("customData") or {}).get("color")
+            return color if isinstance(color, str) else None
+    return None
+
+
+def _door(row: dict, card: dict, color: str | None) -> dict:
+    return {
+        "id": row["id"],
+        "name": card.get("displayName") or row["name"],
+        "status": card.get("status", ""),
+        "color": color,
+        "demo": bool(row["is_demo"]),
+    }
+
+
 def _viewer(row: dict, user: User | None) -> dict:
     # Postgres returns UUID objects; tokens carry strings.
     owner_id = row.get("owner_id")
@@ -131,6 +153,17 @@ class MemoryStore:
     def room_exists(self, room_id: str) -> bool:
         return room_id in self.rooms
 
+    def list_doors(self, limit: int = MAX_DOORS) -> list[dict]:
+        rows = sorted(self.rooms.values(), key=lambda r: (r["is_demo"], -r.get("updated", 0)))
+        return [
+            _door(
+                row,
+                owner_card(self._profile_by_id(row["owner_id"]), row.get("demo_owner")),
+                _door_color(row["objects"]),
+            )
+            for row in rows[:limit]
+        ]
+
     def room(
         self, room_id: str, user: User | None, *, with_visitors: bool = False
     ) -> tuple[dict, dict] | tuple[dict, dict, dict] | None:
@@ -153,6 +186,7 @@ class MemoryStore:
                 raise Forbidden("Only the owner can change this room.")
             row["appearance"] = copy.deepcopy(appearance)
             row["objects"] = copy.deepcopy(objects)
+            row["updated"] = time.monotonic()
 
     # ---- Profiles ----
 
@@ -185,6 +219,7 @@ class MemoryStore:
                 "appearance": starter["appearance"],
                 "objects": starter["objects"],
                 "demo_owner": None,
+                "updated": time.monotonic(),
             }
             return copy.deepcopy(profile)
 
@@ -335,6 +370,27 @@ class PostgresStore:
         with self._as(None) as conn:
             cur = conn.execute("select 1 from public.rooms where id = %s", [room_id])
         return bool(cur.fetchone())
+
+    def list_doors(self, limit: int = MAX_DOORS) -> list[dict]:
+        # The door's colour is picked out in the database, so whole rooms aren't sent.
+        with self._as(None) as conn:
+            cur = conn.execute(
+                """
+                select r.id, r.name, r.is_demo, r.demo_owner, to_jsonb(p) as profile,
+                  (select o -> 'customData' ->> 'color'
+                   from jsonb_array_elements(r.objects) o
+                   where o ->> 'catalogId' = 'door' limit 1) as door_color
+                from public.rooms r
+                left join public.profiles p on p.id = r.owner_id
+                order by r.is_demo, r.updated_at desc
+                limit %s
+                """,
+                [limit],
+            )
+        return [
+            _door(row, owner_card(row["profile"], row["demo_owner"]), row["door_color"])
+            for row in cur.fetchall()
+        ]
 
     def room(
         self, room_id: str, user: User | None, *, with_visitors: bool = False

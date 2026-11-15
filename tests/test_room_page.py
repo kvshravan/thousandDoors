@@ -143,3 +143,32 @@ def test_auth_providers_setting(monkeypatch):
 
     monkeypatch.setenv("AUTH_PROVIDERS", " Google, myspace ,")
     assert _providers() == ("google",)
+
+
+def test_hallway_page_carries_its_doors(client):
+    html = client.get("/hallway").get_data(as_text=True)
+    assert _import_map(html)["imports"]["three"].endswith("three.module.min.js")
+    match = re.search(
+        r'<script type="application/json" id="hallway-doors">(.*?)</script>', html, re.S
+    )
+    assert {door["id"] for door in json.loads(match.group(1))} == {"mira", "jun"}
+    assert 'href="/room/jun"' in html, "the doors are plain links too (keyboard, no WebGL)"
+
+
+def test_a_hostile_name_cannot_break_out_of_the_hallway(client):
+    token, _ = client.application.extensions["doors.signer"].token(
+        "00000000-0000-4000-8000-0000000000ee", "x@example.com"
+    )
+    hostile = "</script><img src=x onerror=alert(1)>"
+    response = client.post(
+        "/api/me/profile",
+        headers={"Authorization": f"Bearer {token}"},
+        json={"username": "evil", "displayName": hostile},
+    )
+    assert response.status_code == 201
+    html = client.get("/hallway").get_data(as_text=True)
+    assert hostile not in html
+    match = re.search(
+        r'<script type="application/json" id="hallway-doors">(.*?)</script>', html, re.S
+    )
+    assert any(door["name"] == hostile for door in json.loads(match.group(1)))

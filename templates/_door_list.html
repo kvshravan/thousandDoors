@@ -1,0 +1,15 @@
+<ul class="door-list" data-door-list>
+  {% for door in doors %}
+  <li class="door-list-item" data-name="{{ door.name | lower }} {{ door.id }}">
+    <a class="door-list-link" href="{{ url_for('pages.room', room_id=door.id) }}" data-room="{{ door.id }}" data-color="{{ door.color or '' }}">
+      <span class="door-list-swatch" aria-hidden="true"></span>
+      <span class="door-list-text">
+        <span class="door-list-name">{{ door.name }}</span>
+        {% if door.status %}<span class="door-list-status">{{ door.status }}</span>{% endif %}
+      </span>
+    </a>
+  </li>
+  {% endfor %}
+</ul>
+<p class="door-list-empty" data-door-empty hidden>No door has that name yet.</p>
+<p class="door-list-claim"><a href="{{ url_for('pages.welcome') }}" data-testid="claim-door">Claim an unclaimed door</a> and make it yours.</p>

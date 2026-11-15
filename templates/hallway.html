@@ -1,0 +1,72 @@
+{% extends "base.html" %}
+{% block title %}Hallway · {{ app_name }}{% endblock %}
+{% block body_class %}page-hallway{% endblock %}
+{% block head %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/hallway.css') }}">
+{% include "_three.html" %}
+{% endblock %}
+{% block content %}
+<div class="hallway-stage" id="hallway-stage" data-testid="hallway-stage"></div>
+<h1 class="sr-only">The hallway</h1>
+<p class="sr-only" id="hallway-keys-help">Arrow keys look around, plus and minus zoom. Use “Find a door” to pick a room to visit.</p>
+<p class="sr-only" id="hallway-announcer" data-testid="hallway-announcer" role="status" aria-live="polite"></p>
+<script type="application/json" id="hallway-doors">{{ doors | tojson }}</script>
+
+<div class="hallway-ride" id="hallway-ride" data-testid="ride-hud" hidden>
+  <span class="hallway-ride-label">Riding</span>
+  <strong class="hallway-ride-name" data-ride-name data-testid="ride-name"></strong>
+  <span class="hallway-ride-hint" data-ride-hint>Tap another door to hop</span>
+  <button class="pill" type="button" data-action="visit-ride" data-testid="ride-visit">Open it</button>
+  <button class="pill pill-light" type="button" data-action="hop-off" data-testid="hop-off">Hop off</button>
+</div>
+
+<p class="hallway-tooltip" id="hallway-tooltip" data-testid="hallway-tooltip" hidden></p>
+
+<section class="door-card" id="door-card" data-testid="door-card" aria-labelledby="door-card-name" hidden>
+  <span class="door-card-swatch" data-card-swatch aria-hidden="true"></span>
+  <div class="door-card-text">
+    <h2 class="door-card-name" id="door-card-name" data-card-name></h2>
+    <p class="door-card-status" data-card-status></p>
+  </div>
+  <div class="door-card-actions">
+    <a class="pill" href="#" data-card-visit data-testid="door-visit">Open the door</a>
+    <button class="pill pill-quiet" type="button" data-action="ride-card" data-testid="door-ride">Ride it</button>
+  </div>
+  <button class="door-card-close" type="button" data-action="close-card" aria-label="Close">×</button>
+</section>
+
+<nav class="hallway-dock" aria-label="Hallway" data-testid="hallway-dock">
+  <div class="hallway-modes" role="group" aria-label="View">
+    <button type="button" aria-pressed="true" data-action="overview" data-testid="mode-overview">Look around</button>
+    <button type="button" aria-pressed="false" data-action="ride" data-testid="mode-ride">Ride a door</button>
+  </div>
+  <button type="button" class="hallway-find" data-action="find" data-testid="find-door" aria-haspopup="dialog">Find a door</button>
+  <button type="button" class="hallway-sound" data-action="sound" data-testid="sound-toggle" aria-pressed="true" aria-label="Music" hidden><span aria-hidden="true">♪</span><span class="hallway-sound-label" aria-hidden="true">Music</span></button>
+</nav>
+
+<dialog class="hallway-dialog" id="find-dialog" data-testid="find-dialog" aria-labelledby="find-title">
+  <form method="dialog" class="hallway-dialog-close-form">
+    <button class="hallway-dialog-close" type="submit" aria-label="Close">×</button>
+  </form>
+  <h2 id="find-title">Find a door</h2>
+  <input class="hallway-search" type="search" placeholder="Search by name" aria-label="Search doors" autocomplete="off" data-testid="find-search">
+  {% include "_door_list.html" %}
+</dialog>
+
+<section class="hallway-fallback" id="hallway-fallback" data-testid="hallway-fallback" hidden>
+  <h2>Every door in the hallway</h2>
+  <p>This browser can't show the 3D hallway, but every room is still a click away.</p>
+  {% include "_door_list.html" %}
+</section>
+
+<div class="hallway-fade" id="hallway-fade" data-testid="hallway-fade" aria-hidden="true"></div>
+<noscript>
+  <section class="hallway-fallback">
+    <h2>Every door in the hallway</h2>
+    {% include "_door_list.html" %}
+  </section>
+</noscript>
+{% endblock %}
+{% block scripts %}
+<script type="module" src="{{ url_for('static', filename='js/pages/hallway.js') }}"></script>
+{% endblock %}

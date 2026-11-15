@@ -54,6 +54,7 @@ class RoomPage {
     this._editSnapshot = null;
     this._editBusy = false;
     this.leaveUrl = root.querySelector('[data-testid="back-link"]').getAttribute('href');
+    this._continueArrival();
 
     const { catalogUrl, roomUrl, modelsUrl } = this.stage.dataset;
     this.urls = { catalogUrl, roomUrl, modelsUrl };
@@ -113,6 +114,18 @@ class RoomPage {
     this.hint.textContent = coarse
       ? 'Drag to look around · Pinch to zoom · Tap things'
       : 'Drag to look around · Scroll to zoom · Click things';
+  }
+
+  /** Coming through a door from the hallway: start in its warm light, then fade in. */
+  _continueArrival() {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('from') !== 'hallway') return;
+    this.loading.classList.add('is-arrival');
+    this.loadingText.textContent = 'Stepping inside…';
+    // A reload shouldn't replay the arrival.
+    params.delete('from');
+    const query = params.toString();
+    window.history.replaceState(null, '', `${window.location.pathname}${query ? `?${query}` : ''}${window.location.hash}`);
   }
 
   async mount() {

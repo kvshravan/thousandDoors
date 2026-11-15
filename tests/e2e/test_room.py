@@ -186,8 +186,8 @@ def test_back_link_leaves_room_cleanly(page: Page, errors, base_url):
 
     page.get_by_test_id("back-link").click()
 
-    expect(page).to_have_url(f"{base_url}/")
-    expect(page.get_by_test_id("enter-room")).to_be_visible()
+    expect(page).to_have_url(f"{base_url}/hallway")
+    expect(page.get_by_test_id("find-door")).to_be_visible()
     assert errors == []
 
 
