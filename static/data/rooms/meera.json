@@ -245,8 +245,10 @@
         "z": 1.0
       },
       "customData": {
-        "imageUrl": "/static/images/demo/sunset-hills.svg",
-        "caption": "A favourite place"
+        "width": 0.8,
+        "height": 1.0,
+        "imageUrl": "/static/images/demo/people/meera.svg",
+        "caption": "Me, in the good cardigan"
       }
     },
     {
@@ -401,8 +403,22 @@
         "z": 1.0
       },
       "customData": {
-        "title": "My shelf",
-        "items": [],
+        "title": "Carnatic corner",
+        "items": [
+          {
+            "type": "record",
+            "title": "Morning raga practice",
+            "by": "Amma's tapes"
+          },
+          {
+            "type": "record",
+            "title": "Violin, slow and sweet"
+          },
+          {
+            "type": "book",
+            "title": "Ragas for Beginners"
+          }
+        ],
         "color": "woodDark"
       }
     },
@@ -425,7 +441,20 @@
         "z": 1.0
       },
       "customData": {
-        "entries": []
+        "entries": [
+          {
+            "author": "Priya",
+            "message": "Rain twins! Mumbai says hi."
+          },
+          {
+            "author": "Kabir",
+            "message": "Recommend me a book. Short ones only."
+          },
+          {
+            "author": "Ananya",
+            "message": "Your tea collection beats my plant collection? Never."
+          }
+        ]
       }
     },
     {
@@ -447,7 +476,16 @@
         "z": 1.0
       },
       "customData": {
-        "gifts": []
+        "gifts": [
+          {
+            "author": "Kabir",
+            "gift": "tea"
+          },
+          {
+            "author": "Priya",
+            "gift": "flower"
+          }
+        ]
       }
     },
     {
@@ -512,6 +550,11 @@
             69,
             65
           ]
+        },
+        "song": {
+          "provider": "spotify",
+          "kind": "playlist",
+          "id": "37i9dQZF1DX4sWSpwq3LiO"
         }
       }
     },
@@ -535,8 +578,14 @@
       },
       "customData": {
         "media": {
-          "title": "Rain on a London window",
-          "kind": "Slow TV"
+          "title": "Rain on a window",
+          "kind": "Ambience",
+          "description": "For when London isn't raining enough."
+        },
+        "video": {
+          "provider": "youtube",
+          "kind": "video",
+          "id": "mPZkdNFkNps"
         }
       }
     },
@@ -630,6 +679,378 @@
         "light": {
           "color": "candle"
         }
+      }
+    },
+    {
+      "id": "photo-rain",
+      "catalogId": "picture-frame",
+      "position": {
+        "x": -4.97,
+        "y": 2.3,
+        "z": 1.0
+      },
+      "rotation": {
+        "x": 0,
+        "y": 1.5708,
+        "z": 0
+      },
+      "scale": {
+        "x": 1.0,
+        "y": 1.0,
+        "z": 1.0
+      },
+      "customData": {
+        "width": 0.9,
+        "height": 0.68,
+        "imageUrl": "/static/images/demo/people/meera-londonrain.svg",
+        "caption": "The view from my window, most days"
+      }
+    },
+    {
+      "id": "photo-kolam",
+      "catalogId": "picture-frame",
+      "position": {
+        "x": 3.55,
+        "y": 2.45,
+        "z": -4.97
+      },
+      "rotation": {
+        "x": 0,
+        "y": 0.0,
+        "z": 0
+      },
+      "scale": {
+        "x": 1.0,
+        "y": 1.0,
+        "z": 1.0
+      },
+      "customData": {
+        "width": 1.0,
+        "height": 0.75,
+        "imageUrl": "/static/images/demo/people/meera-kolam.svg",
+        "caption": "Amma's kolam, from a photo"
+      }
+    },
+    {
+      "id": "photo-books",
+      "catalogId": "picture-frame",
+      "position": {
+        "x": -3.4,
+        "y": 2.3,
+        "z": -4.97
+      },
+      "rotation": {
+        "x": 0,
+        "y": 0.0,
+        "z": 0
+      },
+      "scale": {
+        "x": 1.0,
+        "y": 1.0,
+        "z": 1.0
+      },
+      "customData": {
+        "width": 0.8,
+        "height": 0.6,
+        "imageUrl": "/static/images/demo/people/meera-books.svg",
+        "caption": "The current stack"
+      }
+    },
+    {
+      "id": "photo-string",
+      "catalogId": "photo-string",
+      "position": {
+        "x": 4.97,
+        "y": 2.75,
+        "z": 3.0
+      },
+      "rotation": {
+        "x": 0,
+        "y": -1.5708,
+        "z": 0
+      },
+      "scale": {
+        "x": 1.0,
+        "y": 1.0,
+        "z": 1.0
+      },
+      "customData": {
+        "label": "Home, Chennai",
+        "photos": [
+          "/static/images/demo/people/meera-kolam.svg",
+          "/static/images/demo/people/meera-books.svg",
+          "/static/images/demo/people/meera-londonrain.svg",
+          "/static/images/demo/people/meera.svg"
+        ]
+      }
+    },
+    {
+      "id": "book-shelf",
+      "catalogId": "bookcase-open",
+      "position": {
+        "x": -4.72,
+        "y": 0,
+        "z": 2.0
+      },
+      "rotation": {
+        "x": 0,
+        "y": 1.5708,
+        "z": 0
+      },
+      "scale": {
+        "x": 1.0,
+        "y": 1.0,
+        "z": 1.0
+      },
+      "customData": {
+        "title": "Reading now",
+        "items": [
+          {
+            "type": "book",
+            "title": "The Lighthouse Year",
+            "by": "half done"
+          },
+          {
+            "type": "book",
+            "title": "Monsoon Letters",
+            "by": "a re-read"
+          },
+          {
+            "type": "book",
+            "title": "A Small Kitchen in Madras",
+            "by": "for when I'm homesick"
+          }
+        ]
+      }
+    },
+    {
+      "id": "book-shelf-books-0",
+      "catalogId": "books",
+      "position": {
+        "x": -4.74,
+        "y": 0.26,
+        "z": 1.8
+      },
+      "rotation": {
+        "x": 0,
+        "y": 1.5708,
+        "z": 0
+      },
+      "scale": {
+        "x": 1.0,
+        "y": 1.0,
+        "z": 1.0
+      }
+    },
+    {
+      "id": "book-shelf-books-1",
+      "catalogId": "books",
+      "position": {
+        "x": -4.74,
+        "y": 1.22,
+        "z": 2.2
+      },
+      "rotation": {
+        "x": 0,
+        "y": 1.5708,
+        "z": 0
+      },
+      "scale": {
+        "x": 1.0,
+        "y": 1.0,
+        "z": 1.0
+      }
+    },
+    {
+      "id": "tea-shelf",
+      "catalogId": "bookcase-open",
+      "position": {
+        "x": -4.72,
+        "y": 0,
+        "z": 2.85
+      },
+      "rotation": {
+        "x": 0,
+        "y": 1.5708,
+        "z": 0
+      },
+      "scale": {
+        "x": 1.0,
+        "y": 1.0,
+        "z": 1.0
+      },
+      "customData": {
+        "title": "Tea tins",
+        "items": [
+          {
+            "type": "collectible",
+            "title": "Nilgiri, from home"
+          },
+          {
+            "type": "collectible",
+            "title": "Earl Grey, the London one"
+          },
+          {
+            "type": "collectible",
+            "title": "Masala chai mix",
+            "by": "Amma's recipe"
+          }
+        ]
+      }
+    },
+    {
+      "id": "tea-shelf-books-0",
+      "catalogId": "books",
+      "position": {
+        "x": -4.74,
+        "y": 0.74,
+        "z": 2.65
+      },
+      "rotation": {
+        "x": 0,
+        "y": 1.5708,
+        "z": 0
+      },
+      "scale": {
+        "x": 1.0,
+        "y": 1.0,
+        "z": 1.0
+      }
+    },
+    {
+      "id": "relax-chair",
+      "catalogId": "lounge-chair-relax",
+      "position": {
+        "x": 4.0,
+        "y": 0,
+        "z": 2.6
+      },
+      "rotation": {
+        "x": 0,
+        "y": -2.2,
+        "z": 0
+      },
+      "scale": {
+        "x": 1.0,
+        "y": 1.0,
+        "z": 1.0
+      },
+      "customData": {
+        "color": "navy"
+      }
+    },
+    {
+      "id": "reading-lamp",
+      "catalogId": "lamp-round-floor",
+      "position": {
+        "x": 4.6,
+        "y": 0,
+        "z": 1.2
+      },
+      "rotation": {
+        "x": 0,
+        "y": 0.0,
+        "z": 0
+      },
+      "scale": {
+        "x": 1.0,
+        "y": 1.0,
+        "z": 1.0
+      }
+    },
+    {
+      "id": "violin",
+      "catalogId": "violin",
+      "position": {
+        "x": 1.6,
+        "y": 0.46,
+        "z": -0.1
+      },
+      "rotation": {
+        "x": 0,
+        "y": 0.5,
+        "z": 0
+      },
+      "scale": {
+        "x": 1.0,
+        "y": 1.0,
+        "z": 1.0
+      }
+    },
+    {
+      "id": "candles",
+      "catalogId": "candles",
+      "position": {
+        "x": 2.3,
+        "y": 0.46,
+        "z": -0.1
+      },
+      "rotation": {
+        "x": 0,
+        "y": 0.0,
+        "z": 0
+      },
+      "scale": {
+        "x": 1.0,
+        "y": 1.0,
+        "z": 1.0
+      }
+    },
+    {
+      "id": "desk-plant",
+      "catalogId": "plant-small-2",
+      "position": {
+        "x": -0.7,
+        "y": 0.77,
+        "z": -4.65
+      },
+      "rotation": {
+        "x": 0,
+        "y": 0.0,
+        "z": 0
+      },
+      "scale": {
+        "x": 1.0,
+        "y": 1.0,
+        "z": 1.0
+      }
+    },
+    {
+      "id": "bedside-books",
+      "catalogId": "books",
+      "position": {
+        "x": -4.75,
+        "y": 0.77,
+        "z": -1.65
+      },
+      "rotation": {
+        "x": 0,
+        "y": 1.5708,
+        "z": 0
+      },
+      "scale": {
+        "x": 1.0,
+        "y": 1.0,
+        "z": 1.0
+      }
+    },
+    {
+      "id": "lantern",
+      "catalogId": "paper-lantern",
+      "position": {
+        "x": 3.6,
+        "y": 4,
+        "z": 2.6
+      },
+      "rotation": {
+        "x": 0,
+        "y": 0.0,
+        "z": 0
+      },
+      "scale": {
+        "x": 1.0,
+        "y": 1.0,
+        "z": 1.0
       }
     }
   ]

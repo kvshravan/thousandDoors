@@ -167,13 +167,21 @@ def test_finding_a_door_with_the_keyboard(page: Page, errors):
     assert errors == []
 
 
-def test_music_is_on_by_default_and_turning_it_off_is_remembered(page: Page, errors):
+def test_music_is_off_by_default_and_the_choice_is_remembered(page: Page, errors):
     open_hallway(page)
     toggle = page.get_by_test_id("sound-toggle")
-    expect(toggle).to_have_attribute("aria-pressed", "true")
-    # Browsers wait for a click or key press before making a sound.
+    expect(toggle).to_have_attribute("aria-pressed", "false")
+    page.get_by_test_id("mode-ride").click()
     assert hallway(page)["music"]["playing"] is False
 
+    toggle.click()
+    expect(toggle).to_have_attribute("aria-pressed", "true")
+    assert page.evaluate("() => localStorage.getItem('doors:hallway-music')") == "on"
+
+    # Next visit: it stays on, starting with the first click (browsers wait for one).
+    open_hallway(page)
+    expect(toggle).to_have_attribute("aria-pressed", "true")
+    assert hallway(page)["music"]["playing"] is False
     page.get_by_test_id("mode-ride").click()
     page.wait_for_function("() => window.__hallway.info().music.context === 'running'")
     assert hallway(page)["music"]["mode"] == "ride"

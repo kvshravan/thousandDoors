@@ -245,8 +245,10 @@
         "z": 1.0
       },
       "customData": {
-        "imageUrl": "/static/images/demo/sunset-hills.svg",
-        "caption": "A favourite place"
+        "width": 0.8,
+        "height": 1.0,
+        "imageUrl": "/static/images/demo/people/rohan.svg",
+        "caption": "Me, after a record attempt (it wasn't)"
       }
     },
     {
@@ -404,8 +406,27 @@
         "z": 1.0
       },
       "customData": {
-        "title": "My shelf",
-        "items": []
+        "title": "Game shelf",
+        "items": [
+          {
+            "type": "game",
+            "title": "Pixel Knight DX",
+            "by": "any% 41:07"
+          },
+          {
+            "type": "game",
+            "title": "Turbo Kart Rumble"
+          },
+          {
+            "type": "game",
+            "title": "Neon Drift",
+            "by": "co-op"
+          },
+          {
+            "type": "collectible",
+            "title": "Bronze speedrun medal"
+          }
+        ]
       }
     },
     {
@@ -427,7 +448,20 @@
         "z": 1.0
       },
       "customData": {
-        "entries": []
+        "entries": [
+          {
+            "author": "Aarav",
+            "message": "Beat your PB. Kidding. Nobody can."
+          },
+          {
+            "author": "Jun",
+            "message": "Synthwave night at mine on Friday?"
+          },
+          {
+            "author": "Ananya",
+            "message": "Too much RGB. Needs a plant."
+          }
+        ]
       }
     },
     {
@@ -449,7 +483,16 @@
         "z": 1.0
       },
       "customData": {
-        "gifts": []
+        "gifts": [
+          {
+            "author": "Jun",
+            "gift": "star"
+          },
+          {
+            "author": "Ananya",
+            "gift": "cookie"
+          }
+        ]
       }
     },
     {
@@ -514,6 +557,11 @@
             69,
             65
           ]
+        },
+        "song": {
+          "provider": "youtube",
+          "kind": "video",
+          "id": "4xDzrJKXOOY"
         }
       }
     },
@@ -537,8 +585,14 @@
       },
       "customData": {
         "media": {
-          "title": "Speedrun replay: any%",
-          "kind": "Stream"
+          "title": "Faded",
+          "kind": "Music video",
+          "description": "The warm-up song before every stream."
+        },
+        "video": {
+          "provider": "youtube",
+          "kind": "video",
+          "id": "60ItHLz5WEA"
         }
       }
     },
@@ -613,6 +667,393 @@
       },
       "customData": {
         "color": "plum"
+      }
+    },
+    {
+      "id": "poster-records",
+      "catalogId": "poster",
+      "position": {
+        "x": -4.97,
+        "y": 2.25,
+        "z": -3.0
+      },
+      "rotation": {
+        "x": 0,
+        "y": 1.5708,
+        "z": 0
+      },
+      "scale": {
+        "x": 1.0,
+        "y": 1.0,
+        "z": 1.0
+      },
+      "customData": {
+        "title": "Personal bests",
+        "subtitle": "Speedruns",
+        "motif": "film",
+        "accent": "navy",
+        "items": [
+          "Pixel Knight 41:07",
+          "Turbo Kart 12:58",
+          "Neon Drift 1:02:11"
+        ]
+      }
+    },
+    {
+      "id": "chest",
+      "catalogId": "secret-chest",
+      "position": {
+        "x": -4.5,
+        "y": 0,
+        "z": 2.1
+      },
+      "rotation": {
+        "x": 0,
+        "y": 1.5708,
+        "z": 0
+      },
+      "scale": {
+        "x": 1.0,
+        "y": 1.0,
+        "z": 1.0
+      },
+      "customData": {
+        "secret": {
+          "title": "Route notes",
+          "message": "Friends only. The skips I haven't shown on stream yet.",
+          "items": [
+            "Wall clip in world 3",
+            "Boss skip (needs frame-perfect jump)"
+          ]
+        }
+      }
+    },
+    {
+      "id": "photo-synth",
+      "catalogId": "picture-frame",
+      "position": {
+        "x": -4.97,
+        "y": 2.3,
+        "z": 1.0
+      },
+      "rotation": {
+        "x": 0,
+        "y": 1.5708,
+        "z": 0
+      },
+      "scale": {
+        "x": 1.0,
+        "y": 1.0,
+        "z": 1.0
+      },
+      "customData": {
+        "width": 0.9,
+        "height": 0.68,
+        "imageUrl": "/static/images/demo/people/rohan-synthsun.svg",
+        "caption": "Stream overlay, v3"
+      }
+    },
+    {
+      "id": "photo-controller",
+      "catalogId": "picture-frame",
+      "position": {
+        "x": 3.55,
+        "y": 2.45,
+        "z": -4.97
+      },
+      "rotation": {
+        "x": 0,
+        "y": 0.0,
+        "z": 0
+      },
+      "scale": {
+        "x": 1.0,
+        "y": 1.0,
+        "z": 1.0
+      },
+      "customData": {
+        "width": 1.0,
+        "height": 0.75,
+        "imageUrl": "/static/images/demo/people/rohan-controller.svg",
+        "caption": "The lucky pad"
+      }
+    },
+    {
+      "id": "photo-pixel",
+      "catalogId": "picture-frame",
+      "position": {
+        "x": -3.4,
+        "y": 2.3,
+        "z": -4.97
+      },
+      "rotation": {
+        "x": 0,
+        "y": 0.0,
+        "z": 0
+      },
+      "scale": {
+        "x": 1.0,
+        "y": 1.0,
+        "z": 1.0
+      },
+      "customData": {
+        "width": 0.8,
+        "height": 0.6,
+        "imageUrl": "/static/images/demo/people/rohan-pixel.svg",
+        "caption": "My first pixel art"
+      }
+    },
+    {
+      "id": "photo-string",
+      "catalogId": "photo-string",
+      "position": {
+        "x": 4.97,
+        "y": 2.75,
+        "z": 3.0
+      },
+      "rotation": {
+        "x": 0,
+        "y": -1.5708,
+        "z": 0
+      },
+      "scale": {
+        "x": 1.0,
+        "y": 1.0,
+        "z": 1.0
+      },
+      "customData": {
+        "label": "LAN party",
+        "photos": [
+          "/static/images/demo/people/rohan-controller.svg",
+          "/static/images/demo/people/rohan-synthsun.svg",
+          "/static/images/demo/people/rohan-pixel.svg",
+          "/static/images/demo/people/rohan.svg"
+        ]
+      }
+    },
+    {
+      "id": "led-strip",
+      "catalogId": "led-strip",
+      "position": {
+        "x": 1.2,
+        "y": 3.5,
+        "z": -4.97
+      },
+      "rotation": {
+        "x": 0,
+        "y": 0.0,
+        "z": 0
+      },
+      "scale": {
+        "x": 1.0,
+        "y": 1.0,
+        "z": 1.0
+      },
+      "customData": {
+        "light": {
+          "color": "blue",
+          "effect": "pulse"
+        }
+      }
+    },
+    {
+      "id": "neon-run",
+      "catalogId": "neon-sign",
+      "position": {
+        "x": 2.8,
+        "y": 2.7,
+        "z": 4.97
+      },
+      "rotation": {
+        "x": 0,
+        "y": 3.1416,
+        "z": 0
+      },
+      "scale": {
+        "x": 1.0,
+        "y": 1.0,
+        "z": 1.0
+      },
+      "customData": {
+        "text": "one more run",
+        "light": {
+          "color": "teal"
+        }
+      }
+    },
+    {
+      "id": "arcade",
+      "catalogId": "arcade",
+      "position": {
+        "x": 4.45,
+        "y": 0,
+        "z": 2.4
+      },
+      "rotation": {
+        "x": 0,
+        "y": -1.5708,
+        "z": 0
+      },
+      "scale": {
+        "x": 1.0,
+        "y": 1.0,
+        "z": 1.0
+      },
+      "customData": {
+        "color": "plum"
+      }
+    },
+    {
+      "id": "arcade-2",
+      "catalogId": "arcade",
+      "position": {
+        "x": 4.45,
+        "y": 0,
+        "z": 3.4
+      },
+      "rotation": {
+        "x": 0,
+        "y": -1.5708,
+        "z": 0
+      },
+      "scale": {
+        "x": 1.0,
+        "y": 1.0,
+        "z": 1.0
+      },
+      "customData": {
+        "color": "teal"
+      }
+    },
+    {
+      "id": "amp",
+      "catalogId": "amp",
+      "position": {
+        "x": 1.5,
+        "y": 0,
+        "z": -4.75
+      },
+      "rotation": {
+        "x": 0,
+        "y": 0.0,
+        "z": 0
+      },
+      "scale": {
+        "x": 1.0,
+        "y": 1.0,
+        "z": 1.0
+      }
+    },
+    {
+      "id": "bean-bag",
+      "catalogId": "bean-bag",
+      "position": {
+        "x": 3.6,
+        "y": 0,
+        "z": 0.0
+      },
+      "rotation": {
+        "x": 0,
+        "y": -2.2,
+        "z": 0
+      },
+      "scale": {
+        "x": 1.0,
+        "y": 1.0,
+        "z": 1.0
+      },
+      "customData": {
+        "color": "plum"
+      }
+    },
+    {
+      "id": "bean-bag-2",
+      "catalogId": "bean-bag",
+      "position": {
+        "x": -1.9,
+        "y": 0,
+        "z": 2.6
+      },
+      "rotation": {
+        "x": 0,
+        "y": 2.6,
+        "z": 0
+      },
+      "scale": {
+        "x": 1.0,
+        "y": 1.0,
+        "z": 1.0
+      },
+      "customData": {
+        "color": "teal"
+      }
+    },
+    {
+      "id": "console",
+      "catalogId": "game-console",
+      "position": {
+        "x": 1.5,
+        "y": 0.46,
+        "z": -0.1
+      },
+      "rotation": {
+        "x": 0,
+        "y": 0,
+        "z": 0
+      },
+      "scale": {
+        "x": 1.0,
+        "y": 1.0,
+        "z": 1.0
+      },
+      "customData": {
+        "color": "charcoal"
+      }
+    },
+    {
+      "id": "headphones",
+      "catalogId": "headphones",
+      "position": {
+        "x": -0.75,
+        "y": 0.77,
+        "z": -4.6
+      },
+      "rotation": {
+        "x": 0,
+        "y": 0.3,
+        "z": 0
+      },
+      "scale": {
+        "x": 1.0,
+        "y": 1.0,
+        "z": 1.0
+      },
+      "customData": {
+        "color": "plum"
+      }
+    },
+    {
+      "id": "lava-lamp",
+      "catalogId": "lava-lamp",
+      "position": {
+        "x": -4.75,
+        "y": 0.77,
+        "z": -1.65
+      },
+      "rotation": {
+        "x": 0,
+        "y": 0,
+        "z": 0
+      },
+      "scale": {
+        "x": 1.0,
+        "y": 1.0,
+        "z": 1.0
+      },
+      "customData": {
+        "light": {
+          "color": "purple"
+        }
       }
     }
   ]

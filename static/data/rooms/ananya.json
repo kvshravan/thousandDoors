@@ -245,8 +245,10 @@
         "z": 1.0
       },
       "customData": {
-        "imageUrl": "/static/images/demo/sunset-hills.svg",
-        "caption": "A favourite place"
+        "width": 0.8,
+        "height": 1.0,
+        "imageUrl": "/static/images/demo/people/ananya.svg",
+        "caption": "Me and 31 cuttings"
       }
     },
     {
@@ -404,8 +406,22 @@
         "z": 1.0
       },
       "customData": {
-        "title": "My shelf",
-        "items": []
+        "title": "Plant library",
+        "items": [
+          {
+            "type": "book",
+            "title": "The Patient Gardener"
+          },
+          {
+            "type": "book",
+            "title": "Soil, Simply"
+          },
+          {
+            "type": "collectible",
+            "title": "Propagation jar No. 1",
+            "by": "a pothos lives here"
+          }
+        ]
       }
     },
     {
@@ -427,7 +443,20 @@
         "z": 1.0
       },
       "customData": {
-        "entries": []
+        "entries": [
+          {
+            "author": "Mira",
+            "message": "Plant swap soon? I have a pothos with your name on it."
+          },
+          {
+            "author": "Jun",
+            "message": "Your room smells like rain. How?"
+          },
+          {
+            "author": "Kabir",
+            "message": "Kept your cutting alive. Three weeks!"
+          }
+        ]
       }
     },
     {
@@ -449,7 +478,16 @@
         "z": 1.0
       },
       "customData": {
-        "gifts": []
+        "gifts": [
+          {
+            "author": "Mira",
+            "gift": "flower"
+          },
+          {
+            "author": "Aarav",
+            "gift": "flower"
+          }
+        ]
       }
     },
     {
@@ -514,6 +552,11 @@
             69,
             65
           ]
+        },
+        "song": {
+          "provider": "spotify",
+          "kind": "playlist",
+          "id": "37i9dQZF1DWWQRwui0ExPn"
         }
       }
     },
@@ -537,8 +580,14 @@
       },
       "customData": {
         "media": {
-          "title": "A day in a greenhouse",
-          "kind": "Documentary"
+          "title": "Forest Sounds",
+          "kind": "Ambience",
+          "description": "Birdsong for the plants. They like it, probably."
+        },
+        "video": {
+          "provider": "youtube",
+          "kind": "video",
+          "id": "xNN7iTA57jM"
         }
       }
     },
@@ -593,6 +642,50 @@
       }
     },
     {
+      "id": "armchair",
+      "catalogId": "lounge-chair",
+      "position": {
+        "x": -0.6,
+        "y": 0,
+        "z": 0.9
+      },
+      "rotation": {
+        "x": 0,
+        "y": 2.5416,
+        "z": 0
+      },
+      "scale": {
+        "x": 1.0,
+        "y": 1.0,
+        "z": 1.0
+      }
+    },
+    {
+      "id": "fairy-lights",
+      "catalogId": "fairy-lights",
+      "position": {
+        "x": -4.97,
+        "y": 3.1,
+        "z": 0.2
+      },
+      "rotation": {
+        "x": 0,
+        "y": 1.5708,
+        "z": 0
+      },
+      "scale": {
+        "x": 1,
+        "y": 1,
+        "z": 1
+      },
+      "customData": {
+        "light": {
+          "color": "green",
+          "effect": "twinkle"
+        }
+      }
+    },
+    {
       "id": "photo-string",
       "catalogId": "photo-string",
       "position": {
@@ -606,29 +699,432 @@
         "z": 0
       },
       "scale": {
-        "x": 1,
-        "y": 1,
-        "z": 1
+        "x": 1.0,
+        "y": 1.0,
+        "z": 1.0
       },
       "customData": {
-        "label": "Pottery",
+        "label": "Pottery and plants",
         "photos": [
-          "/static/images/demo/blocks.svg",
-          "/static/images/demo/sunset-hills.svg"
+          "/static/images/demo/people/ananya-pottery.svg",
+          "/static/images/demo/people/ananya-monstera.svg",
+          "/static/images/demo/people/ananya-run.svg",
+          "/static/images/demo/people/ananya.svg"
         ]
       }
     },
     {
-      "id": "armchair",
-      "catalogId": "lounge-chair",
+      "id": "photo-monstera",
+      "catalogId": "picture-frame",
       "position": {
-        "x": -0.6,
-        "y": 0,
-        "z": 0.9
+        "x": -4.97,
+        "y": 2.3,
+        "z": 1.5
       },
       "rotation": {
         "x": 0,
-        "y": 2.5416,
+        "y": 1.5708,
+        "z": 0
+      },
+      "scale": {
+        "x": 1.0,
+        "y": 1.0,
+        "z": 1.0
+      },
+      "customData": {
+        "width": 0.9,
+        "height": 0.68,
+        "imageUrl": "/static/images/demo/people/ananya-monstera.svg",
+        "caption": "The monstera's new leaf!"
+      }
+    },
+    {
+      "id": "photo-run",
+      "catalogId": "picture-frame",
+      "position": {
+        "x": 3.55,
+        "y": 2.45,
+        "z": -4.97
+      },
+      "rotation": {
+        "x": 0,
+        "y": 0.0,
+        "z": 0
+      },
+      "scale": {
+        "x": 1.0,
+        "y": 1.0,
+        "z": 1.0
+      },
+      "customData": {
+        "width": 1.0,
+        "height": 0.75,
+        "imageUrl": "/static/images/demo/people/ananya-run.svg",
+        "caption": "Sunrise 10k"
+      }
+    },
+    {
+      "id": "photo-pottery",
+      "catalogId": "picture-frame",
+      "position": {
+        "x": -3.4,
+        "y": 2.3,
+        "z": -4.97
+      },
+      "rotation": {
+        "x": 0,
+        "y": 0.0,
+        "z": 0
+      },
+      "scale": {
+        "x": 1.0,
+        "y": 1.0,
+        "z": 1.0
+      },
+      "customData": {
+        "width": 0.8,
+        "height": 0.6,
+        "imageUrl": "/static/images/demo/people/ananya-pottery.svg",
+        "caption": "Wheel-thrown, slightly wonky"
+      }
+    },
+    {
+      "id": "pottery-shelf",
+      "catalogId": "bookcase-open",
+      "position": {
+        "x": -4.72,
+        "y": 0,
+        "z": 2.6
+      },
+      "rotation": {
+        "x": 0,
+        "y": 1.5708,
+        "z": 0
+      },
+      "scale": {
+        "x": 1.0,
+        "y": 1.0,
+        "z": 1.0
+      },
+      "customData": {
+        "title": "Pottery shelf",
+        "items": [
+          {
+            "type": "collectible",
+            "title": "Terracotta pot",
+            "by": "my first that didn't crack"
+          },
+          {
+            "type": "collectible",
+            "title": "Celadon vase"
+          },
+          {
+            "type": "collectible",
+            "title": "Blue bowl",
+            "by": "for the tulsi"
+          }
+        ]
+      }
+    },
+    {
+      "id": "pottery-shelf-books-0",
+      "catalogId": "books",
+      "position": {
+        "x": -4.74,
+        "y": 0.26,
+        "z": 2.4
+      },
+      "rotation": {
+        "x": 0,
+        "y": 1.5708,
+        "z": 0
+      },
+      "scale": {
+        "x": 1.0,
+        "y": 1.0,
+        "z": 1.0
+      }
+    },
+    {
+      "id": "shelf-plant",
+      "catalogId": "plant-small-1",
+      "position": {
+        "x": -4.74,
+        "y": 1.22,
+        "z": 2.6
+      },
+      "rotation": {
+        "x": 0,
+        "y": 0.0,
+        "z": 0
+      },
+      "scale": {
+        "x": 1.0,
+        "y": 1.0,
+        "z": 1.0
+      }
+    },
+    {
+      "id": "shelf-plant-top",
+      "catalogId": "plant-small-2",
+      "position": {
+        "x": -4.74,
+        "y": 1.76,
+        "z": 2.6
+      },
+      "rotation": {
+        "x": 0,
+        "y": 0.0,
+        "z": 0
+      },
+      "scale": {
+        "x": 1.0,
+        "y": 1.0,
+        "z": 1.0
+      }
+    },
+    {
+      "id": "plant-left-1",
+      "catalogId": "potted-plant",
+      "position": {
+        "x": -4.6,
+        "y": 0,
+        "z": 1.45
+      },
+      "rotation": {
+        "x": 0,
+        "y": 0.0,
+        "z": 0
+      },
+      "scale": {
+        "x": 1.0,
+        "y": 1.0,
+        "z": 1.0
+      }
+    },
+    {
+      "id": "plant-left-2",
+      "catalogId": "potted-plant",
+      "position": {
+        "x": -4.6,
+        "y": 0,
+        "z": 3.7
+      },
+      "rotation": {
+        "x": 0,
+        "y": 0,
+        "z": 0
+      },
+      "scale": {
+        "x": 1.15,
+        "y": 1.15,
+        "z": 1.15
+      }
+    },
+    {
+      "id": "plant-right-1",
+      "catalogId": "potted-plant",
+      "position": {
+        "x": 4.6,
+        "y": 0,
+        "z": 0.3
+      },
+      "rotation": {
+        "x": 0,
+        "y": 0.0,
+        "z": 0
+      },
+      "scale": {
+        "x": 1.0,
+        "y": 1.0,
+        "z": 1.0
+      }
+    },
+    {
+      "id": "plant-right-2",
+      "catalogId": "potted-plant",
+      "position": {
+        "x": 4.6,
+        "y": 0,
+        "z": 1.9
+      },
+      "rotation": {
+        "x": 0,
+        "y": 0,
+        "z": 0
+      },
+      "scale": {
+        "x": 1.2,
+        "y": 1.2,
+        "z": 1.2
+      }
+    },
+    {
+      "id": "plant-window",
+      "catalogId": "potted-plant",
+      "position": {
+        "x": 0.1,
+        "y": 0,
+        "z": -4.5
+      },
+      "rotation": {
+        "x": 0,
+        "y": 0.0,
+        "z": 0
+      },
+      "scale": {
+        "x": 1.0,
+        "y": 1.0,
+        "z": 1.0
+      }
+    },
+    {
+      "id": "plant-front",
+      "catalogId": "potted-plant",
+      "position": {
+        "x": 3.2,
+        "y": 0,
+        "z": 4.5
+      },
+      "rotation": {
+        "x": 0,
+        "y": 0.0,
+        "z": 0
+      },
+      "scale": {
+        "x": 1.0,
+        "y": 1.0,
+        "z": 1.0
+      }
+    },
+    {
+      "id": "yoga-mat",
+      "catalogId": "yoga-mat",
+      "position": {
+        "x": 3.6,
+        "y": 0,
+        "z": 2.6
+      },
+      "rotation": {
+        "x": 0,
+        "y": 0,
+        "z": 0
+      },
+      "scale": {
+        "x": 1.0,
+        "y": 1.0,
+        "z": 1.0
+      },
+      "customData": {
+        "color": "sage"
+      }
+    },
+    {
+      "id": "cactus",
+      "catalogId": "cactus",
+      "position": {
+        "x": -4.75,
+        "y": 0.77,
+        "z": -1.65
+      },
+      "rotation": {
+        "x": 0,
+        "y": 0.0,
+        "z": 0
+      },
+      "scale": {
+        "x": 1.0,
+        "y": 1.0,
+        "z": 1.0
+      }
+    },
+    {
+      "id": "table-plant",
+      "catalogId": "plant-small-3",
+      "position": {
+        "x": 1.45,
+        "y": 0.46,
+        "z": -0.1
+      },
+      "rotation": {
+        "x": 0,
+        "y": 0.0,
+        "z": 0
+      },
+      "scale": {
+        "x": 1.0,
+        "y": 1.0,
+        "z": 1.0
+      }
+    },
+    {
+      "id": "table-plant-2",
+      "catalogId": "plant-small-2",
+      "position": {
+        "x": 2.2,
+        "y": 0.46,
+        "z": -0.1
+      },
+      "rotation": {
+        "x": 0,
+        "y": 0.0,
+        "z": 0
+      },
+      "scale": {
+        "x": 1.0,
+        "y": 1.0,
+        "z": 1.0
+      }
+    },
+    {
+      "id": "hanging-plant",
+      "catalogId": "hanging-plant",
+      "position": {
+        "x": -2.2,
+        "y": 4,
+        "z": 2.4
+      },
+      "rotation": {
+        "x": 0,
+        "y": 0.0,
+        "z": 0
+      },
+      "scale": {
+        "x": 1.0,
+        "y": 1.0,
+        "z": 1.0
+      }
+    },
+    {
+      "id": "hanging-plant-2",
+      "catalogId": "hanging-plant",
+      "position": {
+        "x": 2.8,
+        "y": 4,
+        "z": 2.8
+      },
+      "rotation": {
+        "x": 0,
+        "y": 0.0,
+        "z": 0
+      },
+      "scale": {
+        "x": 1.0,
+        "y": 1.0,
+        "z": 1.0
+      }
+    },
+    {
+      "id": "hanging-plant-3",
+      "catalogId": "hanging-plant",
+      "position": {
+        "x": -3.6,
+        "y": 4,
+        "z": -3.6
+      },
+      "rotation": {
+        "x": 0,
+        "y": 0.0,
         "z": 0
       },
       "scale": {

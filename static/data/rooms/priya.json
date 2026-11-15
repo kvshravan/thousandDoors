@@ -245,8 +245,10 @@
         "z": 1.0
       },
       "customData": {
-        "imageUrl": "/static/images/demo/sunset-hills.svg",
-        "caption": "A favourite place"
+        "width": 0.8,
+        "height": 1.0,
+        "imageUrl": "/static/images/demo/people/priya.svg",
+        "caption": "Self-portrait, in pencil"
       }
     },
     {
@@ -401,8 +403,27 @@
         "z": 1.0
       },
       "customData": {
-        "title": "My shelf",
-        "items": []
+        "title": "Art supplies",
+        "items": [
+          {
+            "type": "collectible",
+            "title": "Brush pens (27 of them)"
+          },
+          {
+            "type": "collectible",
+            "title": "Jar of sea glass",
+            "by": "Juhu, low tide"
+          },
+          {
+            "type": "collectible",
+            "title": "Local train ticket stubs"
+          },
+          {
+            "type": "book",
+            "title": "Faces on the 8:14",
+            "by": "my sketchbook"
+          }
+        ]
       }
     },
     {
@@ -424,7 +445,20 @@
         "z": 1.0
       },
       "customData": {
-        "entries": []
+        "entries": [
+          {
+            "author": "Aarav",
+            "message": "That sea face drawing belongs in a gallery."
+          },
+          {
+            "author": "Meera",
+            "message": "Miss the Mumbai rain. Send me a sketch of it?"
+          },
+          {
+            "author": "Kabir",
+            "message": "Vada pav on me next time."
+          }
+        ]
       }
     },
     {
@@ -446,7 +480,16 @@
         "z": 1.0
       },
       "customData": {
-        "gifts": []
+        "gifts": [
+          {
+            "author": "Aarav",
+            "gift": "cookie"
+          },
+          {
+            "author": "Meera",
+            "gift": "flower"
+          }
+        ]
       }
     },
     {
@@ -511,6 +554,11 @@
             69,
             65
           ]
+        },
+        "song": {
+          "provider": "youtube",
+          "kind": "video",
+          "id": "BddP6PYo2gs"
         }
       }
     },
@@ -534,37 +582,15 @@
       },
       "customData": {
         "media": {
-          "title": "Waves at Juhu, all evening",
-          "kind": "Slow TV"
+          "title": "Raataan Lambiyan",
+          "kind": "Music video",
+          "description": "Sketching to this on repeat."
+        },
+        "video": {
+          "provider": "youtube",
+          "kind": "video",
+          "id": "gvyUuxdRdR4"
         }
-      }
-    },
-    {
-      "id": "photo-string",
-      "catalogId": "photo-string",
-      "position": {
-        "x": 4.97,
-        "y": 2.55,
-        "z": 3.0
-      },
-      "rotation": {
-        "x": 0,
-        "y": -1.5708,
-        "z": 0
-      },
-      "scale": {
-        "x": 1,
-        "y": 1,
-        "z": 1
-      },
-      "customData": {
-        "label": "Beach days",
-        "photos": [
-          "/static/images/demo/sunset-hills.svg",
-          "/static/images/demo/blocks.svg",
-          "/static/images/demo/waves.svg",
-          "/static/images/demo/moonrise.svg"
-        ]
       }
     },
     {
@@ -629,6 +655,358 @@
         "x": 1.3,
         "y": 0,
         "z": 4.5
+      },
+      "rotation": {
+        "x": 0,
+        "y": 0.0,
+        "z": 0
+      },
+      "scale": {
+        "x": 1.0,
+        "y": 1.0,
+        "z": 1.0
+      }
+    },
+    {
+      "id": "photo-string",
+      "catalogId": "photo-string",
+      "position": {
+        "x": 4.97,
+        "y": 2.55,
+        "z": 3.0
+      },
+      "rotation": {
+        "x": 0,
+        "y": -1.5708,
+        "z": 0
+      },
+      "scale": {
+        "x": 1.0,
+        "y": 1.0,
+        "z": 1.0
+      },
+      "customData": {
+        "label": "Sea face diaries",
+        "photos": [
+          "/static/images/demo/people/priya-seaface.svg",
+          "/static/images/demo/people/priya-monsoon.svg",
+          "/static/images/demo/people/priya-sketchbook.svg",
+          "/static/images/demo/people/priya.svg"
+        ]
+      }
+    },
+    {
+      "id": "photo-seaface",
+      "catalogId": "picture-frame",
+      "position": {
+        "x": -4.97,
+        "y": 2.3,
+        "z": 1.5
+      },
+      "rotation": {
+        "x": 0,
+        "y": 1.5708,
+        "z": 0
+      },
+      "scale": {
+        "x": 1.0,
+        "y": 1.0,
+        "z": 1.0
+      },
+      "customData": {
+        "width": 1.1,
+        "height": 0.82,
+        "imageUrl": "/static/images/demo/people/priya-seaface.svg",
+        "caption": "Marine Drive at dusk"
+      }
+    },
+    {
+      "id": "photo-monsoon",
+      "catalogId": "picture-frame",
+      "position": {
+        "x": 3.55,
+        "y": 2.45,
+        "z": -4.97
+      },
+      "rotation": {
+        "x": 0,
+        "y": 0.0,
+        "z": 0
+      },
+      "scale": {
+        "x": 1.0,
+        "y": 1.0,
+        "z": 1.0
+      },
+      "customData": {
+        "width": 1.0,
+        "height": 0.75,
+        "imageUrl": "/static/images/demo/people/priya-monsoon.svg",
+        "caption": "First rain of June"
+      }
+    },
+    {
+      "id": "photo-sketch",
+      "catalogId": "picture-frame",
+      "position": {
+        "x": -3.4,
+        "y": 2.3,
+        "z": -4.97
+      },
+      "rotation": {
+        "x": 0,
+        "y": 0.0,
+        "z": 0
+      },
+      "scale": {
+        "x": 1.0,
+        "y": 1.0,
+        "z": 1.0
+      },
+      "customData": {
+        "width": 0.8,
+        "height": 0.6,
+        "imageUrl": "/static/images/demo/people/priya-sketchbook.svg",
+        "caption": "Sketchbook, page 40"
+      }
+    },
+    {
+      "id": "neon-draw",
+      "catalogId": "neon-sign",
+      "position": {
+        "x": 2.8,
+        "y": 2.7,
+        "z": 4.97
+      },
+      "rotation": {
+        "x": 0,
+        "y": 3.1416,
+        "z": 0
+      },
+      "scale": {
+        "x": 1.0,
+        "y": 1.0,
+        "z": 1.0
+      },
+      "customData": {
+        "text": "draw daily",
+        "light": {
+          "color": "pink",
+          "effect": "pulse"
+        }
+      }
+    },
+    {
+      "id": "easel",
+      "catalogId": "easel",
+      "position": {
+        "x": 4.1,
+        "y": 0,
+        "z": 2.6
+      },
+      "rotation": {
+        "x": 0,
+        "y": -2.2,
+        "z": 0
+      },
+      "scale": {
+        "x": 1.0,
+        "y": 1.0,
+        "z": 1.0
+      },
+      "customData": {
+        "color": "woodLight"
+      }
+    },
+    {
+      "id": "bean-bag",
+      "catalogId": "bean-bag",
+      "position": {
+        "x": 4.2,
+        "y": 0,
+        "z": -0.3
+      },
+      "rotation": {
+        "x": 0,
+        "y": -2.0,
+        "z": 0
+      },
+      "scale": {
+        "x": 1.0,
+        "y": 1.0,
+        "z": 1.0
+      },
+      "customData": {
+        "color": "coral"
+      }
+    },
+    {
+      "id": "lounge-chair",
+      "catalogId": "lounge-design-chair",
+      "position": {
+        "x": -3.9,
+        "y": 0,
+        "z": 2.7
+      },
+      "rotation": {
+        "x": 0,
+        "y": 1.97,
+        "z": 0
+      },
+      "scale": {
+        "x": 1.0,
+        "y": 1.0,
+        "z": 1.0
+      },
+      "customData": {
+        "color": "sage"
+      }
+    },
+    {
+      "id": "front-plant",
+      "catalogId": "potted-plant",
+      "position": {
+        "x": -4.5,
+        "y": 0,
+        "z": 4.4
+      },
+      "rotation": {
+        "x": 0,
+        "y": 0.0,
+        "z": 0
+      },
+      "scale": {
+        "x": 1.0,
+        "y": 1.0,
+        "z": 1.0
+      }
+    },
+    {
+      "id": "candles",
+      "catalogId": "candles",
+      "position": {
+        "x": -4.75,
+        "y": 0.77,
+        "z": -1.65
+      },
+      "rotation": {
+        "x": 0,
+        "y": 0.0,
+        "z": 0
+      },
+      "scale": {
+        "x": 1.0,
+        "y": 1.0,
+        "z": 1.0
+      }
+    },
+    {
+      "id": "lava-lamp",
+      "catalogId": "lava-lamp",
+      "position": {
+        "x": -0.75,
+        "y": 0.77,
+        "z": -4.65
+      },
+      "rotation": {
+        "x": 0,
+        "y": 0,
+        "z": 0
+      },
+      "scale": {
+        "x": 1.0,
+        "y": 1.0,
+        "z": 1.0
+      },
+      "customData": {
+        "light": {
+          "color": "pink"
+        }
+      }
+    },
+    {
+      "id": "table-books",
+      "catalogId": "books",
+      "position": {
+        "x": 1.45,
+        "y": 0.46,
+        "z": -0.1
+      },
+      "rotation": {
+        "x": 0,
+        "y": 0.2,
+        "z": 0
+      },
+      "scale": {
+        "x": 1.0,
+        "y": 1.0,
+        "z": 1.0
+      }
+    },
+    {
+      "id": "table-plant",
+      "catalogId": "plant-small-3",
+      "position": {
+        "x": 2.2,
+        "y": 0.46,
+        "z": -0.1
+      },
+      "rotation": {
+        "x": 0,
+        "y": 0.0,
+        "z": 0
+      },
+      "scale": {
+        "x": 1.0,
+        "y": 1.0,
+        "z": 1.0
+      }
+    },
+    {
+      "id": "lantern",
+      "catalogId": "paper-lantern",
+      "position": {
+        "x": -2.0,
+        "y": 4,
+        "z": 2.5
+      },
+      "rotation": {
+        "x": 0,
+        "y": 0.0,
+        "z": 0
+      },
+      "scale": {
+        "x": 1.0,
+        "y": 1.0,
+        "z": 1.0
+      }
+    },
+    {
+      "id": "hanging-plant",
+      "catalogId": "hanging-plant",
+      "position": {
+        "x": 3.6,
+        "y": 4,
+        "z": 3.6
+      },
+      "rotation": {
+        "x": 0,
+        "y": 0.0,
+        "z": 0
+      },
+      "scale": {
+        "x": 1.0,
+        "y": 1.0,
+        "z": 1.0
+      }
+    },
+    {
+      "id": "hanging-plant-2",
+      "catalogId": "hanging-plant",
+      "position": {
+        "x": -4.2,
+        "y": 4,
+        "z": -3.8
       },
       "rotation": {
         "x": 0,

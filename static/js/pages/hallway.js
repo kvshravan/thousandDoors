@@ -223,16 +223,17 @@ class HallwayPage {
   _setUpMusic() {
     if (!this.music.supported) return;
     this.soundButton.hidden = false;
-    let wanted = true;
+    let wanted = false;
     try {
-      wanted = window.localStorage.getItem(MUSIC_KEY) !== 'off';
+      wanted = window.localStorage.getItem(MUSIC_KEY) === 'on';
     } catch {
-      // Storage blocked: on, as by default.
+      // Storage blocked: off, as by default.
     }
     this._soundLabel(wanted);
-    // On by default, but browsers only allow sound after a click or key press, so it
-    // starts with the first one (the Music button handles its own clicks). Later
-    // gestures wake it again if the browser kept it suspended.
+    // Off unless the visitor turned it on before. Browsers only allow sound after a
+    // click or key press, so remembered music starts with the first one (the Music
+    // button handles its own clicks). Later gestures wake it again if the browser
+    // kept it suspended.
     const wake = (event) => {
       if (event.target.closest?.('[data-action="sound"]')) return;
       if (this._musicWanted) this._startMusic();

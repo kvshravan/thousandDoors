@@ -245,8 +245,10 @@
         "z": 1.0
       },
       "customData": {
-        "imageUrl": "/static/images/demo/sunset-hills.svg",
-        "caption": "A favourite place"
+        "width": 0.8,
+        "height": 1.0,
+        "imageUrl": "/static/images/demo/people/kabir.svg",
+        "caption": "Sunday at the record market"
       }
     },
     {
@@ -401,8 +403,23 @@
         "z": 1.0
       },
       "customData": {
-        "title": "My shelf",
-        "items": [],
+        "title": "Film shelf",
+        "items": [
+          {
+            "type": "book",
+            "title": "Posters of the Sixties",
+            "by": "a market find"
+          },
+          {
+            "type": "book",
+            "title": "The Projectionist's Notebook"
+          },
+          {
+            "type": "collectible",
+            "title": "Cinema ticket stub, 1998",
+            "by": "first film alone"
+          }
+        ],
         "color": "woodDark"
       }
     },
@@ -425,7 +442,20 @@
         "z": 1.0
       },
       "customData": {
-        "entries": []
+        "entries": [
+          {
+            "author": "Priya",
+            "message": "Your record collection is unreal."
+          },
+          {
+            "author": "Rohan",
+            "message": "Still have your headphones. Back by Diwali, promise."
+          },
+          {
+            "author": "Aarav",
+            "message": "Best chai in Delhi, confirmed."
+          }
+        ]
       }
     },
     {
@@ -447,7 +477,16 @@
         "z": 1.0
       },
       "customData": {
-        "gifts": []
+        "gifts": [
+          {
+            "author": "Priya",
+            "gift": "tea"
+          },
+          {
+            "author": "Meera",
+            "gift": "star"
+          }
+        ]
       }
     },
     {
@@ -512,6 +551,11 @@
             69,
             65
           ]
+        },
+        "song": {
+          "provider": "youtube",
+          "kind": "video",
+          "id": "T94PHkuydcw"
         }
       }
     },
@@ -535,9 +579,14 @@
       },
       "customData": {
         "media": {
-          "title": "A black-and-white classic",
-          "kind": "Film",
-          "year": 1957
+          "title": "Jai Ho",
+          "kind": "Music video",
+          "description": "Played at every family wedding since 2009."
+        },
+        "video": {
+          "provider": "youtube",
+          "kind": "video",
+          "id": "Yc5OyXmHD0w"
         }
       }
     },
@@ -601,6 +650,420 @@
       "rotation": {
         "x": 0,
         "y": 2.5416,
+        "z": 0
+      },
+      "scale": {
+        "x": 1.0,
+        "y": 1.0,
+        "z": 1.0
+      }
+    },
+    {
+      "id": "fairy-lights",
+      "catalogId": "fairy-lights",
+      "position": {
+        "x": -4.97,
+        "y": 3.1,
+        "z": 0.2
+      },
+      "rotation": {
+        "x": 0,
+        "y": 1.5708,
+        "z": 0
+      },
+      "scale": {
+        "x": 1,
+        "y": 1,
+        "z": 1
+      },
+      "customData": {
+        "light": {
+          "color": "candle",
+          "effect": "flicker"
+        }
+      }
+    },
+    {
+      "id": "photo-olddelhi",
+      "catalogId": "picture-frame",
+      "position": {
+        "x": -4.97,
+        "y": 2.3,
+        "z": 1.5
+      },
+      "rotation": {
+        "x": 0,
+        "y": 1.5708,
+        "z": 0
+      },
+      "scale": {
+        "x": 1.0,
+        "y": 1.0,
+        "z": 1.0
+      },
+      "customData": {
+        "width": 1.1,
+        "height": 0.82,
+        "imageUrl": "/static/images/demo/people/kabir-olddelhi.svg",
+        "caption": "Rooftop kites, Old Delhi"
+      }
+    },
+    {
+      "id": "photo-chai",
+      "catalogId": "picture-frame",
+      "position": {
+        "x": 3.55,
+        "y": 2.45,
+        "z": -4.97
+      },
+      "rotation": {
+        "x": 0,
+        "y": 0.0,
+        "z": 0
+      },
+      "scale": {
+        "x": 1.0,
+        "y": 1.0,
+        "z": 1.0
+      },
+      "customData": {
+        "width": 1.0,
+        "height": 0.75,
+        "imageUrl": "/static/images/demo/people/kabir-chai.svg",
+        "caption": "Chai at 4 pm, always"
+      }
+    },
+    {
+      "id": "photo-vinyl",
+      "catalogId": "picture-frame",
+      "position": {
+        "x": -3.4,
+        "y": 2.3,
+        "z": -4.97
+      },
+      "rotation": {
+        "x": 0,
+        "y": 0.0,
+        "z": 0
+      },
+      "scale": {
+        "x": 1.0,
+        "y": 1.0,
+        "z": 1.0
+      },
+      "customData": {
+        "width": 0.8,
+        "height": 0.6,
+        "imageUrl": "/static/images/demo/people/kabir-vinyl.svg",
+        "caption": "Found it! A 1972 pressing"
+      }
+    },
+    {
+      "id": "photo-string",
+      "catalogId": "photo-string",
+      "position": {
+        "x": 4.97,
+        "y": 2.55,
+        "z": 3.0
+      },
+      "rotation": {
+        "x": 0,
+        "y": -1.5708,
+        "z": 0
+      },
+      "scale": {
+        "x": 1.0,
+        "y": 1.0,
+        "z": 1.0
+      },
+      "customData": {
+        "label": "Purani Dilli walks",
+        "photos": [
+          "/static/images/demo/people/kabir-chai.svg",
+          "/static/images/demo/people/kabir-olddelhi.svg",
+          "/static/images/demo/people/kabir-vinyl.svg",
+          "/static/images/demo/people/kabir.svg"
+        ]
+      }
+    },
+    {
+      "id": "neon-chai",
+      "catalogId": "neon-sign",
+      "position": {
+        "x": 2.8,
+        "y": 2.7,
+        "z": 4.97
+      },
+      "rotation": {
+        "x": 0,
+        "y": 3.1416,
+        "z": 0
+      },
+      "scale": {
+        "x": 1.0,
+        "y": 1.0,
+        "z": 1.0
+      },
+      "customData": {
+        "text": "chai?",
+        "light": {
+          "color": "warm"
+        }
+      }
+    },
+    {
+      "id": "record-shelf",
+      "catalogId": "bookcase-open",
+      "position": {
+        "x": -4.72,
+        "y": 0,
+        "z": 2.6
+      },
+      "rotation": {
+        "x": 0,
+        "y": 1.5708,
+        "z": 0
+      },
+      "scale": {
+        "x": 1.0,
+        "y": 1.0,
+        "z": 1.0
+      },
+      "customData": {
+        "title": "Record crate",
+        "items": [
+          {
+            "type": "record",
+            "title": "Monsoon Melodies",
+            "by": "1971 soundtrack"
+          },
+          {
+            "type": "record",
+            "title": "Night in Old Delhi",
+            "by": "qawwali, live"
+          },
+          {
+            "type": "record",
+            "title": "Chai & Trumpets",
+            "by": "brass band"
+          },
+          {
+            "type": "record",
+            "title": "Songs for a Slow Train"
+          }
+        ]
+      }
+    },
+    {
+      "id": "record-shelf-books-0",
+      "catalogId": "books",
+      "position": {
+        "x": -4.74,
+        "y": 0.26,
+        "z": 2.4
+      },
+      "rotation": {
+        "x": 0,
+        "y": 1.5708,
+        "z": 0
+      },
+      "scale": {
+        "x": 1.0,
+        "y": 1.0,
+        "z": 1.0
+      }
+    },
+    {
+      "id": "record-shelf-books-1",
+      "catalogId": "books",
+      "position": {
+        "x": -4.74,
+        "y": 1.22,
+        "z": 2.8000000000000003
+      },
+      "rotation": {
+        "x": 0,
+        "y": 1.5708,
+        "z": 0
+      },
+      "scale": {
+        "x": 1.0,
+        "y": 1.0,
+        "z": 1.0
+      }
+    },
+    {
+      "id": "crate-top",
+      "catalogId": "vinyl-crate",
+      "position": {
+        "x": -4.72,
+        "y": 1.76,
+        "z": 2.6
+      },
+      "rotation": {
+        "x": 0,
+        "y": 1.5708,
+        "z": 0
+      },
+      "scale": {
+        "x": 1.0,
+        "y": 1.0,
+        "z": 1.0
+      },
+      "customData": {
+        "color": "mustard"
+      }
+    },
+    {
+      "id": "relax-chair",
+      "catalogId": "lounge-chair-relax",
+      "position": {
+        "x": 4.0,
+        "y": 0,
+        "z": 2.6
+      },
+      "rotation": {
+        "x": 0,
+        "y": -2.2,
+        "z": 0
+      },
+      "scale": {
+        "x": 1.0,
+        "y": 1.0,
+        "z": 1.0
+      },
+      "customData": {
+        "color": "mustard"
+      }
+    },
+    {
+      "id": "reading-lamp",
+      "catalogId": "lamp-round-floor",
+      "position": {
+        "x": 4.6,
+        "y": 0,
+        "z": 0.6
+      },
+      "rotation": {
+        "x": 0,
+        "y": 0.0,
+        "z": 0
+      },
+      "scale": {
+        "x": 1.0,
+        "y": 1.0,
+        "z": 1.0
+      }
+    },
+    {
+      "id": "record-table",
+      "catalogId": "side-table",
+      "position": {
+        "x": 1.2,
+        "y": 0,
+        "z": -4.7
+      },
+      "rotation": {
+        "x": 0,
+        "y": 0.0,
+        "z": 0
+      },
+      "scale": {
+        "x": 1.0,
+        "y": 1.0,
+        "z": 1.0
+      }
+    },
+    {
+      "id": "radio",
+      "catalogId": "radio",
+      "position": {
+        "x": 0.95,
+        "y": 0.77,
+        "z": -4.7
+      },
+      "rotation": {
+        "x": 0,
+        "y": 0.0,
+        "z": 0
+      },
+      "scale": {
+        "x": 1.0,
+        "y": 1.0,
+        "z": 1.0
+      }
+    },
+    {
+      "id": "table-crate",
+      "catalogId": "vinyl-crate",
+      "position": {
+        "x": 1.5,
+        "y": 0.77,
+        "z": -4.7
+      },
+      "rotation": {
+        "x": 0,
+        "y": 0,
+        "z": 0
+      },
+      "scale": {
+        "x": 1.0,
+        "y": 1.0,
+        "z": 1.0
+      },
+      "customData": {
+        "color": "terracotta"
+      }
+    },
+    {
+      "id": "candles",
+      "catalogId": "candles",
+      "position": {
+        "x": 2.2,
+        "y": 0.46,
+        "z": -0.1
+      },
+      "rotation": {
+        "x": 0,
+        "y": 0.0,
+        "z": 0
+      },
+      "scale": {
+        "x": 1.0,
+        "y": 1.0,
+        "z": 1.0
+      }
+    },
+    {
+      "id": "table-books",
+      "catalogId": "books",
+      "position": {
+        "x": 1.45,
+        "y": 0.46,
+        "z": -0.1
+      },
+      "rotation": {
+        "x": 0,
+        "y": -0.3,
+        "z": 0
+      },
+      "scale": {
+        "x": 1.0,
+        "y": 1.0,
+        "z": 1.0
+      }
+    },
+    {
+      "id": "ceiling-fan",
+      "catalogId": "ceiling-fan",
+      "position": {
+        "x": 2.2,
+        "y": 4,
+        "z": 2.4
+      },
+      "rotation": {
+        "x": 0,
+        "y": 0.0,
         "z": 0
       },
       "scale": {

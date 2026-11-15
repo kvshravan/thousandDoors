@@ -70,7 +70,7 @@ Room page options (development only):
 - **Ride a door**: rides a claimed door on the coaster, leaning into the bends; tap any other door to hop onto it, **Open it** to go in, **Hop off** to fly back to the landing.
 - **Find a door**: a searchable list of every room as plain links, for the keyboard and screen readers; it's also what you get without WebGL.
 - **Doors near you**: choose your city in **Find a door** (or set it on your profile, and the hallway uses it when you're signed in). Doors of people within about 25 km glow gold with a brighter lamp, come first on the rails closest to you and in the list, and their card says "Near you". Only a city is ever stored, and only if its owner picked one (`static/data/cities.json`; "near" means the cities' centres are within `radiusKm`). Try Delhi (Kabir, and Ananya in Gurugram), Bengaluru, Mumbai, or London.
-- **Sound**: an empty, echoing void, synthesized live with Web Audio (no audio files): a low hum and slow, dark minor chords in a long echo. Riding is a little brighter, and the door you open creaks on its hinges before the sound fades as you go through. It's on by default and starts with your first click or key press (browsers wait for one); turning it off with **♪ Music** is remembered.
+- **Sound**: an empty, echoing void, synthesized live with Web Audio (no audio files): a low hum and slow, dark minor chords in a long echo. Riding is a little brighter, and the door you open creaks on its hinges before the sound fades as you go through. It's off by default; turning it on with **♪ Music** is remembered, and on later visits it starts with your first click or key press (browsers wait for one).
 - With reduced motion, the doors stay still, riding is off, and choosing a door goes straight in.
 
 ### Things to try in a room
@@ -244,7 +244,8 @@ static/
 migrations/       SQL migrations, applied in order by `flask db upgrade`
 tools/            Developer scripts (render_thumbnails.py: thumbnails for procedural props;
                   make_demo_rooms.py: the demo rooms other than Mira's and Jun's, built from the
-                  starter room)
+                  starter room; make_demo_art.py: those people's illustrated portraits and
+                  snapshots in static/images/demo/people/)
 tests/            pytest suite; tests/e2e/ has the Playwright browser tests (and vendor/axe.min.js);
                   tests/sql/ the Supabase stand-in for testing against plain Postgres
 ```
@@ -257,7 +258,7 @@ tests/            pytest suite; tests/e2e/ has the Playwright browser tests (and
 - `backend/rooms.py` validates everything the editor sends (catalogue ids, ranges, photo references, embeds, sizes) and keeps one source of truth by reading the presets from `room-config.js`. A room is stored as one JSON document, in the same shape as the demo room files.
 - Photos are checked by their bytes, stored at `<user id>/<photo id>.<ext>` in the public `photos` bucket using the secret key, and recorded in `public.photos`. A frame or photo string refers to one as `photo:<id>`.
 - Songs and videos are stored as references (`{ provider, kind, id }` in `customData.song` / `customData.video`), never as URLs. `static/js/media.js` turns a pasted link into one and rebuilds the provider's embed address from it; `backend/rooms.py` checks references with the same rules, so a saved room can't point an iframe anywhere else.
-- Demo rooms (Mira, Jun, and six more made by `tools/make_demo_rooms.py`) have no owner; each lives in a city. `flask db seed` refreshes them from `static/data/rooms/` without touching anyone's room.
+- Demo rooms (Mira, Jun, and six more made by `tools/make_demo_rooms.py`) have no owner; each lives in a city. The six have real YouTube/Spotify songs and videos, illustrated photos, and filled-in shelves, notes, and gifts. `flask db seed` refreshes them from `static/data/rooms/` without touching anyone's room.
 
 ### 3D architecture notes
 
