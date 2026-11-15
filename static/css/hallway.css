@@ -13,6 +13,11 @@ body.page-hallway {
   pointer-events: none;
 }
 
+/* The home page scrolls (to the maker's projects), so its bar scrolls away with it. */
+.page-home .topbar {
+  position: absolute;
+}
+
 .page-hallway .topbar .brand,
 .page-hallway .topbar .account,
 .page-home .topbar .brand,
@@ -579,6 +584,92 @@ body.page-home {
   color: #ffd08a;
 }
 
+.home-more {
+  align-self: flex-start;
+  margin-top: 2.2rem;
+  color: #8fb3ff;
+  font-size: 0.88rem;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.home-more:hover,
+.home-more:focus-visible {
+  color: #c9d8ff;
+  text-decoration: underline;
+}
+
+/* ---- Home page: the maker's other projects, below the hero ---- */
+
+.home-maker {
+  position: relative;
+  z-index: 2;
+  padding: 4rem clamp(1.25rem, 6vw, 4.5rem) 5rem;
+  background: linear-gradient(180deg, rgb(11 18 48 / 0) 0%, rgb(11 18 48 / 0.94) 5rem);
+}
+
+.home-maker-title {
+  margin: 0.5rem 0 1.6rem;
+  font-family: Georgia, "Iowan Old Style", "Times New Roman", serif;
+  font-size: clamp(1.8rem, 4.5vw, 2.6rem);
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+.home-projects {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr));
+  gap: 1rem;
+  max-width: 52rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.home-project a {
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+  height: 100%;
+  padding: 1.3rem 1.4rem;
+  border: 1px solid rgb(143 179 255 / 0.22);
+  border-radius: 18px;
+  background: rgb(22 31 72 / 0.82);
+  color: inherit;
+  text-decoration: none;
+  transition: border-color 0.2s ease, transform 0.2s ease, background 0.2s ease;
+}
+
+.home-project a:hover,
+.home-project a:focus-visible {
+  border-color: rgb(244 184 96 / 0.7);
+  background: rgb(30 40 90 / 0.9);
+  transform: translateY(-2px);
+}
+
+.home-project-name {
+  color: #fff4e2;
+  font-size: 1.2rem;
+  font-weight: 700;
+}
+
+.home-project-arrow {
+  color: #f4b860;
+}
+
+.home-project-text {
+  color: #c6cbe6;
+  font-size: 0.95rem;
+  line-height: 1.55;
+}
+
+.home-project-url {
+  margin-top: auto;
+  color: #ffd08a;
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
 @media (max-width: 600px) {
   .home-shade {
     background: linear-gradient(0deg, rgb(11 18 48 / 0.95) 0%, rgb(11 18 48 / 0.75) 55%, rgb(11 18 48 / 0.2) 100%);
@@ -593,5 +684,14 @@ body.page-home {
 @media (prefers-reduced-motion: reduce) {
   .home-stage {
     transition: none;
+  }
+
+  .home-project a {
+    transition: none;
+  }
+
+  .home-project a:hover,
+  .home-project a:focus-visible {
+    transform: none;
   }
 }

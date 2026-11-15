@@ -16,6 +16,27 @@
     <a class="pill pill-quiet pill-big" href="{{ url_for('pages.hallway') }}" data-testid="enter-hallway">Explore the hallway</a>
   </div>
   <p class="home-alt" data-testid="app-status">Or peek inside <a href="{{ url_for('pages.room') }}" data-testid="enter-room">Mira’s room</a> or <a href="{{ url_for('pages.room', room_id='jun') }}" data-testid="enter-room-jun">Jun’s</a>.</p>
+  <a class="home-more" href="#maker">More from the maker <span aria-hidden="true">↓</span></a>
+</section>
+<section class="home-maker" id="maker" aria-labelledby="maker-title" data-testid="maker">
+  <p class="home-kicker">From the maker of 1000 Doors</p>
+  <h2 class="home-maker-title" id="maker-title">Other things I’ve built</h2>
+  <ul class="home-projects">
+    <li class="home-project">
+      <a href="https://www.theplotlinks.com/" target="_blank" rel="noopener" data-testid="project-plotlinks">
+        <span class="home-project-name">PlotLinks <span class="home-project-arrow" aria-hidden="true">↗</span></span>
+        <span class="home-project-text">Connects the dots between TV shows like Friends and The Office: it spots when they reference or quote other shows and movies, the hidden callbacks and inside jokes, and shows you how they’re all linked.</span>
+        <span class="home-project-url">theplotlinks.com</span>
+      </a>
+    </li>
+    <li class="home-project">
+      <a href="https://findsamay.com/" target="_blank" rel="noopener" data-testid="project-samay">
+        <span class="home-project-name">Samay <span class="home-project-arrow" aria-hidden="true">↗</span></span>
+        <span class="home-project-text">Not sure when to take leave? Samay plans your days off around the holidays so you get the most consecutive time off.</span>
+        <span class="home-project-url">findsamay.com</span>
+      </a>
+    </li>
+  </ul>
 </section>
 {% endblock %}
 {% block scripts %}

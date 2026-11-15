@@ -13,6 +13,13 @@ def test_home_page_renders(client):
     assert "/static/js/app.js" in body
 
 
+def test_home_page_links_the_makers_other_projects(client):
+    body = client.get("/").get_data(as_text=True)
+    assert 'href="https://www.theplotlinks.com/"' in body
+    assert 'href="https://findsamay.com/"' in body
+    assert 'rel="noopener"' in body
+
+
 def test_healthz_returns_ok_json(client):
     response = client.get("/healthz")
     assert response.status_code == 200
