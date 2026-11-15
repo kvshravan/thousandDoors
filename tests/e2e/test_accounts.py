@@ -28,6 +28,7 @@ def test_signing_in_with_a_magic_link_and_choosing_a_username(page: Page, errors
     page.goto("/")
     page.get_by_test_id("sign-in-link").click()
     expect(page).to_have_url(re.compile(r"/signin\?next=%2F$"))
+    expect(page.get_by_test_id("signin-form")).to_have_attribute("data-ready", "true")
 
     page.get_by_test_id("signin-submit").click()
     expect(page.get_by_test_id("signin-status")).to_contain_text("Enter your email")
@@ -44,7 +45,7 @@ def test_signing_in_with_a_magic_link_and_choosing_a_username(page: Page, errors
         f"/signin#access_token={session['access_token']}&refresh_token=r1"
         f"&expires_at={session['expires_at']}&token_type=bearer&type=magiclink"
     )
-    expect(page).to_have_url(re.compile(r"/welcome"))
+    expect(page).to_have_url(re.compile(r"/welcome\?next=%2F$"))
     username = page.get_by_test_id("welcome-username")
     expect(username).to_have_value("sam")
 
@@ -63,6 +64,33 @@ def test_signing_in_with_a_magic_link_and_choosing_a_username(page: Page, errors
     assert "#" not in page.url, "the tokens don't stay in the address bar"
     # The browser logs the "username taken" response; that's expected.
     assert [e for e in errors if "409" not in e] == []
+
+
+def test_signing_in_with_google(page: Page, errors):
+    page.route(f"{SUPABASE}/auth/v1/authorize**", lambda route: route.fulfill(body="google"))
+    page.goto("/signin?next=%2Froom%2Fjun")
+    expect(page.get_by_test_id("signin-form")).to_have_attribute("data-ready", "true")
+    with page.expect_navigation(url=re.compile(r"/auth/v1/authorize")) as navigation:
+        page.get_by_test_id("signin-google").click()
+    url = navigation.value.url
+    assert url.startswith(f"{SUPABASE}/auth/v1/authorize?provider=google&redirect_to=")
+    assert "%2Fsignin" in url
+
+    # Supabase sends the browser back with the session in the fragment, like a magic link.
+    session = page.request.post(
+        "/__test__/session",
+        data={"id": TEST_USER_ID, "email": "sam.lee@gmail.com", "name": "Sam Lee"},
+    ).json()
+    page.goto(
+        f"/signin#access_token={session['access_token']}&refresh_token=r1"
+        f"&expires_at={session['expires_at']}&token_type=bearer"
+    )
+    expect(page).to_have_url(re.compile(r"/welcome\?next=%2Froom%2Fjun$"))
+    expect(page.get_by_test_id("welcome-username")).to_have_value("samlee")
+    expect(page.get_by_test_id("welcome-name")).to_have_value("Sam Lee")
+    page.get_by_test_id("welcome-submit").click()
+    expect(page).to_have_url(re.compile(r"/room/jun$"))
+    assert errors == []
 
 
 def test_a_link_error_is_explained(page: Page, errors):
@@ -167,11 +195,18 @@ def test_photos_go_to_the_account_and_old_browser_photos_can_move(page: Page, er
         "?.customData?.imageUrl?.startsWith('photo:')"
     )
     expect(page.get_by_test_id("photos-migrate")).to_have_count(0)
+    old_ref = obj(page, "photo-sunset")["customData"]["imageUrl"]
 
     page.get_by_test_id("photo-upload").set_input_files(
         files=[{"name": "new.png", "mimeType": "image/png", "buffer": png()}]
     )
     expect(page.get_by_role("button", name="Use photo: new.png")).to_be_visible()
+    # The upload shows in the library a moment before the frame switches to it.
+    page.wait_for_function(
+        "(old) => window.__doors.layout().objects.find((o) => o.id === 'photo-sunset')"
+        "?.customData?.imageUrl !== old",
+        arg=old_ref,
+    )
     new_ref = obj(page, "photo-sunset")["customData"]["imageUrl"]
     assert new_ref.startswith("photo:")
     page.get_by_test_id("editor-save").click()

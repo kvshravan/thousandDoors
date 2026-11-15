@@ -11,6 +11,8 @@ from flask import (
     request,
 )
 
+from config import OAUTH_PROVIDERS
+
 pages_bp = Blueprint("pages", __name__)
 
 DEFAULT_ROOM = "mira"
@@ -37,7 +39,8 @@ def room(room_id: str):
 
 @pages_bp.get("/signin")
 def signin():
-    return render_template("signin.html")
+    providers = [(key, OAUTH_PROVIDERS[key]) for key in current_app.config["AUTH_PROVIDERS"]]
+    return render_template("signin.html", providers=providers)
 
 
 @pages_bp.get("/welcome")
@@ -88,7 +91,9 @@ def test_session():
     data = request.get_json(silent=True) or {}
     user_id = str(data.get("id") or "00000000-0000-4000-8000-000000000001")
     email = str(data.get("email") or "tester@example.com")
-    token, expires = current_app.extensions["doors.signer"].token(user_id, email)
+    token, expires = current_app.extensions["doors.signer"].token(
+        user_id, email, name=data.get("name")
+    )
     return jsonify(
         access_token=token,
         refresh_token="test-refresh",

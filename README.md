@@ -44,10 +44,14 @@ Without `DATABASE_URL` the app still runs, keeping everything in memory (lost on
    - `SUPABASE_JWKS_URL` (optional): defaults to `<SUPABASE_URL>/auth/v1/.well-known/jwks.json`
 3. **Authentication → URL Configuration**: Site URL `http://127.0.0.1:5000`, and add `http://127.0.0.1:5000/**` (and later the deployed URL) to Redirect URLs.
 4. Run `flask --app app db upgrade` and `flask --app app db seed`. `flask --app app db status` lists applied migrations.
+5. Optional, **Sign in with Google**:
+   - In [Google Cloud Console](https://console.cloud.google.com/) → **APIs & Services**: configure the OAuth consent screen, then **Credentials → Create credentials → OAuth client ID** (Web application) with Authorized redirect URI `https://<project-ref>.supabase.co/auth/v1/callback`.
+   - In Supabase **Authentication → Sign In / Providers → Google**: enable it and paste the client ID and secret.
+   - Set `AUTH_PROVIDERS=google` here and on the server; the sign-in page shows the button only then.
 
 ### Accounts
 
-**Sign in** (top right) emails a magic link; new emails get an account. After the link, choose a username: it's your door's name and your room's address (`/room/<username>`), and you get a furnished starter room. **Edit room** then saves to your account, so every visitor sees it. Leaving notes and gifts needs an account (they're signed with your name); anyone can read them.
+**Sign in** (top right) offers **Continue with Google** (when enabled) or an emailed magic link; either creates the account the first time. Next, choose a username: it's your door's name and your room's address (`/room/<username>`), and you get a furnished starter room. **Edit room** then saves to your account, so every visitor sees it. Leaving notes and gifts needs an account (they're signed with your name); anyone can read them.
 
 Room page options (development only):
 
@@ -106,6 +110,7 @@ Open a room as its owner (`/room?as=owner`) and choose **Edit room**:
 - **Turn and remove**: the toolbar buttons, or **R** / **Shift+R** to turn, **Delete** to remove, arrow keys to nudge, **Escape** to deselect or cancel. When you add an item from the catalogue by keyboard, focus moves to the 3D view: arrows move it and **Enter** places it.
 - **Look**: walls, floor, lighting, and the landscape outside change instantly.
 - **Save** saves the room to your account (on a demo room with `?as=owner`, only in this browser), **Cancel** puts everything back, **Start over** returns to the room as it was when you opened it (save to keep it).
+- **On phones** the panel is a bottom sheet that starts folded to its tabs, so the room fills most of the screen; tap a tab (or drag the handle up) to open it, and it folds again while you place something. Save, Cancel, and Start over sit in a slim bar at the top. Tap something to pick it (a swipe that starts on furniture still turns the camera), then drag it; a floating toolbar turns it, nudges it with arrows (in the direction they point on screen), removes it, or opens **Colour & more**. **Done** lets go.
 
 The door and window are part of the room and can't be moved.
 
@@ -128,7 +133,7 @@ Accessibility tests run [axe-core](https://github.com/dequelabs/axe-core) (vendo
 
 `tests/test_catalog_data.py` validates `static/data/`: every model file exists and is a GLB, every builder and interaction type is registered in the JavaScript, every room's appearance uses known presets, and every room object points at a real catalogue item and image with a valid permission level.
 
-`tests/test_api.py` covers the API on the in-memory store: tokens (expired, wrong issuer, unsigned, forged, anon), usernames, starter rooms, who may edit, layout validation (unknown items, out-of-range positions, outside photo URLs, unsafe embeds, missing door, too many objects), notes and gifts with their hourly limit, and photo uploads judged by their bytes. `tests/e2e/test_accounts.py` drives magic-link sign-in (Supabase's endpoints are intercepted), choosing a username, saving and seeing a room from another browser, failed saves, moving browser photos to the account, token refresh, and signing out. Tests never touch your Supabase project: they use memory storage and a signing key generated at startup.
+`tests/test_api.py` covers the API on the in-memory store: tokens (expired, wrong issuer, unsigned, forged, anon), usernames, starter rooms, who may edit, layout validation (unknown items, out-of-range positions, outside photo URLs, unsafe embeds, missing door, too many objects), notes and gifts with their hourly limit, and photo uploads judged by their bytes. `tests/e2e/test_accounts.py` drives magic-link and Google sign-in (Supabase's endpoints are intercepted), choosing a username, saving and seeing a room from another browser, failed saves, moving browser photos to the account, token refresh, and signing out. Tests never touch your Supabase project: they use memory storage and a signing key generated at startup.
 
 `tests/test_postgres.py` checks the row-level security policies by attacking them directly, as someone using the Supabase Data API would (editing others' rooms, forging note authors, taking usernames, filing photos in others' folders). It runs when `TEST_DATABASE_URL` is set, inside transactions that are always rolled back. CI runs it on a Postgres service with `tests/sql/supabase_shim.sql` standing in for Supabase's auth schema. To run it against your project (slow from far away, but it leaves nothing behind):
 
@@ -154,6 +159,7 @@ Settings come from environment variables (loaded from `.env` in development). Se
 | `SUPABASE_SECRET_KEY` | Server-only key, used to store photos. Never sent to browsers. |
 | `SUPABASE_JWKS_URL` | Public keys for verifying sign-in tokens (defaults from `SUPABASE_URL`) |
 | `DATABASE_URL` | Postgres connection (session pooler). Without it, data lives in memory. Required in production. |
+| `AUTH_PROVIDERS` | OAuth sign-in buttons to show, comma-separated (`google`). Enable each in Supabase first. |
 
 ## Production
 

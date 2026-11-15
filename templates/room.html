@@ -42,7 +42,8 @@
   <p class="room-tooltip" id="room-tooltip" data-testid="room-tooltip" hidden></p>
 </div>
 
-<aside class="editor" id="editor" data-testid="editor" aria-labelledby="editor-title" hidden>
+<aside class="editor" id="editor" data-testid="editor" data-sheet="peek" aria-labelledby="editor-title" hidden>
+  <button type="button" class="editor-handle" data-sheet-toggle data-testid="editor-handle" aria-controls="editor-scroll" aria-expanded="false" aria-label="Show the editor panel"></button>
   <div class="editor-head">
     <h2 class="editor-title" id="editor-title"><span class="editor-dot" aria-hidden="true"></span>Editing your room</h2>
     <p class="editor-help">Drag things to move them. <kbd>R</kbd> turns, <kbd>Delete</kbd> removes, arrow keys nudge. Click something to change its colour and size.</p>
@@ -52,7 +53,7 @@
     <button type="button" role="tab" data-tab="item" aria-selected="false" aria-controls="editor-item" id="editor-tab-item" tabindex="-1">Item</button>
     <button type="button" role="tab" data-tab="look" aria-selected="false" aria-controls="editor-look" id="editor-tab-look" tabindex="-1">Look</button>
   </div>
-  <div class="editor-scroll">
+  <div class="editor-scroll" id="editor-scroll">
     <div class="editor-tabpanel" id="editor-add" role="tabpanel" aria-labelledby="editor-tab-add" data-tabpanel="add">
       <div class="editor-find">
         <input class="editor-search" type="search" placeholder="Search lamps, sofas, plants…" aria-label="Search things to add" autocomplete="off" data-testid="editor-search" data-editor-search>
@@ -65,11 +66,21 @@
     <div class="editor-tabpanel" id="editor-look" role="tabpanel" aria-labelledby="editor-tab-look" data-tabpanel="look" data-editor-look hidden></div>
   </div>
   <div class="editor-selection" data-testid="editor-selection" data-editor-selection hidden>
-    <p class="editor-selection-name" data-editor-selection-name></p>
+    <div class="editor-selection-head">
+      <p class="editor-selection-name" data-editor-selection-name></p>
+      <button type="button" class="chip chip-accent" data-editor-command="place" hidden>Place here</button>
+      <button type="button" class="chip editor-touch" data-sheet-open="item" data-testid="editor-options">Colour &amp; more</button>
+      <button type="button" class="chip editor-touch" data-editor-command="deselect" data-testid="editor-done">Done</button>
+    </div>
     <div class="editor-selection-actions">
       <button type="button" class="chip" data-editor-command="rotate-left" aria-label="Turn left">⟲</button>
       <button type="button" class="chip" data-editor-command="rotate-right" aria-label="Turn right">⟳</button>
-      <button type="button" class="chip chip-accent" data-editor-command="place" hidden>Place here</button>
+      <div class="editor-nudge editor-touch" role="group" aria-label="Nudge" data-editor-nudge>
+        <button type="button" class="chip" data-editor-command="nudge" data-value="-1,0" aria-label="Nudge left">←</button>
+        <button type="button" class="chip" data-editor-command="nudge" data-value="0,-1" aria-label="Nudge up">↑</button>
+        <button type="button" class="chip" data-editor-command="nudge" data-value="0,1" aria-label="Nudge down">↓</button>
+        <button type="button" class="chip" data-editor-command="nudge" data-value="1,0" aria-label="Nudge right">→</button>
+      </div>
       <button type="button" class="chip chip-danger" data-editor-command="delete">Remove</button>
     </div>
   </div>

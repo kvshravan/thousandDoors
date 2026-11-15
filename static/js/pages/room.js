@@ -428,6 +428,15 @@ class RoomPage {
       case 'place':
         editor.commitPlacement();
         break;
+      case 'nudge': {
+        const [dx, dy] = String(value).split(',').map(Number);
+        editor.nudgeOnScreen(dx, dy);
+        break;
+      }
+      case 'deselect':
+        if (editor.pendingId) editor.commitPlacement();
+        else editor.deselect();
+        break;
       case 'save':
         await this.saveEdits();
         break;

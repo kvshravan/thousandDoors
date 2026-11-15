@@ -130,3 +130,16 @@ def test_debug_hooks_disabled_in_production(monkeypatch):
         DATABASE_URL="postgresql://user:pass@127.0.0.1:1/none",
     ).test_client()
     assert "data-debug" not in client.get("/signin").get_data(as_text=True)
+
+
+def test_oauth_buttons_only_for_configured_providers(client):
+    assert 'data-provider="google"' in client.get("/signin").get_data(as_text=True)
+    client.application.config["AUTH_PROVIDERS"] = ()
+    assert "data-provider" not in client.get("/signin").get_data(as_text=True)
+
+
+def test_auth_providers_setting(monkeypatch):
+    from config import _providers
+
+    monkeypatch.setenv("AUTH_PROVIDERS", " Google, myspace ,")
+    assert _providers() == ("google",)

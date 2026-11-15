@@ -95,7 +95,9 @@ class TestSigner:
         public = jwt.algorithms.ECAlgorithm.to_jwk(self._key.public_key(), as_dict=True)
         self.jwks = {"keys": [{**public, "kid": "test-key", "alg": "ES256", "use": "sig"}]}
 
-    def token(self, user_id: str, email: str, lifetime: int = 3600) -> tuple[str, int]:
+    def token(
+        self, user_id: str, email: str, lifetime: int = 3600, name: str | None = None
+    ) -> tuple[str, int]:
         expires = int(time.time()) + lifetime
         claims = {
             "sub": user_id,
@@ -105,5 +107,7 @@ class TestSigner:
             "iss": self.issuer,
             "exp": expires,
         }
+        if name:
+            claims["user_metadata"] = {"full_name": name}
         token = jwt.encode(claims, self._key, algorithm="ES256", headers={"kid": "test-key"})
         return token, expires

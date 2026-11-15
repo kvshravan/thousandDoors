@@ -4,6 +4,14 @@
 {% block content %}
 <section class="form-card">
   <h1>Sign in</h1>
+  {% if providers %}
+  <div class="signin-providers">
+    {% for key, label in providers %}
+    <button class="button button-provider" type="button" data-provider="{{ key }}" data-testid="signin-{{ key }}">Continue with {{ label }}</button>
+    {% endfor %}
+  </div>
+  <p class="signin-or" aria-hidden="true"><span>or</span></p>
+  {% endif %}
   <p class="form-hint">We'll email you a link. No password needed; new here? The same link creates your account.</p>
   <form id="signin-form" data-testid="signin-form" novalidate>
     <label class="form-field">

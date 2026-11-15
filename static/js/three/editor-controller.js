@@ -153,7 +153,8 @@ export class EditorController {
     window.addEventListener('keydown', this._onKeyDown);
     this.cameraController.setPolarLimits(EDIT_VIEW.minPolar, EDIT_VIEW.maxPolar);
     this.cameraController.flyTo(EDIT_VIEW);
-    this._setMessage('Drag things to move them, or add something new.');
+    const touch = window.matchMedia?.('(pointer: coarse)').matches;
+    this._setMessage(touch ? 'Tap something to pick it, then drag it to move.' : 'Drag things to move them, or add something new.');
   }
 
   stop() {
@@ -441,6 +442,25 @@ export class EditorController {
     this._updateMarker();
     this._touched();
     return result.ok;
+  }
+
+  /**
+   * Nudges the selected item as seen on screen (the phone arrow buttons): dx is
+   * right (+1) or left, dy is down (+1) or up. Floor moves follow the nearest
+   * room axis to that screen direction; wall items slide along or up their wall.
+   */
+  nudgeOnScreen(dx, dy) {
+    const record = this._selected();
+    if (!record) return false;
+    this.camera.updateMatrixWorld();
+    const right = new THREE.Vector3().setFromMatrixColumn(this.camera.matrixWorld, 0);
+    if (record.placement === 'wall') {
+      if (dy) return this.nudge(0, dy);
+      return this.nudge(right.dot(this._wallOf(record).right) < 0 ? -dx : dx, 0);
+    }
+    const move = dx ? right.multiplyScalar(dx) : this.camera.getWorldDirection(new THREE.Vector3()).multiplyScalar(-dy);
+    if (Math.abs(move.x) >= Math.abs(move.z)) return this.nudge(Math.sign(move.x), 0);
+    return this.nudge(0, Math.sign(move.z));
   }
 
   /** Client-space point where an editable object can be grabbed, or null. */
@@ -887,6 +907,10 @@ export class EditorController {
     const hit = this.pendingId ? null : this.pick(event.clientX, event.clientY);
     this._press = { id: event.pointerId, x: event.clientX, y: event.clientY, time: performance.now(), hit };
     if (!hit) return;
+    // On touch, furniture covers most of the view: a swipe that starts on something
+    // unselected turns the camera, and a tap selects it (see _onPointerUp). Only the
+    // selected thing can be dragged.
+    if (event.pointerType !== 'mouse' && hit.id !== this.selectedId) return;
     this.select(hit.id);
     if (!this._canMove(hit) || this.busy) return;
     let offset = null;
@@ -934,7 +958,9 @@ export class EditorController {
     if (this.pendingId) {
       this._movePendingTo(event.clientX, event.clientY);
       this.commitPlacement();
-    } else if (!press.hit) {
+    } else if (press.hit) {
+      if (press.hit.id !== this.selectedId) this.select(press.hit.id);
+    } else {
       this.deselect();
     }
   }

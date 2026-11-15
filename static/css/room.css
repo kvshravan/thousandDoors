@@ -1152,9 +1152,24 @@ body.is-editing .room-stage {
   display: none;
 }
 
+.editor-selection-head {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin-bottom: 0.5rem;
+}
+
 .editor-selection-name {
-  margin: 0 0 0.5rem;
+  flex: 1;
+  min-width: 0;
+  margin: 0;
   font-weight: 700;
+}
+
+/* Phone-only controls (see the max-width: 700px block). */
+.editor-touch,
+.editor-handle {
+  display: none;
 }
 
 .editor-selection-actions {
@@ -1204,61 +1219,160 @@ body.is-editing .room-stage {
 }
 
 @media (max-width: 700px) {
-  :root {
-    --editor-height: 46dvh;
-  }
-
+  /*
+   * Phones: the editor is a bottom sheet. It "peeks" (just its tabs) so the room
+   * gets most of the screen, and opens to show the lists. Save and Cancel move to a
+   * slim bar at the top; the selected thing gets a floating toolbar above the sheet.
+   * --editor-height is the sheet's measured height (set by EditorPanel).
+   */
   body.is-editing .room-stage {
     right: 0;
-    bottom: var(--editor-height);
+    bottom: var(--editor-height, 8rem);
+  }
+
+  body.is-editing .topbar {
+    display: none;
+  }
+
+  /* Out of sight, but still the page's heading for screen readers. */
+  body.is-editing .room-nameplate {
+    clip-path: inset(50%);
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    overflow: hidden;
+    white-space: nowrap;
   }
 
   .editor {
     top: auto;
     left: 0;
     width: auto;
-    height: var(--editor-height);
-    padding-top: 0.75rem;
+    max-height: 62dvh;
+    padding: 0 0.75rem max(0.6rem, env(safe-area-inset-bottom));
     border-left: 0;
     border-top: 1px solid rgb(255 255 255 / 0.08);
     border-radius: 16px 16px 0 0;
   }
 
-  .editor-help {
+  /* The catalogue is long, so Add opens fully; Item and Look fit their content. */
+  .editor[data-sheet='open']:has(#editor-tab-add[aria-selected='true']) {
+    height: 62dvh;
+  }
+
+  .editor-handle {
+    position: relative;
+    display: block;
+    flex: none;
+    height: 26px;
+    margin: 0 -0.75rem;
+    border: 0;
+    background: none;
+    cursor: grab;
+    touch-action: none;
+  }
+
+  .editor-handle::before {
+    content: '';
+    position: absolute;
+    top: 10px;
+    left: 50%;
+    width: 40px;
+    height: 4px;
+    margin-left: -20px;
+    border-radius: 2px;
+    background: rgb(255 255 255 / 0.3);
+  }
+
+  .editor-head {
     display: none;
   }
 
-  .editor-title {
-    font-size: 1rem;
+  .editor[data-sheet='peek'] .editor-scroll {
+    display: none;
   }
 
   .editor-scroll {
     margin-top: 0.5rem;
   }
 
+  .editor-status {
+    min-height: 1.3em;
+    margin: 0.45rem 0 0;
+    overflow: hidden;
+    font-size: 0.82rem;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .editor-foot {
+    position: fixed;
+    inset: 0 0 auto;
+    z-index: 26;
+    padding: max(0.6rem, env(safe-area-inset-top)) 0.75rem 1.2rem;
+    background: linear-gradient(rgb(28 19 30 / 0.85) 55%, rgb(28 19 30 / 0));
+  }
+
+  .editor-foot .editor-link {
+    margin-left: 0.25rem;
+  }
+
+  .editor-foot [data-editor-command='save'] {
+    order: 1;
+    margin-left: auto;
+  }
+
   .editor-selection {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    margin-top: 0.5rem;
-    padding: 0.4rem 0.5rem;
+    position: fixed;
+    right: 0.5rem;
+    bottom: calc(var(--editor-height, 8rem) + 0.5rem);
+    left: 0.5rem;
+    z-index: 26;
+    margin: 0;
+    padding: 0.5rem;
+    border: 1px solid rgb(255 255 255 / 0.1);
+    border-radius: 14px;
+    background: rgb(43 29 46 / 0.94);
+    box-shadow: 0 8px 24px rgb(0 0 0 / 0.35);
+  }
+
+  .editor-selection-head {
+    margin-bottom: 0.4rem;
   }
 
   .editor-selection-name {
-    flex: 1;
-    min-width: 0;
-    margin: 0;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
   }
 
-  .editor-selection-actions {
-    flex-wrap: nowrap;
+  .editor-touch:not([hidden]) {
+    display: inline-flex;
   }
 
-  .editor-status {
-    margin: 0.4rem 0;
+  .editor[data-pending='true'] [data-editor-command='deselect'] {
+    display: none;
+  }
+
+  .editor-selection-actions {
+    flex-wrap: nowrap;
+    gap: 0.25rem;
+  }
+
+  .editor-selection .chip {
+    justify-content: center;
+    min-width: 42px;
+    min-height: 42px;
+    padding: 0 0.7rem;
+  }
+
+  .editor-selection-actions .chip:not(.chip-danger) {
+    padding: 0;
+  }
+
+  .editor-nudge {
+    gap: 0.25rem;
+    margin-inline: auto;
   }
 
   .editor-items {

@@ -1,4 +1,4 @@
-import { getSession, me, sendMagicLink } from '../auth.js';
+import { getSession, isFinishingSignIn, me, sendMagicLink, signInWithProvider } from '../auth.js';
 
 const form = document.querySelector('#signin-form');
 const status = document.querySelector('#signin-status');
@@ -16,12 +16,22 @@ function show(message, isError = false) {
 
 if (params.get('error')) show(ERRORS[params.get('error')] ?? params.get('error'), true);
 
-// Already signed in (and not arriving from a link, which app.js handles): go on.
-if (getSession() && !window.location.hash) {
+// Already signed in (and not arriving from a sign-in redirect, which app.js handles): go on.
+if (getSession() && !isFinishingSignIn()) {
   me().then((account) => {
     if (!account) return;
     if (!account.profile) window.location.replace('/welcome');
     else window.location.replace(next?.startsWith('/') && !next.startsWith('//') ? next : `/room/${account.profile.username}`);
+  });
+}
+
+for (const button of document.querySelectorAll('[data-provider]')) {
+  button.addEventListener('click', () => {
+    try {
+      signInWithProvider(button.dataset.provider, next);
+    } catch (error) {
+      show(error.message, true);
+    }
   });
 }
 
@@ -46,3 +56,5 @@ form.addEventListener('submit', async (event) => {
     button.disabled = false;
   }
 });
+
+form.dataset.ready = 'true';

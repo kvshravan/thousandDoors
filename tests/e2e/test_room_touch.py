@@ -3,6 +3,7 @@ from playwright.sync_api import Browser, Page, expect
 
 from .conftest import SLOW_FRAMES_SCRIPT, collect_errors
 from .helpers import (
+    Touch,
     angle_delta,
     assert_camera_within_limits,
     canvas_center,
@@ -27,30 +28,6 @@ def phone_page(browser: Browser, base_url: str, slow_frames: bool):
     page = context.new_page()
     yield page
     context.close()
-
-
-class Touch:
-    """Sends raw multi-touch events through the Chrome DevTools Protocol."""
-
-    def __init__(self, page: Page):
-        self.cdp = page.context.new_cdp_session(page)
-
-    def send(self, kind: str, points: list[tuple[float, float]]) -> None:
-        touch_points = [{"x": x, "y": y, "id": i} for i, (x, y) in enumerate(points)]
-        self.cdp.send("Input.dispatchTouchEvent", {"type": kind, "touchPoints": touch_points})
-
-    def gesture(
-        self, start: list[tuple[float, float]], end: list[tuple[float, float]], steps: int = 12
-    ):
-        self.send("touchStart", start)
-        for step in range(1, steps + 1):
-            t = step / steps
-            points = [
-                (sx + (ex - sx) * t, sy + (ey - sy) * t)
-                for (sx, sy), (ex, ey) in zip(start, end, strict=True)
-            ]
-            self.send("touchMove", points)
-        self.send("touchEnd", [])
 
 
 def test_room_renders_on_phone(phone_page: Page):

@@ -83,17 +83,34 @@ export class EditorPanel {
     this._lastSelectedId = null;
     this._itemKey = null;
     this._lastState = null;
+    this._swipedAt = -Infinity;
+    this._touchPress = null;
+    this._touchActivated = null;
 
     root.addEventListener('click', (event) => {
+      // Already handled on touch release (see _watchTouchTaps). The click that follows
+      // can land on whatever has moved under the finger since, so drop it.
+      const touched = this._touchActivated;
+      this._touchActivated = null;
+      if (
+        event.isTrusted &&
+        touched &&
+        performance.now() - touched.at < 800 &&
+        Math.hypot(event.clientX - touched.x, event.clientY - touched.y) < 30
+      ) {
+        event.preventDefault();
+        return;
+      }
       const button = event.target.closest('button');
       if (!button || !root.contains(button) || button.disabled) return;
-      const { dataset } = button;
-      if (dataset.addItem) this.onAdd(dataset.addItem);
-      else if (dataset.lookKey) this.onAppearance({ [dataset.lookKey]: dataset.lookValue });
-      else if (dataset.editorCommand) this.onCommand(dataset.editorCommand, dataset.value);
-      else if (dataset.filter) this._setFilter(dataset.filter);
-      else if (dataset.tab) this._showTab(dataset.tab);
+      this._activate(button);
     });
+    this._watchTouchTaps();
+    this._watchHandle(root.querySelector('[data-sheet-toggle]'));
+    // The 3D view and the floating toolbar sit just above the phone sheet.
+    new ResizeObserver(() => {
+      if (!this.root.hidden) document.documentElement.style.setProperty('--editor-height', `${this.root.offsetHeight}px`);
+    }).observe(root);
     this.itemPanel.addEventListener('change', (event) => {
       const { target } = event;
       if (target.matches('[data-light-brightness]')) this.onCommand('light-brightness', target.value);
@@ -128,9 +145,25 @@ export class EditorPanel {
     return !this.root.hidden;
   }
 
+  get sheet() {
+    return this.root.dataset.sheet;
+  }
+
+  /**
+   * On phones the panel is a bottom sheet: 'peek' shows just the tabs (and the room
+   * gets most of the screen), 'open' shows the lists. Wider screens ignore it.
+   */
+  setSheet(state) {
+    this.root.dataset.sheet = state;
+    const handle = this.root.querySelector('[data-sheet-toggle]');
+    handle.setAttribute('aria-expanded', String(state === 'open'));
+    handle.setAttribute('aria-label', state === 'open' ? 'Hide the editor panel' : 'Show the editor panel');
+  }
+
   show(appearance) {
     this.root.hidden = false;
     this._showTab('add');
+    this.setSheet('peek');
     this.setAppearance(appearance);
     this._lastSelectedId = null;
     this._itemKey = null;
@@ -170,6 +203,10 @@ export class EditorPanel {
       this._command('rotate-left').hidden = !selected.canRotate;
       this._command('rotate-right').hidden = !selected.canRotate;
       this._command('delete').hidden = !selected.canDelete;
+      this.root.querySelector('[data-editor-nudge]').hidden = !selected.canMove;
+      this.root.querySelector('[data-sheet-open="item"]').hidden = !(
+        selected.canRecolor || selected.canResize || selected.light || selected.text || selected.photos
+      );
     }
     this.root.dataset.pending = pending ? 'true' : 'false';
     this._command('place').hidden = !pending;
@@ -184,7 +221,10 @@ export class EditorPanel {
     const id = selected?.id ?? null;
     if (id !== this._lastSelectedId) {
       if (id && id !== pending) this._showTab('item');
-      else if (!id && this._currentTab() === 'item') this._showTab('add');
+      else if (!id && this._currentTab() === 'item') {
+        this._showTab('add');
+        this.setSheet('peek');
+      }
       this._lastSelectedId = id;
     }
     this._renderItem(state);
@@ -196,6 +236,88 @@ export class EditorPanel {
 
   _currentTab() {
     return this.tabs.find((tab) => tab.getAttribute('aria-selected') === 'true')?.dataset.tab;
+  }
+
+  /** Phones: a tab opens the sheet; tapping the open tab again folds it away. */
+  _onTabClick(name) {
+    if (this.sheet === 'open' && this._currentTab() === name) this.setSheet('peek');
+    else this.setSheet('open');
+    this._showTab(name);
+  }
+
+  /** Does what a panel button asks. Returns false for buttons it doesn't handle. */
+  _activate(button) {
+    const { dataset } = button;
+    if (dataset.addItem) {
+      // Phones: get the panel out of the way so the item can be placed.
+      this.setSheet('peek');
+      this.onAdd(dataset.addItem);
+    } else if (dataset.lookKey) this.onAppearance({ [dataset.lookKey]: dataset.lookValue });
+    else if (dataset.editorCommand) this.onCommand(dataset.editorCommand, dataset.value);
+    else if (dataset.filter) this._setFilter(dataset.filter);
+    else if (dataset.tab) this._onTabClick(dataset.tab);
+    else if (dataset.sheetOpen) {
+      this._showTab(dataset.sheetOpen);
+      this.setSheet('open');
+    } else if (dataset.sheetToggle !== undefined) {
+      if (performance.now() - this._swipedAt > 400) this.setSheet(this.sheet === 'open' ? 'peek' : 'open');
+    } else return false;
+    return true;
+  }
+
+  /**
+   * After a swipe or drag in the room, Chrome on phones can swallow the click of the
+   * next tap (it treats it as stopping the swipe), so a button would need two taps.
+   * Touch taps on the panel's buttons act on release instead; the click that may
+   * follow is then ignored. Scrolling cancels the pointer, so lists still scroll.
+   */
+  _watchTouchTaps() {
+    this.root.addEventListener('pointerdown', (event) => {
+      const button = event.target.closest?.('button');
+      this._touchPress =
+        event.pointerType === 'touch' && button && !('sheetToggle' in button.dataset)
+          ? { id: event.pointerId, button, x: event.clientX, y: event.clientY }
+          : null;
+    });
+    this.root.addEventListener('pointercancel', () => {
+      this._touchPress = null;
+    });
+    this.root.addEventListener('pointerup', (event) => {
+      const press = this._touchPress;
+      this._touchPress = null;
+      if (!press || press.id !== event.pointerId || press.button.disabled) return;
+      if (Math.hypot(event.clientX - press.x, event.clientY - press.y) > 10) return;
+      if (this._activate(press.button)) this._touchActivated = { x: event.clientX, y: event.clientY, at: performance.now() };
+    });
+    // touchend comes right after pointerup; cancelling it stops the browser's emulated
+    // mouse events and click for a tap that was already handled.
+    this.root.addEventListener(
+      'touchend',
+      (event) => {
+        if (this._touchActivated && performance.now() - this._touchActivated.at < 100) event.preventDefault();
+      },
+      { passive: false },
+    );
+  }
+
+  /** Swiping the handle up or down opens or folds the sheet. */
+  _watchHandle(handle) {
+    let start = null;
+    handle.addEventListener('pointerdown', (event) => {
+      start = { id: event.pointerId, y: event.clientY };
+      handle.setPointerCapture?.(event.pointerId);
+    });
+    handle.addEventListener('pointerup', (event) => {
+      if (!start || start.id !== event.pointerId) return;
+      const dy = event.clientY - start.y;
+      start = null;
+      if (Math.abs(dy) < 20) return;
+      this._swipedAt = performance.now();
+      this.setSheet(dy < 0 ? 'open' : 'peek');
+    });
+    handle.addEventListener('pointercancel', () => {
+      start = null;
+    });
   }
 
   _showTab(name) {

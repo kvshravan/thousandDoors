@@ -9,6 +9,14 @@ def _env(name: str) -> str | None:
     return os.getenv(name) or None
 
 
+OAUTH_PROVIDERS = {"google": "Google"}
+
+
+def _providers() -> tuple[str, ...]:
+    names = (os.getenv("AUTH_PROVIDERS") or "").lower().split(",")
+    return tuple(name.strip() for name in names if name.strip() in OAUTH_PROVIDERS)
+
+
 class Config:
     ENV_NAME = "base"
     APP_NAME = os.getenv("APP_NAME", "1000 Doors")
@@ -27,6 +35,8 @@ class Config:
     SUPABASE_SECRET_KEY = _env("SUPABASE_SECRET_KEY")
     SUPABASE_JWKS_URL = _env("SUPABASE_JWKS_URL")
     DATABASE_URL = _env("DATABASE_URL")
+    # OAuth providers enabled in Supabase Auth, shown on the sign-in page (e.g. "google").
+    AUTH_PROVIDERS = _providers()
 
 
 class DevelopmentConfig(Config):
@@ -47,6 +57,7 @@ class TestingConfig(Config):
     SUPABASE_SECRET_KEY = None
     SUPABASE_JWKS_URL = None
     DATABASE_URL = None
+    AUTH_PROVIDERS = ("google",)
 
 
 class ProductionConfig(Config):

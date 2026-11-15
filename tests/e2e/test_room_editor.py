@@ -6,7 +6,15 @@ import pytest
 from playwright.sync_api import Browser, Page, expect
 
 from .conftest import SLOW_FRAMES_SCRIPT, collect_errors
-from .helpers import info, open_room, point_for, wait_camera_settled
+from .helpers import (
+    Touch,
+    angle_delta,
+    axe_violations,
+    info,
+    open_room,
+    point_for,
+    wait_camera_settled,
+)
 
 STATIC = Path(__file__).resolve().parents[2] / "static"
 MIRA = json.loads((STATIC / "data" / "rooms" / "mira.json").read_text(encoding="utf-8"))
@@ -236,6 +244,10 @@ def test_rotate_and_delete(page: Page, errors):
     enter_edit(page)
     select(page, "coat-rack")
     start = obj(page, "coat-rack")["rotation"]["y"]
+    # Phone-only controls stay out of the desktop panel.
+    expect(page.get_by_role("button", name="Nudge left")).to_be_hidden()
+    expect(page.get_by_test_id("editor-done")).to_be_hidden()
+    expect(page.get_by_test_id("editor-handle")).to_be_hidden()
 
     page.get_by_role("button", name="Turn right").click()
     assert angle(obj(page, "coat-rack")["rotation"]["y"], start) == pytest.approx(STEP, abs=1e-3)
@@ -610,23 +622,108 @@ def owner_phone(browser: Browser, base_url: str, slow_frames: bool):
     context.close()
 
 
+def canvas_height(page: Page) -> float:
+    return page.locator(".engine-canvas").bounding_box()["height"]
+
+
+def screen_center(page: Page, object_id: str) -> dict:
+    box = bounds(page, object_id)
+    centre = [(lo + hi) / 2 for lo, hi in zip(box["min"], box["max"], strict=True)]
+    return page.evaluate("([x, y, z]) => window.__doors.worldPoint(x, y, z)", centre)
+
+
 def test_editing_by_touch_on_a_phone(owner_phone: Page):
     page = owner_phone
     errors = collect_errors(page)
     open_room(page, OWNER)
     page.get_by_test_id("edit-room").tap()
-    expect(page.get_by_test_id("editor")).to_be_visible()
+    sheet = page.get_by_test_id("editor")
+    expect(sheet).to_be_visible()
     wait_camera_settled(page)
-    stage = page.locator(".engine-canvas").bounding_box()
-    assert stage["height"] < 600, "the 3D view shrinks above the editor sheet"
 
+    # The sheet starts folded, so the room keeps most of the screen.
+    expect(sheet).to_have_attribute("data-sheet", "peek")
+    expect(page.get_by_test_id("editor-search")).to_be_hidden()
+    assert page.locator(".room-nameplate").bounding_box()["width"] <= 1, (
+        "the room's name tucks away"
+    )
+    assert canvas_height(page) > 650
+    assert page.get_by_test_id("editor-save").bounding_box()["y"] < 80, "Save moves to the top"
+
+    page.get_by_role("tab", name="Add").tap()
+    expect(sheet).to_have_attribute("data-sheet", "open")
+    expect(page.get_by_test_id("editor-search")).to_be_visible()
+    page.wait_for_function("() => document.querySelector('.engine-canvas').clientHeight < 450")
+
+    # Picking something folds the sheet again so there's room to place it.
     page.get_by_role("button", name="Armchair", exact=True).tap()
+    expect(sheet).to_have_attribute("data-sheet", "peek")
     page.wait_for_function("() => window.__doors.info().scene.editor.pending")
+    page.wait_for_function("() => document.querySelector('.engine-canvas').clientHeight > 450")
+    wait_camera_settled(page)
     point = page.evaluate("() => window.__doors.floorPoint(0.25, -1.25)")
     page.touchscreen.tap(point["x"], point["y"])
 
     page.wait_for_function("() => window.__doors.info().scene.editor.pending === null")
     assert obj(page, "lounge-chair-1") is not None
+
+    handle = page.get_by_test_id("editor-handle")
+    handle.tap()
+    expect(sheet).to_have_attribute("data-sheet", "open")
+    expect(handle).to_have_attribute("aria-expanded", "true")
+    handle.tap()
+    expect(sheet).to_have_attribute("data-sheet", "peek")
+
     page.get_by_test_id("editor-save").tap()
     expect(page.get_by_test_id("editor")).to_be_hidden()
+    assert errors == []
+
+
+def test_touch_picks_things_before_moving_them(owner_phone: Page):
+    page = owner_phone
+    errors = collect_errors(page)
+    open_room(page, OWNER)
+    page.get_by_test_id("edit-room").tap()
+    wait_camera_settled(page)
+    touch = Touch(page)
+    start = obj(page, "couch")["position"]
+    before = info(page)["scene"]["camera"]
+
+    # A swipe that starts on the sofa turns the camera; the sofa stays put.
+    point = point_for(page, "couch")
+    touch.gesture([(point["x"], point["y"])], [(point["x"] + 120, point["y"])])
+    after = wait_camera_settled(page)
+    assert obj(page, "couch")["position"] == start
+    assert angle_delta(after["azimuth"], before["azimuth"]) > 0.1
+    assert editor(page)["selected"] is None
+
+    # A tap picks it.
+    point = point_for(page, "couch")
+    touch.send("touchStart", [(point["x"], point["y"])])
+    touch.send("touchEnd", [])
+    page.wait_for_function("() => window.__doors.info().scene.editor.selected?.id === 'couch'")
+    expect(page.get_by_test_id("editor-done")).to_be_visible()
+    expect(page.get_by_test_id("editor-options")).to_be_visible()
+    assert axe_violations(page) == []
+
+    # Now a drag moves it, without turning the camera.
+    point = point_for(page, "couch")
+    azimuth = info(page)["scene"]["camera"]["azimuth"]
+    touch.gesture([(point["x"], point["y"])], [(point["x"] - 60, point["y"] + 40)])
+    assert obj(page, "couch")["position"] != start
+    assert info(page)["scene"]["camera"]["azimuth"] == pytest.approx(azimuth, abs=1e-3)
+
+    # Arrows nudge it the way they point on screen, whichever way the camera faces.
+    for name, axis, sign in (("Nudge right", "x", 1), ("Nudge down", "y", 1)):
+        was = screen_center(page, "couch")
+        page.get_by_role("button", name=name).tap()
+        now = screen_center(page, "couch")
+        assert (now[axis] - was[axis]) * sign > 5, name
+
+    page.get_by_test_id("editor-options").tap()
+    expect(page.get_by_test_id("editor")).to_have_attribute("data-sheet", "open")
+    expect(page.get_by_role("tab", name="Item")).to_have_attribute("aria-selected", "true")
+    page.get_by_test_id("editor-done").tap()
+    expect(page.get_by_test_id("editor-selection")).to_be_hidden()
+    expect(page.get_by_test_id("editor")).to_have_attribute("data-sheet", "peek")
     assert errors == []

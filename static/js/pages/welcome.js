@@ -31,6 +31,9 @@ async function start() {
     .slice(0, 20);
   form.username.value = suggestion.length >= 3 ? suggestion : '';
   preview.textContent = form.username.value || 'yourname';
+  // Google sign-ins come with a name.
+  const name = getSession()?.user?.name;
+  if (name && !form.displayName.value) form.displayName.value = name.slice(0, form.displayName.maxLength);
   form.hidden = false;
   form.username.focus();
 }
@@ -60,7 +63,8 @@ form.addEventListener('submit', async (event) => {
     form.username.focus();
     return;
   }
-  const safeNext = next?.startsWith('/') && !next.startsWith('//') && next !== '/welcome' ? next : null;
+  // A brand-new room beats the home page as the place to land.
+  const safeNext = next?.startsWith('/') && !next.startsWith('//') && !['/', '/welcome'].includes(next) ? next : null;
   window.location.assign(safeNext ?? result.data.roomUrl);
 });
 

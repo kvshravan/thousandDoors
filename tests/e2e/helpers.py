@@ -120,6 +120,30 @@ def click_object(page: Page, object_id: str) -> None:
     page.mouse.click(point["x"], point["y"])
 
 
+class Touch:
+    """Sends raw multi-touch events through the Chrome DevTools Protocol."""
+
+    def __init__(self, page: Page):
+        self.cdp = page.context.new_cdp_session(page)
+
+    def send(self, kind: str, points: list[tuple[float, float]]) -> None:
+        touch_points = [{"x": x, "y": y, "id": i} for i, (x, y) in enumerate(points)]
+        self.cdp.send("Input.dispatchTouchEvent", {"type": kind, "touchPoints": touch_points})
+
+    def gesture(
+        self, start: list[tuple[float, float]], end: list[tuple[float, float]], steps: int = 12
+    ):
+        self.send("touchStart", start)
+        for step in range(1, steps + 1):
+            t = step / steps
+            points = [
+                (sx + (ex - sx) * t, sy + (ey - sy) * t)
+                for (sx, sy), (ex, ey) in zip(start, end, strict=True)
+            ]
+            self.send("touchMove", points)
+        self.send("touchEnd", [])
+
+
 AXE_SCRIPT = Path(__file__).parent / "vendor" / "axe.min.js"
 
 
