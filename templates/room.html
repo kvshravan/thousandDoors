@@ -13,7 +13,7 @@
   data-room-url="{{ url_for('api.get_room', room_id=room_id) }}"
   data-models-url="{{ url_for('static', filename='models/') }}"
 ></div>
-<p class="sr-only" id="room-keys-help">Arrow keys look around, plus and minus zoom, Home resets the view. Use “Things here” to use the objects in this room.</p>
+<p class="sr-only" id="room-keys-help">When walking, W A S D or the arrow keys walk and turn; in the overview, the arrow keys look around. Plus and minus move closer or further, Home resets the view. Use “Things here” to use the objects in this room.</p>
 <p class="sr-only" id="room-announcer" data-testid="room-announcer" role="status" aria-live="polite"></p>
 
 <div class="room-ui">
@@ -22,9 +22,11 @@
     <span class="room-nameplate-sub" data-room-status hidden></span>
   </div>
   <nav class="room-actions" aria-label="Room actions">
-    <a class="chip" href="{{ url_for('pages.hallway') }}" data-testid="back-link"><span class="chip-icon" aria-hidden="true">←</span>Hallway</a>
+    <a class="chip" href="{{ url_for('pages.hallway') }}" data-testid="back-link"><span class="chip-icon" aria-hidden="true">←</span><span class="chip-label">Hallway</span></a>
     <button class="chip" type="button" id="things-list" data-testid="things-list" aria-haspopup="dialog"><span class="chip-icon" aria-hidden="true">☰</span><span class="chip-label">Things here</span></button>
     <button class="chip" type="button" id="reset-view" data-testid="reset-view"><span class="chip-icon" aria-hidden="true">⟲</span><span class="chip-label">Reset view</span></button>
+    <button class="chip" type="button" id="view-toggle" data-testid="view-toggle" hidden><span class="chip-icon" aria-hidden="true" data-view-icon>⤢</span><span class="chip-label" data-view-label>Overview</span></button>
+    <button class="chip" type="button" id="room-help" data-testid="room-help" aria-haspopup="dialog" aria-label="Help: how this room works"><span class="chip-icon" aria-hidden="true">?</span><span class="chip-label">Help</span></button>
     <button class="chip chip-accent" type="button" id="go-inside" data-testid="go-inside" hidden><span class="chip-icon" aria-hidden="true">⌂</span><span class="chip-label">Go inside</span></button>
     <button class="chip chip-accent" type="button" id="stand-up" data-testid="stand-up" hidden>Stand up</button>
     <button class="chip" type="button" id="edit-room" data-testid="edit-room" hidden><span class="chip-icon" aria-hidden="true">✎</span><span class="chip-label">Edit room</span></button>

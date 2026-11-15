@@ -56,7 +56,15 @@ def test_signing_in_with_a_magic_link_and_choosing_a_username(page: Page, errors
 
     username.fill("sam")
     page.get_by_test_id("welcome-submit").click()
+    # A brand-new room opens straight into the editor, with decorating tips on top.
+    expect(page).to_have_url(re.compile(r"/room/sam(\?new=1)?$"))
+    page.wait_for_function("() => window.__doors && window.__doors.state === 'ready'")
+    expect(page.get_by_test_id("room-panel")).to_contain_text("Make it yours")
+    expect(page.get_by_test_id("editor")).to_be_visible()
+    page.get_by_test_id("guide-done").click()
+    expect(page.get_by_test_id("room-panel")).to_be_hidden()
     expect(page).to_have_url(re.compile(r"/room/sam$"))
+    page.get_by_test_id("editor-cancel").click()
     data = open_room(page, "/room/sam?quality=low")
     assert data["saveMode"] == "account"
     assert data["owner"]["displayName"] == "Sam"

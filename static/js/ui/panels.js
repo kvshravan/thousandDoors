@@ -211,6 +211,76 @@ export function photosPanel(urls, title) {
 }
 
 /** The keyboard- and screen-reader-friendly list of everything the viewer can use. */
+function guideSteps(steps) {
+  return h(
+    'ol',
+    { className: 'guide-steps' },
+    steps.map(([icon, title, text]) =>
+      h('li', {}, h('span', { className: 'guide-icon', 'aria-hidden': 'true', text: icon }), h('span', {}, h('strong', { text: title }), ' ', text)),
+    ),
+  );
+}
+
+/**
+ * How to use a room, shown on a first visit and from the Help button. `touch` words it
+ * for phones; owners (`canEdit`) also hear about the editor.
+ */
+export function roomGuide({ roomName, touch, canEdit, onEdit, onDone }) {
+  const steps = [
+    touch
+      ? ['👆', 'Look and walk.', 'Drag to look around, and tap the floor to walk there. Overview (⤢) shows the whole room.']
+      : ['🖱️', 'Look and walk.', 'Drag to look around. Click the floor, or use W A S D, to walk. Overview shows the whole room.'],
+    touch
+      ? ['✨', 'Tap things.', 'Most things do something: tap the record player, a photo, the bookshelf, the TV, or a sofa to sit on it.']
+      : ['✨', 'Point at things, then click.', 'Anything that glows and shows a label does something: play the record player, open a photo, browse the bookshelf, sit on the sofa.'],
+    ['📌', 'Say hi.', 'Pin a note on the noticeboard or leave a gift on the table by the door.'],
+    ['☰', 'Lost?', 'Things here lists everything you can use.'],
+    ['🚪', 'Knock on more doors.', 'Hallway takes you back to the rails.'],
+  ];
+  if (canEdit) steps.splice(3, 0, ['✎', 'Make it yours.', 'Edit room lets you add, move, and recolour things.']);
+  return {
+    kind: 'guide',
+    kicker: 'How it works',
+    title: canEdit ? 'Welcome home' : `Welcome to ${roomName}`,
+    body: [
+      guideSteps(steps),
+      h(
+        'div',
+        { className: 'panel-actions' },
+        canEdit ? h('button', { className: 'button', type: 'button', dataset: { testid: 'guide-edit' }, text: 'Start decorating', onClick: onEdit }) : null,
+        h('button', { className: canEdit ? 'button button-quiet' : 'button', type: 'button', dataset: { testid: 'guide-done' }, text: canEdit ? 'Look around first' : 'Got it', onClick: onDone }),
+      ),
+    ],
+  };
+}
+
+/** Tips for decorating, shown over the open editor when someone first gets their room. */
+export function editGuide({ touch, onDone }) {
+  const steps = touch
+    ? [
+        ['➕', 'Add things.', 'Pick something in the panel below, then tap the floor or a wall where it should go.'],
+        ['👆', 'Move things.', 'Tap something to select it, then drag it. The toolbar turns, nudges, and recolours it.'],
+        ['🎨', 'Change the look.', 'The Look tab has walls, floors, lighting, and the view outside.'],
+        ['💾', 'Save.', 'Tap Save at the top when you’re done. Edit room brings this back any time.'],
+      ]
+    : [
+        ['➕', 'Add things.', 'Pick something in the panel, then click in the room where it should go.'],
+        ['🖱️', 'Move things.', 'Drag them around. R turns, Delete removes; click something to change its colour and size.'],
+        ['🎨', 'Change the look.', 'The Look tab has walls, floors, lighting, and the view outside.'],
+        ['💾', 'Save.', 'Press Save when you’re done. Edit room brings this back any time.'],
+      ];
+  return {
+    kind: 'guide',
+    kicker: 'Your room is ready',
+    title: 'Make it yours',
+    body: [
+      h('p', { className: 'muted', text: 'This is your room. Everyone who knocks on your door sees it, so decorate it with things you love. Your desk holds your profile.' }),
+      guideSteps(steps),
+      h('div', { className: 'panel-actions' }, h('button', { className: 'button', type: 'button', dataset: { testid: 'guide-done' }, text: 'Start decorating', onClick: onDone })),
+    ],
+  };
+}
+
 export function thingsPanel(items, verbs, onChoose) {
   const sorted = [...items].sort((a, b) => a.name.localeCompare(b.name));
   return {

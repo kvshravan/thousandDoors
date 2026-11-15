@@ -11,13 +11,16 @@ const HIGHLIGHT = new THREE.Color('#ffcf7a');
  * so objects hidden behind others can't be clicked through them.
  */
 export class InteractionManager {
-  constructor({ camera, canvas, scene, resolve, onHoverChange, onSelect }) {
+  constructor({ camera, canvas, scene, resolve, onHoverChange, onSelect, onEmptyHover = null, onEmptySelect = null }) {
     this.camera = camera;
     this.canvas = canvas;
     this.scene = scene;
     this.resolve = resolve;
     this.onHoverChange = onHoverChange;
     this.onSelect = onSelect;
+    // Pointing at or tapping something that isn't interactive (the floor, for walking).
+    this.onEmptyHover = onEmptyHover;
+    this.onEmptySelect = onEmptySelect;
 
     this.enabled = true;
     this.hovered = null;
@@ -49,7 +52,9 @@ export class InteractionManager {
     if (this._pendingHover) {
       const { x, y } = this._pendingHover;
       this._pendingHover = null;
-      this._setHovered(this.pick(x, y), { x, y });
+      const record = this.pick(x, y);
+      this._setHovered(record, { x, y });
+      this.onEmptyHover?.(record ? null : { x, y });
     }
     const changed = this._changed;
     this._changed = false;
@@ -155,7 +160,10 @@ export class InteractionManager {
     this._clearTap();
     if (!tap || !this.enabled) return;
     const record = this.pick(tap.x, tap.y);
-    if (!record) return;
+    if (!record) {
+      this.onEmptySelect?.(tap.x, tap.y);
+      return;
+    }
     // Interactions often move the camera or open a panel, so drop any stale hover.
     this._pendingHover = null;
     this._setHovered(null);
@@ -172,6 +180,7 @@ export class InteractionManager {
     if (!this.enabled || event.pointerType !== 'mouse') return;
     if (event.buttons !== 0) {
       if (this.hovered) this._setHovered(null);
+      this.onEmptyHover?.(null);
       return;
     }
     this._pendingHover = { x: event.clientX, y: event.clientY };
@@ -180,6 +189,7 @@ export class InteractionManager {
   _onPointerLeave() {
     this._pendingHover = null;
     this._setHovered(null);
+    this.onEmptyHover?.(null);
   }
 
   _setHovered(record, point = null) {

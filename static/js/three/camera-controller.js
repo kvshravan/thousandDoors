@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { WalkController } from './walk-controller.js';
 
 const RESET_SPEED = 6;
 const RESET_EPSILON = 0.002;
@@ -8,11 +9,14 @@ const MOVE_EPSILON_SQ = 1e-8;
 const MIN_FRAME_S = 1 / 240;
 
 /**
- * Orbit-style camera that stays inside the room: limited zoom, limited tilt,
- * no panning, and a hard clamp to the room's interior box.
+ * The room's camera, in one of two views:
+ * - 'overview': orbit-style around the middle of the room (limited zoom and tilt, no
+ *   panning, clamped to the room's interior box);
+ * - 'walk': first person at eye height (see walk-controller.js).
+ * Methods like flyTo, resetView, orbitBy, and zoomBy do the sensible thing in either.
  */
 export class CameraController {
-  constructor(camera, domElement, settings, bounds) {
+  constructor(camera, domElement, settings, bounds, { walk = null } = {}) {
     this.camera = camera;
     this.settings = settings;
     this.bounds = bounds;
@@ -51,10 +55,61 @@ export class CameraController {
     camera.position.copy(this.home.position);
     controls.target.copy(this.home.target);
     controls.update();
+
+    this.mode = 'overview';
+    this.walker = walk
+      ? new WalkController(camera, domElement, { ...walk, reducedMotion: this.reducedMotion })
+      : null;
+  }
+
+  get walking() {
+    return this.mode === 'walk';
+  }
+
+  /**
+   * Switches between 'walk' and 'overview'. With `instant`, jumps straight there (the
+   * first view of a room); otherwise glides.
+   */
+  setMode(mode, { instant = false } = {}) {
+    if (mode === 'walk' && !this.walker) return false;
+    if (mode === this.mode) return true;
+    this.mode = mode;
+    if (mode === 'walk') {
+      this._resetting = false;
+      this.controls.enabled = false;
+      this.walker.setEnabled(true);
+      if (instant) {
+        this.walker.resetView();
+        this.walker.glide.duration = 0;
+      } else {
+        this.walker.takeOver();
+      }
+    } else {
+      this.walker.setEnabled(false);
+      this.controls.enabled = this._userControl ?? true;
+      this.controls.target.copy(this.walker.lookTarget(2.5));
+      this.controls.update();
+      if (instant) {
+        this.camera.position.copy(this.home.position);
+        this.controls.target.copy(this.home.target);
+        this.controls.update();
+      } else {
+        this.flyTo(this.home);
+      }
+    }
+    this._changed = true;
+    return true;
   }
 
   /** Returns true when the camera moved and the frame should be re-rendered. */
   update(dt) {
+    if (this.mode === 'walk') {
+      const changed = this.walker.update(dt) || this._changed;
+      this._changed = false;
+      this.walker.lookTarget(2, this.controls.target);
+      this.idle = this.walker.idle && !changed;
+      return changed;
+    }
     // OrbitControls damps per frame; scale it by elapsed time so the camera glides and
     // settles in the same time at 10 fps (software rendering) as at 120 fps.
     const frames = Math.max(dt, MIN_FRAME_S) * 60;
@@ -79,7 +134,8 @@ export class CameraController {
   }
 
   resetView() {
-    this.flyTo(this.home);
+    if (this.mode === 'walk') this.walker.resetView();
+    else this.flyTo(this.home);
   }
 
   /** Overrides how far the camera may tilt; pass nothing to restore the defaults. */
@@ -90,11 +146,17 @@ export class CameraController {
 
   /** Pauses mouse and touch camera control (for example while dragging furniture). */
   setUserControl(enabled) {
-    this.controls.enabled = enabled;
+    this._userControl = enabled;
+    this.controls.enabled = enabled && this.mode === 'overview';
+    this.walker?.setUserControl(enabled);
   }
 
   /** Smoothly moves the camera to { position, target } (THREE.Vector3s). A drag cancels it. */
   flyTo({ position, target }) {
+    if (this.mode === 'walk') {
+      this.walker.glideTo({ position, target });
+      return;
+    }
     this._goal = { position: position.clone(), target: target.clone() };
     this._resetting = true;
     // Drop leftover drag momentum, which would otherwise push the camera off the goal.
@@ -103,16 +165,24 @@ export class CameraController {
     this.controls._scale = 1;
   }
 
-  /** Orbits around the target by the given angles (radians), within the usual limits. */
+  /** Orbits around the target by the given angles (radians); when walking, turns the head. */
   orbitBy(dAzimuth, dPolar) {
+    if (this.mode === 'walk') {
+      this.walker.lookBy(-dAzimuth, -dPolar);
+      return;
+    }
     this._moveOnSphere((s) => {
       s.theta += dAzimuth;
       s.phi = THREE.MathUtils.clamp(s.phi + dPolar, this.controls.minPolarAngle, this.controls.maxPolarAngle);
     });
   }
 
-  /** Moves closer (factor < 1) or further away (factor > 1), within the zoom limits. */
+  /** Moves closer (factor < 1) or further away (factor > 1); when walking, takes a step. */
   zoomBy(factor) {
+    if (this.mode === 'walk') {
+      this.walker.stepBy(factor < 1 ? 0.7 : -0.7);
+      return;
+    }
     this._moveOnSphere((s) => {
       s.radius = THREE.MathUtils.clamp(s.radius * factor, this.settings.minDistance, this.settings.maxDistance);
     });
@@ -138,6 +208,8 @@ export class CameraController {
       polar: this.controls.getPolarAngle(),
       azimuth: this.controls.getAzimuthalAngle(),
       idle: this.idle,
+      mode: this.mode,
+      walk: this.mode === 'walk' ? this.walker.getDebugInfo() : null,
       aspect: this.camera.aspect,
       fov: this.camera.fov,
       limits: {
@@ -156,6 +228,7 @@ export class CameraController {
   dispose() {
     this.controls.removeEventListener('start', this._onStart);
     this.controls.dispose();
+    this.walker?.dispose();
   }
 
   _stepReset(dt) {

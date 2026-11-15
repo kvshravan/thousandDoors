@@ -70,6 +70,35 @@ def browser_context_args(browser_context_args):
     return {**browser_context_args, "viewport": {"width": 1280, "height": 720}}
 
 
+# Rooms show a how-it-works guide on a first visit and open in the walking view; most
+# tests aren't about either, so every test browser has "seen" the guide and chosen the
+# overview, unless a test sets doors:test-keep-guide or doors:test-walk (see
+# test_room_guide.py and test_room_walk.py).
+GUIDE_SEEN_SCRIPT = """
+try {
+  if (localStorage.getItem('doors:test-keep-guide') !== '1') {
+    localStorage.setItem('doors:guide-seen', '1');
+  }
+  if (localStorage.getItem('doors:test-walk') !== '1') {
+    localStorage.setItem('doors:room-view', 'overview');
+  }
+} catch {}
+"""
+
+
+@pytest.fixture(scope="session")
+def browser(browser):
+    original = browser.new_context
+
+    def new_context(*args, **kwargs):
+        context = original(*args, **kwargs)
+        context.add_init_script(GUIDE_SEEN_SCRIPT)
+        return context
+
+    browser.new_context = new_context
+    return browser
+
+
 def collect_errors(page):
     errors = []
     page.on("console", lambda msg: errors.append(msg.text) if msg.type == "error" else None)

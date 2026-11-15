@@ -98,10 +98,25 @@ Notes and gifts are shared: they're saved on the server, so every visitor sees t
 
 Every room's house stands somewhere: a countryside cottage, beach house on stilts, forest log cabin, city apartment, snowy chalet, or desert adobe (the owner picks in **Look → Outside**). The window shows the place painted for the time of day, and **Step outside** at the door shows the house itself in 3D, with the owner's front door and nameplate. Drag to look around; click the door or **Go inside** to return.
 
+### Walking around
+
+Rooms open in a first-person **walking view**, at eye height just inside the door:
+
+- **Drag** to look around (the room moves with your finger or mouse, with a little momentum after a flick).
+- **Click or tap the floor** to walk there. A soft ring shows where you're pointing and where you're headed, and the route goes around furniture (a grid path-finder in `walk-map.js`). You can't walk through walls or furniture.
+- On a computer, **W A S D** walk and strafe (Shift to hurry) and **← →** turn; the mouse wheel takes a step forward or back. On phones, **pinch** steps forward or back.
+- A gentle head-bob while you walk (off with the OS reduce-motion setting).
+- **Overview** (⤢) switches to the old bird's-eye orbit of the whole room, and **Walk** comes back to where you were standing. The choice is remembered. Editing always uses the overview, then walks on.
+- Sitting on a sofa glides you into it; **Stand up** gets you up beside it.
+
+### First visit
+
+The first time someone opens a room, a short guide explains looking, walking, tapping things, and leaving notes (worded for touch on phones). **Help** (?) brings it back any time. A brand-new room opens straight into the editor with a few decorating tips.
+
 ### Keyboard and accessibility
 
 - **Things here** lists every object you're allowed to use, with what it does (Sit down, Play music, Leave a gift...). Choosing one works exactly like clicking it, so the whole room works without a mouse.
-- **Tab** to the 3D view, then use the **arrow keys** to look around, **+** / **-** to zoom, and **Home** to stand up and return to the room view.
+- **Tab** to the 3D view. When walking, **W A S D** / the **arrow keys** walk and turn; in the overview, the **arrow keys** look around. **+** / **-** step or zoom, and **Home** stands you up or returns to the start.
 - Changes you can't see, such as a lamp switching or the window changing, are announced to screen readers.
 - With the OS **reduce motion** setting, camera moves jump instead of gliding.
 - On phones, the room buttons collapse to icons (their names are still read out).
@@ -204,7 +219,9 @@ static/
   js/three/       3D engine, independent of Flask and the database
     engine.js             Renderer, single render loop, resize, visibility pause, disposal
     scene-manager.js      Mounts one scene at a time, disposing the previous one
-    camera-controller.js  Bounded orbit camera (mouse + touch), reset view
+    camera-controller.js  Room camera: walking view or bounded orbit overview, reset view
+    walk-controller.js    First-person walking (look, tap-to-walk, keys, head-bob) + floor ring
+    walk-map.js           Walkable floor grid and path-finding around furniture
     room-scene.js         Builds a room from a room config + catalogue; edit mode, live
                           appearance changes, light settings, serialize/applyLayout
     exterior-scene.js     The house outside, in the room's landscape and time of day

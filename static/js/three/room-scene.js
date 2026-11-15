@@ -8,11 +8,17 @@ import { ObjectManager } from './object-manager.js';
 import { buildRoomShell } from './props/architecture.js';
 import { PropKit } from './props/kit.js';
 import { CAMERA_SETTINGS, ROOM_DIMENSIONS, resolveAppearance } from './room-config.js';
-import { worldToClient } from './screen-point.js';
+import { setRayFromClient, worldToClient } from './screen-point.js';
+import { WalkMarker } from './walk-controller.js';
+import { WalkMap } from './walk-map.js';
 
 // Seated eye position and look-at point, in the seat's local space (front faces +z).
 const SEAT_EYE = [0, 1.15, 0.1];
 const SEAT_LOOK_AT = [0, 0.7, 2.3];
+// Walking starts just inside the door, looking into the room (a little down at it).
+const WALK_HOME = { x: 0, z: 3.6, yaw: 0, pitch: -0.2 };
+// Floor things lower than this (rugs, mats, a yoga mat) can be walked over.
+const STEP_OVER_HEIGHT = 0.15;
 
 /**
  * Renders one room from a normalized room config and a catalogue.
@@ -31,9 +37,15 @@ export class RoomScene {
     images = null,
     dimensions = ROOM_DIMENSIONS,
     camera = CAMERA_SETTINGS,
+    view = 'overview',
+    headBob = true,
+    onLeaveSeat = null,
   }) {
     const appearance = resolveAppearance(room.appearance);
     this.room = room;
+    this.view = view;
+    this.headBob = headBob;
+    this.onLeaveSeat = onLeaveSeat;
     this.catalog = catalog;
     this.modelsUrl = modelsUrl;
     this.onInteract = onInteract;
@@ -85,7 +97,18 @@ export class RoomScene {
     await this.objects.populate(this.room.objects, (fraction) => onProgress?.(0.1 + fraction * 0.85));
     if (this.loader.disposed) return;
 
-    this.controller = new CameraController(this.camera, engine.canvas, this.cameraSettings, this._cameraBounds());
+    this.controller = new CameraController(this.camera, engine.canvas, this.cameraSettings, this._cameraBounds(), {
+      walk: {
+        home: WALK_HOME,
+        headBob: this.headBob,
+        onMove: () => this._leftSeat(),
+      },
+    });
+    this._rebuildWalkMap();
+    this.marker = new WalkMarker();
+    this.scene.add(this.marker.group);
+    this._floorRay = new THREE.Raycaster();
+    if (this.view === 'walk') this.controller.setMode('walk', { instant: true });
     this.interactions = new InteractionManager({
       camera: this.camera,
       canvas: engine.canvas,
@@ -96,6 +119,9 @@ export class RoomScene {
       },
       onHoverChange: (record, point) => this.onHoverChange?.(record ? describe(record) : null, point),
       onSelect: (record) => this.onInteract?.(describe(record)),
+      onEmptyHover: (point) =>
+        this.marker.showHover(point && this.controller.walking && !this.editor ? this._floorPoint(point.x, point.y) : null),
+      onEmptySelect: (x, y) => this._tapFloor(x, y),
     });
     engine.renderer.compile(this.scene, this.camera);
     onProgress?.(1);
@@ -104,6 +130,7 @@ export class RoomScene {
   update(dt) {
     let changed = this.controller.update(dt);
     if (this.interactions.update()) changed = true;
+    if (this.marker.update(dt, !this.controller.walker?.route)) changed = true;
     if (this.editor?.update()) changed = true;
     for (const updater of this.kit.updaters) {
       if (updater(dt)) changed = true;
@@ -128,6 +155,40 @@ export class RoomScene {
   resetView() {
     this.seatedOn = null;
     this.controller?.resetView();
+  }
+
+  /** Gets up from a seat: in place when walking, back to the start in the overview. */
+  standUp() {
+    this.seatedOn = null;
+    if (this.controller?.walking) this.controller.walker.standUp();
+    else this.controller?.resetView();
+  }
+
+  /** 'walk' (first person) or 'overview' (orbiting the middle of the room). */
+  get viewMode() {
+    return this.controller?.mode ?? this.view;
+  }
+
+  setViewMode(mode) {
+    if (!this.controller || this.editor) return false;
+    this.seatedOn = null;
+    this.marker.showHover(null);
+    this.marker.showDestination(null);
+    const ok = this.controller.setMode(mode);
+    if (ok) this.view = mode;
+    return ok;
+  }
+
+  /** Walks to (x, z) on the floor, around the furniture. Returns false if it can't. */
+  walkTo(x, z) {
+    if (!this.controller?.walking || this.editor) return false;
+    const ok = this.controller.walker.walkTo(x, z);
+    if (ok) {
+      const end = this.controller.walker.route.points.at(-1);
+      this.marker.showDestination(new THREE.Vector3(end.x, 0, end.z));
+      this._leftSeat();
+    }
+    return ok;
   }
 
   orbitCamera(dAzimuth, dPolar) {
@@ -198,6 +259,11 @@ export class RoomScene {
     if (this.editor || !this.controller) return null;
     this.seatedOn = null;
     this.interactions.setEnabled(false);
+    // Arranging furniture works best from above, so editing always uses the overview.
+    this._viewBeforeEdit = this.controller.mode;
+    this.marker.showHover(null);
+    this.marker.showDestination(null);
+    this.controller.setMode('overview', { instant: true });
     this.editor = new EditorController({ scene: this, onChange });
     this.editor.start();
     return this.editor;
@@ -208,6 +274,8 @@ export class RoomScene {
     this.editor.stop();
     this.editor = null;
     this.interactions.setEnabled(true);
+    this._rebuildWalkMap();
+    if (this._viewBeforeEdit === 'walk') this.controller.setMode('walk');
     this._dirty = true;
   }
 
@@ -363,6 +431,8 @@ export class RoomScene {
     this.interactions = null;
     this.controller?.dispose();
     this.controller = null;
+    this.marker?.dispose();
+    this.marker = null;
     this.scene.traverse((object) => {
       if (object.isLight) object.dispose?.();
     });
@@ -404,6 +474,55 @@ export class RoomScene {
       new THREE.Vector3(-width / 2 + m, m, -depth / 2 + m),
       new THREE.Vector3(width / 2 - m, height - m, depth / 2 - m),
     );
+  }
+
+  // ---- Walking ----
+
+  /** Maps the free floor from the furniture's footprints (again after editing). */
+  _rebuildWalkMap() {
+    const { width, depth } = this.dimensions;
+    this.scene.updateMatrixWorld(true);
+    const box = new THREE.Box3();
+    const obstacles = [];
+    for (const record of this.objects.records.values()) {
+      if (record.flat) continue;
+      box.setFromObject(record.root);
+      if (box.isEmpty() || box.min.y > 0.05 || box.max.y < STEP_OVER_HEIGHT) continue;
+      obstacles.push({ minX: box.min.x, maxX: box.max.x, minZ: box.min.z, maxZ: box.max.z });
+    }
+    this.walkMap = new WalkMap({ minX: -width / 2, maxX: width / 2, minZ: -depth / 2, maxZ: depth / 2 }, obstacles);
+    this.controller?.walker?.setMap(this.walkMap);
+  }
+
+  /** The floor point under a client position: the floor itself, or just in front of whatever's there. */
+  _floorPoint(clientX, clientY) {
+    if (!setRayFromClient(this._floorRay, this.camera, this.engine.canvas, clientX, clientY)) return null;
+    const hit = this._floorRay
+      .intersectObjects(this.scene.children, true)
+      .find((h) => h.object.isMesh && h.object.visible);
+    if (!hit) return null;
+    const point = hit.point.clone();
+    if (point.y > 0.08) {
+      // Pointing at furniture or a wall: aim for the floor in front of it.
+      const toCamera = new THREE.Vector3(this.camera.position.x - point.x, 0, this.camera.position.z - point.z);
+      if (toCamera.lengthSq() < 1e-6) return null;
+      point.addScaledVector(toCamera.normalize(), 0.45);
+    }
+    point.y = 0;
+    const free = this.walkMap.nearestFree(point.x, point.z, 1.2);
+    return free ? new THREE.Vector3(free.x, 0, free.z) : null;
+  }
+
+  _tapFloor(clientX, clientY) {
+    if (!this.controller?.walking || this.editor) return;
+    const point = this._floorPoint(clientX, clientY);
+    if (point) this.walkTo(point.x, point.z);
+  }
+
+  _leftSeat() {
+    if (!this.seatedOn) return;
+    this.seatedOn = null;
+    this.onLeaveSeat?.();
   }
 }
 

@@ -63,9 +63,9 @@ form.addEventListener('submit', async (event) => {
     form.username.focus();
     return;
   }
-  // A brand-new room beats the home page as the place to land.
+  // A brand-new room lands in the editor, with a few tips.
   const safeNext = next?.startsWith('/') && !next.startsWith('//') && !['/', '/welcome'].includes(next) ? next : null;
-  window.location.assign(safeNext ?? result.data.roomUrl);
+  window.location.assign(safeNext ?? `${result.data.roomUrl}?new=1`);
 });
 
 start();

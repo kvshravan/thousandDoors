@@ -16,7 +16,7 @@ import {
 import { MusicPlayer } from '../ui/music.js';
 import { Panel } from '../ui/panel.js';
 import { PhotoViewer } from '../ui/photo-viewer.js';
-import { thingsPanel } from '../ui/panels.js';
+import { editGuide, roomGuide, thingsPanel } from '../ui/panels.js';
 import { RoomStore } from '../ui/room-store.js';
 import { VisitorBook } from '../ui/visitor-book.js';
 import { EditorPanel } from '../ui/editor-panel.js';
@@ -26,6 +26,10 @@ import { parseMediaLink, PROVIDERS } from '../media.js';
 
 const HINT_FADE_DELAY_MS = 2500;
 const TOOLTIP_OFFSET_PX = 16;
+// Set once someone has seen how rooms work, so the guide only pops up on a first visit.
+const GUIDE_KEY = 'doors:guide-seen';
+// 'walk' (the default) or 'overview', remembered between rooms.
+const VIEW_KEY = 'doors:room-view';
 // Verbs for things outside the room, which aren't room interactions.
 const VERBS = { ...INTERACTION_VERBS, enter: 'Go inside' };
 
@@ -47,6 +51,8 @@ class RoomPage {
     this.announcer = root.querySelector('#room-announcer');
     this.editButton = root.querySelector('#edit-room');
     this.insideButton = root.querySelector('#go-inside');
+    this.helpButton = root.querySelector('#room-help');
+    this.viewButton = root.querySelector('#view-toggle');
     this.editorRoot = root.querySelector('#editor');
     this.editorPanel = null;
     this.editing = false;
@@ -56,6 +62,7 @@ class RoomPage {
     this._editBusy = false;
     this.leaveUrl = root.querySelector('[data-testid="back-link"]').getAttribute('href');
     this._continueArrival();
+    this.isNewRoom = this._takeParam('new') === '1';
 
     const { catalogUrl, roomUrl, modelsUrl } = this.stage.dataset;
     this.urls = { catalogUrl, roomUrl, modelsUrl };
@@ -113,12 +120,19 @@ class RoomPage {
     this.editButton.addEventListener('click', () => this.enterEditMode());
     this.insideButton.addEventListener('click', () => this.goInside());
     this.thingsButton.addEventListener('click', () => this.openThingsList());
+    this.helpButton.addEventListener('click', () => this.openGuide());
+    this.viewButton.addEventListener('click', () => this.toggleView());
     this._onCanvasKey = (event) => this._handleCanvasKey(event);
 
     const coarse = window.matchMedia?.('(pointer: coarse)').matches;
-    this.hint.textContent = coarse
-      ? 'Drag to look around · Pinch to zoom · Tap things'
-      : 'Drag to look around · Scroll to zoom · Click things';
+    this.touch = Boolean(coarse);
+    this.view = 'walk';
+    try {
+      if (window.localStorage.getItem(VIEW_KEY) === 'overview') this.view = 'overview';
+    } catch {
+      // Storage blocked: walk, as by default.
+    }
+    this._setHint();
   }
 
   /** Coming through a door from the hallway: start in its warm light, then fade in. */
@@ -187,9 +201,11 @@ class RoomPage {
       this._syncVisitorCounts(scene);
       this._setState('ready');
       this.editButton.hidden = !this.saveMode;
+      this._syncViewButton();
       this.loading.classList.add('is-hidden');
       this.engine.canvas.addEventListener('pointerdown', this._onFirstInteraction, { once: true });
       this.engine.canvas.addEventListener('wheel', this._onFirstInteraction, { once: true, passive: true });
+      this._welcome();
     } catch (error) {
       console.error('[room] Could not open the room.', error);
       this._fail('load');
@@ -226,10 +242,55 @@ class RoomPage {
       catalog: this.catalog,
       modelsUrl: this.urls.modelsUrl,
       images: this.images,
+      view: this.view,
       onInteract: (event) => this._interact(event),
       onHoverChange: (target, point) => this._showTooltip(target, point),
+      onLeaveSeat: () => {
+        this.standButton.hidden = true;
+      },
       canInteract: (level) => canInteract(level ?? 'everyone', this.viewer.relationship),
     });
+  }
+
+  // ---- Walking or the overview ----
+
+  toggleView() {
+    const scene = this.manager?.current;
+    if (!scene?.setViewMode || this.state !== 'ready' || this.editing) return false;
+    const view = scene.viewMode === 'walk' ? 'overview' : 'walk';
+    if (!scene.setViewMode(view)) return false;
+    this.view = view;
+    this.standButton.hidden = true;
+    try {
+      window.localStorage.setItem(VIEW_KEY, view);
+    } catch {
+      // Not remembered; that's fine.
+    }
+    this._syncViewButton();
+    this._setHint();
+    this.hint.classList.remove('is-hidden');
+    this._fadeHint();
+    this._announce(view === 'walk' ? 'Walking view. Tap or click the floor to walk there.' : 'Overview of the whole room.');
+    return true;
+  }
+
+  _syncViewButton() {
+    const walking = this.view === 'walk';
+    this.viewButton.hidden = this.outside || this.state !== 'ready';
+    this.viewButton.querySelector('[data-view-icon]').textContent = walking ? '⤢' : '🚶';
+    this.viewButton.querySelector('[data-view-label]').textContent = walking ? 'Overview' : 'Walk';
+  }
+
+  _setHint() {
+    if (this.view === 'walk') {
+      this.hint.textContent = this.touch
+        ? 'Drag to look · Tap the floor to walk · Tap things'
+        : 'Drag to look · Click the floor or use WASD to walk · Click things';
+    } else {
+      this.hint.textContent = this.touch
+        ? 'Drag to look around · Pinch to zoom · Tap things'
+        : 'Drag to look around · Scroll to zoom · Click things';
+    }
   }
 
   /** Leaves through the front door to see the house in its landscape. */
@@ -289,6 +350,7 @@ class RoomPage {
     this.engine.canvas.setAttribute('aria-label', outside ? `Outside ${this.room.name}, 3D view` : `${this.room.name}, 3D view`);
     this.loading.classList.add('is-hidden');
     this._setState('ready');
+    this._syncViewButton();
     return true;
   }
 
@@ -623,6 +685,12 @@ class RoomPage {
     if (!scene || this.state !== 'ready' || event.altKey || event.ctrlKey || event.metaKey) return;
     // While editing with something selected, the arrow keys move the furniture instead.
     if (scene.editing && scene.editor?.selectedId) return;
+    // When walking, the walking camera handles the arrow keys itself (and W A S D).
+    if (scene.viewMode === 'walk' && !scene.editing && event.key.startsWith('Arrow')) {
+      if (scene.seatedOn) this.standButton.hidden = true;
+      this._fadeHint();
+      return;
+    }
     const STEP = Math.PI / 12;
     const actions = {
       ArrowLeft: () => scene.orbitCamera(-STEP, 0),
@@ -641,6 +709,64 @@ class RoomPage {
     if (scene.seatedOn) this.standButton.hidden = true;
     action();
     this._fadeHint();
+  }
+
+  // ---- First-visit help ----
+
+  /** Removes a one-off query parameter from the address (so a reload doesn't repeat it). */
+  _takeParam(name) {
+    const params = new URLSearchParams(window.location.search);
+    const value = params.get(name);
+    if (value === null) return null;
+    params.delete(name);
+    const query = params.toString();
+    window.history.replaceState(null, '', `${window.location.pathname}${query ? `?${query}` : ''}${window.location.hash}`);
+    return value;
+  }
+
+  /** A brand-new room opens straight into the editor; anyone else gets the guide once. */
+  _welcome() {
+    if (this.isNewRoom && this.saveMode === 'account') {
+      this.isNewRoom = false;
+      this._rememberGuide();
+      if (!this.enterEditMode()) return;
+      this.editorPanel.setSheet('open');
+      this.panel.open(editGuide({ touch: this.touch, onDone: () => this.panel.close() }));
+      return;
+    }
+    let seen = true;
+    try {
+      seen = window.localStorage.getItem(GUIDE_KEY) === '1';
+    } catch {
+      // Storage blocked: don't nag on every visit.
+    }
+    if (!seen) this.openGuide();
+  }
+
+  openGuide() {
+    if (this.state !== 'ready' || this.editing) return false;
+    this._rememberGuide();
+    this.panel.open(
+      roomGuide({
+        roomName: this.room.name,
+        touch: this.touch,
+        canEdit: Boolean(this.saveMode),
+        onEdit: () => {
+          this.panel.close();
+          if (this.enterEditMode()) this.editorPanel.setSheet('open');
+        },
+        onDone: () => this.panel.close(),
+      }),
+    );
+    return true;
+  }
+
+  _rememberGuide() {
+    try {
+      window.localStorage.setItem(GUIDE_KEY, '1');
+    } catch {
+      // Not remembered; the Help button still works.
+    }
   }
 
   openThingsList() {
@@ -672,8 +798,10 @@ class RoomPage {
   }
 
   _stand() {
-    const wasSeated = Boolean(this.manager?.current?.seatedOn);
-    this.manager?.current?.resetView();
+    const scene = this.manager?.current;
+    const wasSeated = Boolean(scene?.seatedOn);
+    if (wasSeated && scene.standUp) scene.standUp();
+    else scene?.resetView();
     this.standButton.hidden = true;
     if (wasSeated) this._announce('You stand up.');
   }
@@ -793,6 +921,8 @@ if (document.documentElement.dataset.debug === '1') {
     editorSelect: (objectId) => page.manager?.current?.editor?.select(objectId) ?? false,
     stepOutside: () => page.stepOutside(),
     goInside: () => page.goInside(),
+    walkable: (x, z) => page.manager?.current?.walkMap?.isFree(x, z) ?? null,
+    walkTo: (x, z) => page.manager?.current?.walkTo?.(x, z) ?? false,
     // Adds a catalogue item in edit mode, then removes it again; resolves to its id or null.
     editorTryAdd: async (catalogId) => {
       const editor = page.manager?.current?.editor;
