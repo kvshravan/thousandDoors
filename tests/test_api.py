@@ -230,6 +230,12 @@ def test_notes_need_a_signed_in_visitor_with_a_name(client, app):
         ).status_code
         == 404
     )
+    assert client.get("/api/rooms/nobody/notes").status_code == 404
+
+    # The room comes with its notes and gifts, so the page needs one request.
+    visitors = client.get("/api/rooms/mira").json["visitors"]
+    assert [n["message"] for n in visitors["notes"]] == ["hi <b>there</b>"]
+    assert visitors["gifts"] == []
 
 
 def test_gifts_and_the_hourly_limit(client, app):

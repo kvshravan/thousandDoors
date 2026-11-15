@@ -112,11 +112,12 @@ def update_profile():
 
 @api_bp.get("/rooms/<room_id>")
 def get_room(room_id: str):
-    found = store().room(room_id, current_user())
+    # The room page gets everything it needs in one request (one database query).
+    found = store().room(room_id, current_user(), with_visitors=True)
     if not found:
         raise NotFound("No such room.")
-    room, viewer = found
-    return jsonify(room=room, viewer=viewer)
+    room, viewer, visitors = found
+    return jsonify(room=room, viewer=viewer, visitors=visitors)
 
 
 @api_bp.put("/rooms/<room_id>/layout")
@@ -135,9 +136,10 @@ def save_layout(room_id: str):
 
 @api_bp.get("/rooms/<room_id>/<any(notes, gifts):kind>")
 def list_entries(room_id: str, kind: str):
-    if not store().room_exists(room_id):
+    entries = store().list_entries(kind, room_id)
+    if entries is None:
         raise NotFound("No such room.")
-    return jsonify(entries=store().list_entries(kind, room_id))
+    return jsonify(entries=entries)
 
 
 @api_bp.post("/rooms/<room_id>/<any(notes, gifts):kind>")

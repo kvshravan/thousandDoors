@@ -11,10 +11,11 @@ import copy
 import json
 import threading
 import uuid
-from contextlib import contextmanager
+from contextlib import contextmanager, suppress
 from datetime import UTC, datetime, timedelta
 
-from psycopg import errors
+import psycopg
+from psycopg import errors, pq
 from psycopg.rows import dict_row
 from psycopg.types.json import Jsonb
 
@@ -24,6 +25,13 @@ from backend.rooms import demo_rooms, owner_card
 MAX_LISTED = 100
 # Notes or gifts one person may leave in one room per hour.
 HOURLY_LIMIT = 20
+# A room's most recent notes or gifts as a JSON array, oldest first. Needs %(id)s and
+# %(limit)s; table and value come only from this module, never from requests.
+_RECENT_JSON = (
+    "select coalesce(jsonb_agg(e order by e.created_at), '[]'::jsonb) from ("
+    "select id, author_name, {value}, created_at from public.{table} "
+    "where room_id = %(id)s order by created_at desc limit %(limit)s) e"
+)
 
 
 class StoreError(Exception):
@@ -53,6 +61,17 @@ class Conflict(StoreError):
 class TooMany(StoreError):
     status = 429
     code = "too_many"
+
+
+def _translate(error: BaseException) -> BaseException:
+    """Database errors as store errors; anything else unchanged."""
+    if isinstance(error, errors.InsufficientPrivilege):
+        return Forbidden("You can't do that.")
+    if isinstance(error, errors.UniqueViolation):
+        return Conflict("That already exists.")
+    if isinstance(error, errors.CheckViolation | errors.ForeignKeyViolation):
+        return StoreError("That isn't allowed.")
+    return error
 
 
 def _document(row: dict, profile: dict | None) -> dict:
@@ -112,12 +131,18 @@ class MemoryStore:
     def room_exists(self, room_id: str) -> bool:
         return room_id in self.rooms
 
-    def room(self, room_id: str, user: User | None) -> tuple[dict, dict] | None:
+    def room(
+        self, room_id: str, user: User | None, *, with_visitors: bool = False
+    ) -> tuple[dict, dict] | tuple[dict, dict, dict] | None:
         row = self.rooms.get(room_id)
         if not row:
             return None
         profile = self._profile_by_id(row["owner_id"])
-        return copy.deepcopy(_document(row, profile)), _viewer(row, user)
+        found = (copy.deepcopy(_document(row, profile)), _viewer(row, user))
+        if not with_visitors:
+            return found
+        entries = {kind: self.list_entries(kind, room_id) for kind in ("notes", "gifts")}
+        return (*found, entries)
 
     def save_layout(self, room_id: str, user: User, appearance: dict, objects: list) -> None:
         with self._lock:
@@ -176,7 +201,9 @@ class MemoryStore:
 
     # ---- Notes and gifts ----
 
-    def list_entries(self, kind: str, room_id: str) -> list[dict]:
+    def list_entries(self, kind: str, room_id: str) -> list[dict] | None:
+        if room_id not in self.rooms:
+            return None
         value_key = "message" if kind == "notes" else "gift"
         rows = [e for e in self.entries[kind] if e["room_id"] == room_id]
         return [_entry(row, value_key) for row in rows[-MAX_LISTED:]]
@@ -261,47 +288,85 @@ class PostgresStore:
 
     @contextmanager
     def _as(self, user: User | None):
-        """A transaction running as `user` (or anon), so row-level security applies."""
+        """A transaction running as `user` (or anon), so row-level security applies.
+
+        Everything is pipelined: BEGIN, the settings, the queries, and COMMIT go to the
+        server together. Fetch results after the block when you can; then a read costs
+        a single round trip. Fetching inside the block (to decide what to do next) adds one.
+        """
         with self._connect() as conn:
+            # Inside an outer transaction (tests), use a savepoint and reset the role by hand.
+            nested = conn.info.transaction_status != pq.TransactionStatus.IDLE
+            if nested:
+                begin, commit, rollback = (
+                    "savepoint doors_as",
+                    "release savepoint doors_as",
+                    "rollback to savepoint doors_as",
+                )
+            else:
+                begin, commit, rollback = "begin", "commit", "rollback"
+            claims = user.claims() if user else {"role": "anon"}
             try:
-                with conn.transaction():
-                    conn.execute("set local role authenticated" if user else "set local role anon")
-                    claims = user.claims() if user else {"role": "anon"}
+                with conn.pipeline():
+                    conn.execute(begin)
                     conn.execute(
-                        "select set_config('request.jwt.claims', %s, true)", [json.dumps(claims)]
+                        "select set_config('role', %s, true), "
+                        "set_config('request.jwt.claims', %s, true)",
+                        ["authenticated" if user else "anon", json.dumps(claims)],
                     )
                     yield conn
-                    conn.execute("reset role")
-            except errors.InsufficientPrivilege as error:
-                raise Forbidden("You can't do that.") from error
-            except errors.UniqueViolation as error:
-                raise Conflict("That already exists.") from error
-            except (errors.CheckViolation, errors.ForeignKeyViolation) as error:
-                raise StoreError("That isn't allowed.") from error
+                    if nested:
+                        conn.execute("reset role")
+                    conn.execute(commit)
+            except BaseException as error:
+                if conn.info.transaction_status != pq.TransactionStatus.IDLE or nested:
+                    with suppress(psycopg.Error):
+                        conn.execute(rollback)
+                        if nested:
+                            conn.execute("release savepoint doors_as")
+                translated = _translate(error)
+                if translated is error:
+                    raise
+                raise translated from error
 
     # ---- Rooms ----
 
     def room_exists(self, room_id: str) -> bool:
         with self._as(None) as conn:
-            return bool(
-                conn.execute("select 1 from public.rooms where id = %s", [room_id]).fetchone()
-            )
+            cur = conn.execute("select 1 from public.rooms where id = %s", [room_id])
+        return bool(cur.fetchone())
 
-    def room(self, room_id: str, user: User | None) -> tuple[dict, dict] | None:
+    def room(
+        self, room_id: str, user: User | None, *, with_visitors: bool = False
+    ) -> tuple[dict, dict] | tuple[dict, dict, dict] | None:
+        """The room document and viewer; with_visitors adds its notes and gifts (one query)."""
+        visitors = (
+            f", ({_RECENT_JSON.format(table='notes', value='message')}) as notes"
+            f", ({_RECENT_JSON.format(table='gifts', value='gift')}) as gifts"
+            if with_visitors
+            else ""
+        )
         with self._as(user) as conn:
-            row = conn.execute("select * from public.rooms where id = %s", [room_id]).fetchone()
-            if not row:
-                return None
-            profile = None
-            if row["owner_id"]:
-                profile = conn.execute(
-                    "select * from public.profiles where id = %s", [row["owner_id"]]
-                ).fetchone()
-        return _document(row, profile), _viewer(row, user)
+            cur = conn.execute(
+                "select r.*, to_jsonb(p) as profile" + visitors + " from public.rooms r "
+                "left join public.profiles p on p.id = r.owner_id where r.id = %(id)s",
+                {"id": room_id, "limit": MAX_LISTED},
+            )
+        row = cur.fetchone()
+        if not row:
+            return None
+        found = (_document(row, row["profile"]), _viewer(row, user))
+        if not with_visitors:
+            return found
+        entries = {
+            "notes": [_entry(e, "message") for e in row["notes"]],
+            "gifts": [_entry(e, "gift") for e in row["gifts"]],
+        }
+        return (*found, entries)
 
     def save_layout(self, room_id: str, user: User, appearance: dict, objects: list) -> None:
         with self._as(user) as conn:
-            updated = conn.execute(
+            cur = conn.execute(
                 """
                 update public.rooms
                 set appearance = %s, objects = %s, updated_at = now()
@@ -309,18 +374,18 @@ class PostgresStore:
                 returning id
                 """,
                 [Jsonb(appearance), Jsonb(objects), room_id],
-            ).fetchone()
-            if not updated:
-                exists = conn.execute("select 1 from public.rooms where id = %s", [room_id])
-                if exists.fetchone():
-                    raise Forbidden("Only the owner can change this room.")
-                raise NotFound("No such room.")
+            )
+        if not cur.fetchone():
+            if self.room_exists(room_id):
+                raise Forbidden("Only the owner can change this room.")
+            raise NotFound("No such room.")
 
     # ---- Profiles ----
 
     def profile(self, user: User) -> dict | None:
         with self._as(user) as conn:
-            return conn.execute("select * from public.profiles where id = %s", [user.id]).fetchone()
+            cur = conn.execute("select * from public.profiles where id = %s", [user.id])
+        return cur.fetchone()
 
     def create_profile(self, user: User, username: str, display_name: str, starter: dict) -> dict:
         with self._as(user) as conn:
@@ -371,27 +436,32 @@ class PostgresStore:
 
     # ---- Notes and gifts (kind is "notes" or "gifts"; table names come only from here) ----
 
-    def list_entries(self, kind: str, room_id: str) -> list[dict]:
+    def list_entries(self, kind: str, room_id: str) -> list[dict] | None:
+        """A room's recent notes or gifts, oldest first; None if there's no such room."""
         table, value_key = ("notes", "message") if kind == "notes" else ("gifts", "gift")
         with self._as(None) as conn:
-            rows = conn.execute(
-                f"select * from (select * from public.{table} where room_id = %s "
-                "order by created_at desc limit %s) recent order by created_at",
-                [room_id, MAX_LISTED],
-            ).fetchall()
-        return [_entry(row, value_key) for row in rows]
+            cur = conn.execute(
+                "select exists(select 1 from public.rooms where id = %(id)s) as found, "
+                f"({_RECENT_JSON.format(table=table, value=value_key)}) as entries",
+                {"id": room_id, "limit": MAX_LISTED},
+            )
+        row = cur.fetchone()
+        if not row["found"]:
+            return None
+        return [_entry(entry, value_key) for entry in row["entries"]]
 
     def add_entry(self, kind: str, room_id: str, user: User, author: str, value: str) -> dict:
         table, value_key = ("notes", "message") if kind == "notes" else ("gifts", "gift")
         with self._as(user) as conn:
-            if not conn.execute("select 1 from public.rooms where id = %s", [room_id]).fetchone():
+            check = conn.execute(
+                "select exists(select 1 from public.rooms where id = %(id)s) as found, "
+                f"(select count(*) from public.{table} where room_id = %(id)s "
+                "and author_id = %(user)s and created_at > now() - interval '1 hour') as recent",
+                {"id": room_id, "user": user.id},
+            ).fetchone()
+            if not check["found"]:
                 raise NotFound("No such room.")
-            recent = conn.execute(
-                f"select count(*) as n from public.{table} where room_id = %s "
-                "and author_id = %s and created_at > now() - interval '1 hour'",
-                [room_id, user.id],
-            ).fetchone()["n"]
-            if recent >= HOURLY_LIMIT:
+            if check["recent"] >= HOURLY_LIMIT:
                 raise TooMany("That's plenty for now. Try again later.")
             row = conn.execute(
                 f"insert into public.{table} (room_id, author_id, author_name, {value_key}) "
@@ -421,11 +491,12 @@ class PostgresStore:
 
     def list_photos(self, user: User) -> list[dict]:
         with self._as(user) as conn:
-            return conn.execute(
+            cur = conn.execute(
                 "select * from public.photos where owner_id = %s "
                 "order by created_at desc limit 200",
                 [user.id],
-            ).fetchall()
+            )
+        return cur.fetchall()
 
     def photo(self, photo_id: str) -> dict | None:
         try:
@@ -433,4 +504,5 @@ class PostgresStore:
         except ValueError:
             return None
         with self._as(None) as conn:
-            return conn.execute("select * from public.photos where id = %s", [photo_id]).fetchone()
+            cur = conn.execute("select * from public.photos where id = %s", [photo_id])
+        return cur.fetchone()

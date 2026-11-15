@@ -137,7 +137,7 @@ class RoomPage {
         api(this.urls.roomUrl),
       ]);
       if (!roomResult.ok) throw new Error(`Could not load the room (HTTP ${roomResult.status}).`);
-      const { room: roomData, viewer } = roomResult.data;
+      const { room: roomData, viewer, visitors: visitorData } = roomResult.data;
       const catalog = new Catalog(catalogData);
       this.catalog = catalog;
       this.viewer = {
@@ -153,8 +153,8 @@ class RoomPage {
       const preview = this.debug && this.saveMode !== 'account';
       this.room = preview ? this._withSavedLayout(roomData) : normalizeRoom(roomData);
       this._showNameplate(this.room);
-      this.book = new VisitorBook(this.originalRoom.roomId);
-      const visitors = this.book.load();
+      this.book = new VisitorBook(this.originalRoom.roomId, visitorData);
+      const visitors = visitorData ? Promise.resolve() : this.book.load();
 
       const quality = detectQuality(new URLSearchParams(window.location.search).get('quality'));
       this.engine = new Engine(this.stage, { quality, onContextLost: () => this._fail('lost') });

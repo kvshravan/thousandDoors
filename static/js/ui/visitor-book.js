@@ -8,9 +8,13 @@ const CLEAN = { notes: cleanNote, gifts: cleanGift };
  * read them; leaving one needs an account with a username (it's signed with it).
  */
 export class VisitorBook {
-  constructor(roomId) {
+  /** `initial` ({ notes, gifts }) comes with the room, saving two requests. */
+  constructor(roomId, initial = null) {
     this.roomId = roomId;
     this.entries = { notes: [], gifts: [] };
+    if (initial) {
+      for (const kind of Object.keys(this.entries)) this.entries[kind] = this._clean(kind, initial[kind]);
+    }
   }
 
   get signedIn() {
