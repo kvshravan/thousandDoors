@@ -14,7 +14,7 @@ def test_first_visit_shows_how_rooms_work_once(page: Page, errors):
     open_room(page, "/room/jun?quality=low")
     panel = page.get_by_test_id("room-panel")
     expect(panel).to_contain_text("Welcome to Jun's room")
-    expect(panel).to_contain_text("Point at things, then click.")
+    expect(panel).to_contain_text("Aim at things, then click.")
     expect(page.get_by_test_id("guide-edit")).to_have_count(0)
     page.get_by_test_id("guide-done").click()
     expect(panel).to_be_hidden()

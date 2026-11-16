@@ -15,6 +15,8 @@ const BOB_HEIGHT = 0.024;
 const BOB_SWAY = 0.012;
 const WHEEL_STEP = 0.7;
 const PINCH_METRES_PER_PX = 0.012;
+// Radians per pixel of mouse movement with game-style mouse look.
+const MOUSE_LOOK_SPEED = 0.0024;
 const EPSILON = 1e-5;
 const MOVE_KEYS = {
   KeyW: 'forward',
@@ -35,12 +37,19 @@ function typingInto(target) {
 }
 
 /**
- * First-person camera at eye height. Drag to look around (with a little momentum),
- * tap or click the floor to walk there along a route around the furniture, W A S D or
- * the arrow keys to walk freely, and wheel or pinch to step forward and back.
+ * First-person camera at eye height. On a computer it plays like a game: click into
+ * the room and the mouse looks around (pointer lock; Esc gives the cursor back) while
+ * W A S D or the arrow keys walk. On phones, drag to look (with a little momentum) and
+ * tap the floor to walk there along a route around the furniture. The wheel or a
+ * pinch steps forward and back. Without pointer lock, dragging looks around on a
+ * computer too.
  */
 export class WalkController {
-  constructor(camera, canvas, { home, map = null, headBob = true, reducedMotion = false, onMove = null }) {
+  constructor(
+    camera,
+    canvas,
+    { home, map = null, headBob = true, reducedMotion = false, onMove = null, mouseLook = false, onLockChange = null },
+  ) {
     this.camera = camera;
     this.canvas = canvas;
     this.map = map;
@@ -50,6 +59,13 @@ export class WalkController {
     this.home = home;
     this.enabled = false;
     this.userControl = true;
+    // Game-style mouse look (computers): clicking the room locks the pointer to it.
+    this.mouseLook = mouseLook && typeof canvas.requestPointerLock === 'function';
+    this.onLockChange = onLockChange;
+    this.lockFailed = false;
+    // Whether the current press started with the pointer locked (so the click that
+    // locks it doesn't also use whatever's in the middle of the screen).
+    this.pressWasLocked = false;
 
     this.position = new THREE.Vector3(home.x, EYE_HEIGHT, home.z);
     this.yaw = home.yaw;
@@ -79,6 +95,16 @@ export class WalkController {
     this._onKeyDown = this._onKeyDown.bind(this);
     this._onKeyUp = this._onKeyUp.bind(this);
     this._onBlur = () => this.keys.clear();
+    this._onLockChange = () => {
+      if (!this.locked) this.spin.yaw = this.spin.pitch = 0;
+      this._changed = true;
+      this.onLockChange?.(this.locked);
+    };
+    this._onLockError = () => {
+      if (!this._quietLock) this.lockFailed = true;
+    };
+    document.addEventListener('pointerlockchange', this._onLockChange);
+    document.addEventListener('pointerlockerror', this._onLockError);
     canvas.addEventListener('pointerdown', this._onPointerDown);
     canvas.addEventListener('pointermove', this._onPointerMove);
     canvas.addEventListener('pointerup', this._onPointerUp);
@@ -87,6 +113,33 @@ export class WalkController {
     window.addEventListener('keydown', this._onKeyDown);
     window.addEventListener('keyup', this._onKeyUp);
     window.addEventListener('blur', this._onBlur);
+  }
+
+  get locked() {
+    return document.pointerLockElement === this.canvas;
+  }
+
+  /**
+   * Locks the pointer for mouse look (call from a click). `quiet` is for going back to
+   * mouse look after a panel: if the browser says no, the visitor just clicks the room,
+   * rather than falling back to the cursor for good.
+   */
+  lock({ quiet = false } = {}) {
+    if (!this.mouseLook || this.locked || !this._active) return;
+    const failed = () => {
+      if (!quiet) this.lockFailed = true;
+    };
+    this._quietLock = quiet;
+    try {
+      const request = this.canvas.requestPointerLock();
+      request?.catch?.(failed);
+    } catch {
+      failed();
+    }
+  }
+
+  unlock() {
+    if (this.locked) document.exitPointerLock();
   }
 
   get walking() {
@@ -99,12 +152,18 @@ export class WalkController {
 
   setEnabled(enabled) {
     this.enabled = enabled;
-    if (!enabled) this._stopInput();
+    if (!enabled) {
+      this._stopInput();
+      this.unlock();
+    }
   }
 
   setUserControl(enabled) {
     this.userControl = enabled;
-    if (!enabled) this._stopInput();
+    if (!enabled) {
+      this._stopInput();
+      this.unlock();
+    }
   }
 
   /** The point the camera looks at, `distance` metres ahead. */
@@ -233,6 +292,7 @@ export class WalkController {
       yaw: this.yaw,
       pitch: this.pitch,
       seated: this.seated,
+      locked: this.locked,
       walking: this.walking || Boolean(this.glide),
       route: this.route ? this.route.points.map((p) => ({ x: p.x, z: p.z })) : null,
     };
@@ -247,6 +307,9 @@ export class WalkController {
     window.removeEventListener('keydown', this._onKeyDown);
     window.removeEventListener('keyup', this._onKeyUp);
     window.removeEventListener('blur', this._onBlur);
+    document.removeEventListener('pointerlockchange', this._onLockChange);
+    document.removeEventListener('pointerlockerror', this._onLockError);
+    this.unlock();
   }
 
   // ---- Movement ----
@@ -397,9 +460,18 @@ export class WalkController {
   }
 
   _onPointerDown(event) {
+    this.pressWasLocked = this.locked;
     if (!this._active || (event.pointerType === 'mouse' && event.button !== 0)) return;
+    if (event.pointerType === 'mouse' && this.mouseLook) {
+      if (this.locked) return;
+      this.lock();
+    }
     this.pointers.set(event.pointerId, { x: event.clientX, y: event.clientY });
-    this.canvas.setPointerCapture?.(event.pointerId);
+    try {
+      this.canvas.setPointerCapture?.(event.pointerId);
+    } catch {
+      // Not while the pointer is locked; it's captured anyway.
+    }
     this.spin.yaw = this.spin.pitch = 0;
     if (this.pointers.size === 1) {
       this._drag = { x: event.clientX, y: event.clientY, moved: 0, samples: [] };
@@ -411,6 +483,10 @@ export class WalkController {
   }
 
   _onPointerMove(event) {
+    if (this.locked) {
+      if (this._active) this._mouseLook(event.movementX, event.movementY);
+      return;
+    }
     if (!this._active || !this.pointers.has(event.pointerId)) return;
     this.pointers.set(event.pointerId, { x: event.clientX, y: event.clientY });
     if (this._pinch && this.pointers.size === 2) {
@@ -455,6 +531,14 @@ export class WalkController {
       const [p] = this.pointers.values();
       this._drag = { x: p.x, y: p.y, moved: TAP_SLOP_PX + 1, samples: [] };
     }
+  }
+
+  _mouseLook(dx, dy) {
+    if (!dx && !dy) return;
+    this.lookBy(-dx * MOUSE_LOOK_SPEED, -dy * MOUSE_LOOK_SPEED);
+    // Crisp, like a game: no easing on mouse look.
+    this.yaw = this.targetYaw;
+    this.pitch = this.targetPitch;
   }
 
   _pointerDistance() {

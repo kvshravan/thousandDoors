@@ -229,10 +229,10 @@ export function roomGuide({ roomName, touch, canEdit, onEdit, onDone }) {
   const steps = [
     touch
       ? ['👆', 'Look and walk.', 'Drag to look around, and tap the floor to walk there. Overview (⤢) shows the whole room.']
-      : ['🖱️', 'Look and walk.', 'Drag to look around. Click the floor, or use W A S D, to walk. Overview shows the whole room.'],
+      : ['🖱️', 'Look and walk.', 'Click in the room, then move the mouse to look around and use W A S D to walk. Esc gives you the cursor back. Overview shows the whole room.'],
     touch
       ? ['✨', 'Tap things.', 'Most things do something: tap the record player, a photo, the bookshelf, the TV, or a sofa to sit on it.']
-      : ['✨', 'Point at things, then click.', 'Anything that glows and shows a label does something: play the record player, open a photo, browse the bookshelf, sit on the sofa.'],
+      : ['✨', 'Aim at things, then click.', 'Anything that glows and shows a label does something: play the record player, open a photo, browse the bookshelf, sit on the sofa.'],
     ['📌', 'Say hi.', 'Pin a note on the noticeboard or leave a gift on the table by the door.'],
     ['☰', 'Lost?', 'Things here lists everything you can use.'],
     ['🚪', 'Knock on more doors.', 'Hallway takes you back to the rails.'],

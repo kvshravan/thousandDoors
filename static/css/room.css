@@ -1452,3 +1452,60 @@ body.is-editing .room-stage {
     height: 44px;
   }
 }
+
+/* ---- Game-style mouse look (computers, walking view) ---- */
+
+.room-crosshair {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 8px;
+  height: 8px;
+  margin: -4px 0 0 -4px;
+  border-radius: 50%;
+  background: rgb(255 248 238 / 0.9);
+  box-shadow: 0 0 0 2px rgb(32 26 36 / 0.45), 0 0 10px rgb(0 0 0 / 0.35);
+  pointer-events: none;
+  transition: transform 0.12s ease, background 0.12s ease;
+}
+
+.room-crosshair.is-on-thing {
+  transform: scale(1.6);
+  background: #ffd08a;
+}
+
+.room-crosshair[hidden],
+.room-lock-prompt[hidden] {
+  display: none;
+}
+
+.room-lock-prompt {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  display: grid;
+  gap: 0.25rem;
+  margin: 0;
+  padding: 0.8rem 1.3rem;
+  border-radius: 16px;
+  background: rgb(32 26 36 / 0.72);
+  color: var(--ink);
+  text-align: center;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+  backdrop-filter: blur(6px);
+}
+
+.room-lock-prompt strong {
+  font-size: 1.05rem;
+}
+
+.room-lock-prompt span {
+  color: rgb(255 248 238 / 0.75);
+  font-size: 0.85rem;
+}
+
+body.is-editing .room-crosshair,
+body.is-editing .room-lock-prompt {
+  display: none;
+}

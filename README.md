@@ -100,15 +100,22 @@ Every room's house stands somewhere: a countryside cottage, beach house on stilt
 
 ### Walking around
 
-Rooms open in a first-person **walking view**, at eye height just inside the door:
+Rooms open in a first-person **walking view**, at eye height just inside the door.
 
-- **Drag** to look around (the room moves with your finger or mouse, with a little momentum after a flick).
-- **Click or tap the floor** to walk there. A soft ring shows where you're pointing and where you're headed, and the route goes around furniture (a grid path-finder in `walk-map.js`). You can't walk through walls or furniture.
-- On a computer, **W A S D** walk and strafe (Shift to hurry) and **← →** turn; the mouse wheel takes a step forward or back. On phones, **pinch** steps forward or back.
+**On a computer it plays like a game:**
+
+- **Click in the room** to start: the cursor hides and moving the mouse looks around (pointer lock). A small dot marks the middle of the screen.
+- **W A S D** walk and strafe (Shift to hurry), **← →** turn, and the mouse wheel takes a step. You can't walk through walls or furniture.
+- **Aim at something and click** to use it: the dot grows and the thing glows when it's usable. Opening a photo or a panel gives the cursor back; click the room again to carry on.
+- **Esc** gives the cursor back any time (for the buttons). If the browser refuses to lock the pointer, dragging looks around and clicking works with the cursor.
+
+**On phones:** drag to look around (with a little momentum after a flick), **tap the floor** to walk there along a route around the furniture (a grid path-finder in `walk-map.js`, with a soft ring where you're headed), tap things to use them, and pinch to step forward or back.
+
+Everywhere:
+
 - A gentle head-bob while you walk (off with the OS reduce-motion setting).
-- **Overview** (⤢) switches to the old bird's-eye orbit of the whole room, and **Walk** comes back to where you were standing. The choice is remembered. Editing always uses the overview, then walks on.
+- **Overview** (⤢) switches to the bird's-eye orbit of the whole room, and **Walk** comes back to where you were standing. The choice is remembered. Editing always uses the overview, then walks on.
 - Sitting on a sofa glides you into it; **Stand up** gets you up beside it.
-
 ### First visit
 
 The first time someone opens a room, a short guide explains looking, walking, tapping things, and leaving notes (worded for touch on phones). **Help** (?) brings it back any time. A brand-new room opens straight into the editor with a few decorating tips.
@@ -220,7 +227,7 @@ static/
     engine.js             Renderer, single render loop, resize, visibility pause, disposal
     scene-manager.js      Mounts one scene at a time, disposing the previous one
     camera-controller.js  Room camera: walking view or bounded orbit overview, reset view
-    walk-controller.js    First-person walking (look, tap-to-walk, keys, head-bob) + floor ring
+    walk-controller.js    First-person walking (mouse look, keys, tap-to-walk, head-bob) + floor ring
     walk-map.js           Walkable floor grid and path-finding around furniture
     room-scene.js         Builds a room from a room config + catalogue; edit mode, live
                           appearance changes, light settings, serialize/applyLayout

@@ -1,10 +1,11 @@
+import re
 from itertools import pairwise
 
 import pytest
 from playwright.sync_api import Browser, Page, expect
 
 from .conftest import SLOW_FRAMES_SCRIPT, collect_errors
-from .helpers import Touch, bring_into_view, camera, canvas_center, open_room, wait_camera_settled
+from .helpers import Touch, camera, canvas_center, open_room, wait_camera_settled
 from .test_room_touch import PHONE
 
 # Test browsers default to the overview (see conftest.py); these tests are about walking.
@@ -51,36 +52,50 @@ def test_rooms_open_in_the_walking_view_just_inside_the_door(page: Page, errors)
     assert errors == []
 
 
-def test_clicking_the_floor_walks_there_around_the_furniture(page: Page, errors):
-    walk_room(page)
-    # Across the room, behind the coffee table: the way there goes round the rug's furniture.
-    target = (-0.4, -2.4)
-    point = floor_point(page, *target)
-    page.mouse.move(point["x"], point["y"])
-    page.mouse.click(point["x"], point["y"])
-    page.wait_for_function("() => window.__doors.info().scene.camera.walk.route")
-    assert_route_is_clear(page, walk(page)["route"])
+def lock(page: Page) -> None:
+    """Clicks into the room to start mouse look."""
+    x, y = canvas_center(page)
+    page.mouse.click(x, y)
+    page.wait_for_function("() => window.__doors.info().scene.camera.walk.locked")
 
+
+def test_clicking_the_room_starts_mouse_look_like_a_game(page: Page, errors):
+    walk_room(page)
+    prompt = page.get_by_test_id("room-lock-prompt")
+    expect(prompt).to_contain_text("Click to look around")
+    expect(page.get_by_test_id("room-crosshair")).to_be_hidden()
+    before = walk(page)
+
+    lock(page)
+    expect(prompt).to_be_hidden()
+    expect(page.get_by_test_id("room-crosshair")).to_be_visible()
+    # Just moving the mouse (no button) turns the head: right turns right, up looks up.
+    x, y = canvas_center(page)
+    page.mouse.move(x + 200, y - 80, steps=8)
+    after = wait_camera_settled(page)["walk"]
+    assert after["yaw"] < before["yaw"] - 0.3
+    assert after["pitch"] > before["pitch"]
+    assert after["position"] == before["position"], "clicking the floor doesn't walk"
+    assert after["route"] is None
+
+    # Esc (the browser's own key for this) gives the cursor back.
+    page.evaluate("() => document.exitPointerLock()")
+    expect(prompt).to_be_visible()
+    expect(page.get_by_test_id("room-crosshair")).to_be_hidden()
+    assert errors == []
+
+
+def test_walks_around_the_furniture_to_a_spot(page: Page, errors):
+    walk_room(page)
+    # Across the room, behind the coffee table: the way there goes round the furniture.
+    target = (-0.4, -2.4)
+    assert page.evaluate("([x, z]) => window.__doors.walkTo(x, z)", list(target))
+    assert_route_is_clear(page, walk(page)["route"])
     pose = wait_camera_settled(page)["walk"]
     assert pose["position"]["x"] == pytest.approx(target[0], abs=0.5)
     assert pose["position"]["z"] == pytest.approx(target[1], abs=0.5)
     assert walkable(page, pose["position"]["x"], pose["position"]["z"])
     assert pose["position"]["y"] == pytest.approx(1.6, abs=0.05)
-    assert errors == []
-
-
-def test_dragging_looks_around_without_moving(page: Page, errors):
-    walk_room(page)
-    before = walk(page)
-    x, y = canvas_center(page)
-    page.mouse.move(x, y)
-    page.mouse.down()
-    page.mouse.move(x + 300, y + 60, steps=12)
-    page.mouse.up()
-    after = wait_camera_settled(page)["walk"]
-    assert after["yaw"] > before["yaw"] + 0.3, "dragging right turns to the left (grab the room)"
-    assert after["pitch"] > before["pitch"], "dragging down looks up"
-    assert after["position"] == before["position"]
     assert errors == []
 
 
@@ -109,8 +124,7 @@ def test_keys_walk_and_never_into_furniture_or_walls(page: Page, errors):
 
 def test_the_overview_is_one_tap_away_and_remembered(page: Page, errors):
     walk_room(page)
-    point = floor_point(page, 0.6, 2.4)
-    page.mouse.click(point["x"], point["y"])
+    assert page.evaluate("() => window.__doors.walkTo(0.6, 2.4)")
     spot = wait_camera_settled(page)["walk"]["position"]
 
     toggle = page.get_by_test_id("view-toggle")
@@ -133,13 +147,51 @@ def test_the_overview_is_one_tap_away_and_remembered(page: Page, errors):
     assert errors == []
 
 
-def test_things_still_work_while_walking(page: Page, errors):
+def test_aim_at_a_thing_and_click_to_use_it(page: Page, errors):
     walk_room(page)
-    point = bring_into_view(page, "photo-sunset")
+    lock(page)
+    cx, cy = canvas_center(page)
+    mouse = {"x": cx, "y": cy}
+
+    def turn(dx: float, dy: float = 0) -> None:
+        mouse["x"] += dx
+        mouse["y"] += dy
+        page.mouse.move(mouse["x"], mouse["y"], steps=4)
+        wait_camera_settled(page)
+
+    # Turn until the crosshair rests on the photo (mouse pixels are ~0.55 screen pixels).
+    for _ in range(20):
+        if page.evaluate("() => window.__doors.info().scene.hovered") == "photo-sunset":
+            break
+        point = page.evaluate("() => window.__doors.pointFor('photo-sunset')")
+        if point:
+            turn((point["x"] - cx) * 0.5, (point["y"] - cy) * 0.5)
+        else:
+            turn(-250)
+    assert page.evaluate("() => window.__doors.info().scene.hovered") == "photo-sunset"
+    expect(page.get_by_test_id("room-crosshair")).to_have_class(re.compile("is-on-thing"))
+
     before = walk(page)["position"]
-    page.mouse.click(point["x"], point["y"])
+    page.mouse.click(mouse["x"], mouse["y"])
     expect(page.get_by_test_id("photo-viewer")).to_be_visible()
     assert walk(page)["position"] == before, "clicking a thing doesn't walk"
+    # The photo needs the cursor, so mouse look pauses while it's open...
+    page.wait_for_function("() => !window.__doors.info().scene.camera.walk.locked")
+    expect(page.get_by_test_id("room-crosshair")).to_be_hidden()
+    expect(page.get_by_test_id("room-lock-prompt")).to_be_hidden()
+    # ...and closing it goes straight back to the dot.
+    page.get_by_test_id("photo-viewer").get_by_role("button", name="Close photo").click()
+    page.wait_for_function("() => window.__doors.info().scene.camera.walk.locked")
+    expect(page.get_by_test_id("room-crosshair")).to_be_visible()
+    expect(page.get_by_test_id("room-lock-prompt")).to_be_hidden()
+
+    # Panels opened from the buttons (with the cursor) don't start mouse look.
+    page.evaluate("() => document.exitPointerLock()")
+    page.get_by_test_id("things-list").click()
+    expect(page.get_by_test_id("room-panel")).to_be_visible()
+    page.keyboard.press("Escape")
+    expect(page.get_by_test_id("room-lock-prompt")).to_be_visible()
+    assert not walk(page)["locked"]
     assert errors == []
 
 

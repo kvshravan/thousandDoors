@@ -11,16 +11,30 @@ const HIGHLIGHT = new THREE.Color('#ffcf7a');
  * so objects hidden behind others can't be clicked through them.
  */
 export class InteractionManager {
-  constructor({ camera, canvas, scene, resolve, onHoverChange, onSelect, onEmptyHover = null, onEmptySelect = null }) {
+  constructor({
+    camera,
+    canvas,
+    scene,
+    resolve,
+    onHoverChange,
+    onSelect,
+    onEmptySelect = null,
+    aimPoint = null,
+    canSelect = null,
+  }) {
     this.camera = camera;
     this.canvas = canvas;
     this.scene = scene;
     this.resolve = resolve;
     this.onHoverChange = onHoverChange;
     this.onSelect = onSelect;
-    // Pointing at or tapping something that isn't interactive (the floor, for walking).
-    this.onEmptyHover = onEmptyHover;
+    // Tapping something that isn't interactive (the floor, for walking on phones).
     this.onEmptySelect = onEmptySelect;
+    // With game-style mouse look, () => the point everything is aimed at (the middle of
+    // the screen); null when using the cursor.
+    this.aimPoint = aimPoint;
+    // () => false to ignore a click (like the one that locks the pointer).
+    this.canSelect = canSelect;
 
     this.enabled = true;
     this.hovered = null;
@@ -49,12 +63,12 @@ export class InteractionManager {
 
   /** Processes at most one hover raycast per frame. Returns true if highlighting changed. */
   update() {
+    const aim = this.enabled ? this.aimPoint?.() : null;
+    if (aim) this._pendingHover = aim;
     if (this._pendingHover) {
       const { x, y } = this._pendingHover;
       this._pendingHover = null;
-      const record = this.pick(x, y);
-      this._setHovered(record, { x, y });
-      this.onEmptyHover?.(record ? null : { x, y });
+      this._setHovered(this.pick(x, y), { x, y });
     }
     const changed = this._changed;
     this._changed = false;
@@ -144,7 +158,7 @@ export class InteractionManager {
     if (!press || press.id !== event.pointerId || event.type === 'pointercancel') return;
     const moved = Math.hypot(event.clientX - press.x, event.clientY - press.y);
     if (moved > CLICK_MAX_MOVE_PX || performance.now() - press.time > CLICK_MAX_MS) return;
-    this._tap = { x: event.clientX, y: event.clientY };
+    this._tap = { x: event.clientX, y: event.clientY, pointerType: event.pointerType };
     // Browsers skip the click for taps that interrupt a fling, so don't wait forever.
     this._tapTimer = window.setTimeout(() => this._selectTap(), TAP_CLICK_FALLBACK_MS);
   }
@@ -158,10 +172,11 @@ export class InteractionManager {
   _selectTap() {
     const tap = this._tap;
     this._clearTap();
-    if (!tap || !this.enabled) return;
-    const record = this.pick(tap.x, tap.y);
+    if (!tap || !this.enabled || (this.canSelect && !this.canSelect())) return;
+    const at = this.aimPoint?.() ?? tap;
+    const record = this.pick(at.x, at.y);
     if (!record) {
-      this.onEmptySelect?.(tap.x, tap.y);
+      this.onEmptySelect?.(at.x, at.y, tap.pointerType);
       return;
     }
     // Interactions often move the camera or open a panel, so drop any stale hover.
@@ -177,10 +192,9 @@ export class InteractionManager {
   }
 
   _onPointerMove(event) {
-    if (!this.enabled || event.pointerType !== 'mouse') return;
+    if (!this.enabled || event.pointerType !== 'mouse' || this.aimPoint?.()) return;
     if (event.buttons !== 0) {
       if (this.hovered) this._setHovered(null);
-      this.onEmptyHover?.(null);
       return;
     }
     this._pendingHover = { x: event.clientX, y: event.clientY };
@@ -189,7 +203,6 @@ export class InteractionManager {
   _onPointerLeave() {
     this._pendingHover = null;
     this._setHovered(null);
-    this.onEmptyHover?.(null);
   }
 
   _setHovered(record, point = null) {

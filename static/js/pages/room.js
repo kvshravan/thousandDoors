@@ -53,6 +53,8 @@ class RoomPage {
     this.insideButton = root.querySelector('#go-inside');
     this.helpButton = root.querySelector('#room-help');
     this.viewButton = root.querySelector('#view-toggle');
+    this.crosshair = root.querySelector('#room-crosshair');
+    this.lockPrompt = root.querySelector('#room-lock-prompt');
     this.editorRoot = root.querySelector('#editor');
     this.editorPanel = null;
     this.editing = false;
@@ -87,6 +89,20 @@ class RoomPage {
 
     this.photoViewer = new PhotoViewer(root.querySelector('#photo-viewer'));
     this.panel = new Panel(root.querySelector('#room-panel'));
+    // A panel needs the cursor, so opening one pauses mouse look; closing it goes back
+    // to the dot (if the browser allows it, else the "Click to look around" prompt).
+    const dialogs = new MutationObserver(() => {
+      const walker = this.manager?.current?.controller?.walking ? this.manager.current.controller.walker : null;
+      if (root.querySelector('dialog[open]')) {
+        if (walker?.locked) this._relookAfterPanel = true;
+        walker?.unlock();
+      } else if (this._relookAfterPanel) {
+        this._relookAfterPanel = false;
+        if (!this.editing) walker?.lock({ quiet: true });
+      }
+      this._syncLook();
+    });
+    for (const dialog of root.querySelectorAll('dialog')) dialogs.observe(dialog, { attributes: true, attributeFilter: ['open'] });
     this._musicSource = null;
     this.music = new MusicPlayer({ onChange: (state) => this._syncMusic(state) });
     const page = this;
@@ -202,6 +218,7 @@ class RoomPage {
       this._setState('ready');
       this.editButton.hidden = !this.saveMode;
       this._syncViewButton();
+      this._syncLook();
       this.loading.classList.add('is-hidden');
       this.engine.canvas.addEventListener('pointerdown', this._onFirstInteraction, { once: true });
       this.engine.canvas.addEventListener('wheel', this._onFirstInteraction, { once: true, passive: true });
@@ -248,6 +265,7 @@ class RoomPage {
       onLeaveSeat: () => {
         this.standButton.hidden = true;
       },
+      onLockChange: () => this._syncLook(),
       canInteract: (level) => canInteract(level ?? 'everyone', this.viewer.relationship),
     });
   }
@@ -268,6 +286,7 @@ class RoomPage {
     }
     this._syncViewButton();
     this._setHint();
+    this._syncLook();
     this.hint.classList.remove('is-hidden');
     this._fadeHint();
     this._announce(view === 'walk' ? 'Walking view. Tap or click the floor to walk there.' : 'Overview of the whole room.');
@@ -281,11 +300,25 @@ class RoomPage {
     this.viewButton.querySelector('[data-view-label]').textContent = walking ? 'Overview' : 'Walk';
   }
 
+  /** Shows the crosshair while the mouse looks around, or the prompt to start. */
+  _syncLook() {
+    const scene = this.manager?.current;
+    const walker = scene?.controller?.walking ? scene.controller.walker : null;
+    const gameLook = Boolean(walker?.mouseLook && !walker.lockFailed);
+    const locked = Boolean(walker?.locked);
+    const panelOpen = Boolean(document.querySelector('dialog[open]'));
+    const usable = this.state === 'ready' && !this.editing && !this.outside;
+    this.crosshair.hidden = !(usable && locked);
+    this.lockPrompt.hidden = !(usable && gameLook && !locked && !panelOpen);
+    if (locked) this.hint.classList.add('is-hidden');
+    if (!locked) this.crosshair.classList.remove('is-on-thing');
+  }
+
   _setHint() {
     if (this.view === 'walk') {
       this.hint.textContent = this.touch
         ? 'Drag to look · Tap the floor to walk · Tap things'
-        : 'Drag to look · Click the floor or use WASD to walk · Click things';
+        : 'Click to look around · W A S D to walk · Esc for the cursor';
     } else {
       this.hint.textContent = this.touch
         ? 'Drag to look around · Pinch to zoom · Tap things'
@@ -351,6 +384,7 @@ class RoomPage {
     this.loading.classList.add('is-hidden');
     this._setState('ready');
     this._syncViewButton();
+    this._syncLook();
     return true;
   }
 
@@ -459,6 +493,7 @@ class RoomPage {
     scene.enterEditMode({ onChange: (state) => this.editorPanel.render(state) });
     this.editing = true;
     document.body.classList.add('is-editing');
+    this._syncLook();
     this.editorPanel.show(scene.appearance);
     this.editorRoot.querySelector('[role="tab"][aria-selected="true"]')?.focus();
     return true;
@@ -664,6 +699,7 @@ class RoomPage {
     this.editing = false;
     this._editSnapshot = null;
     document.body.classList.remove('is-editing');
+    this._syncLook();
     this.editorPanel?.hide();
     this.editButton.focus?.();
   }
@@ -833,6 +869,7 @@ class RoomPage {
   }
 
   _showTooltip(target, point) {
+    this.crosshair.classList.toggle('is-on-thing', Boolean(target));
     if (!target || !point) {
       this.tooltip.hidden = true;
       return;

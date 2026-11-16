@@ -40,12 +40,14 @@ export class RoomScene {
     view = 'overview',
     headBob = true,
     onLeaveSeat = null,
+    onLockChange = null,
   }) {
     const appearance = resolveAppearance(room.appearance);
     this.room = room;
     this.view = view;
     this.headBob = headBob;
     this.onLeaveSeat = onLeaveSeat;
+    this.onLockChange = onLockChange;
     this.catalog = catalog;
     this.modelsUrl = modelsUrl;
     this.onInteract = onInteract;
@@ -102,6 +104,9 @@ export class RoomScene {
         home: WALK_HOME,
         headBob: this.headBob,
         onMove: () => this._leftSeat(),
+        // Game-style mouse look wherever there's a mouse; phones drag and tap.
+        mouseLook: Boolean(window.matchMedia?.('(pointer: fine)').matches),
+        onLockChange: (locked) => this.onLockChange?.(locked),
       },
     });
     this._rebuildWalkMap();
@@ -119,9 +124,18 @@ export class RoomScene {
       },
       onHoverChange: (record, point) => this.onHoverChange?.(record ? describe(record) : null, point),
       onSelect: (record) => this.onInteract?.(describe(record)),
-      onEmptyHover: (point) =>
-        this.marker.showHover(point && this.controller.walking && !this.editor ? this._floorPoint(point.x, point.y) : null),
-      onEmptySelect: (x, y) => this._tapFloor(x, y),
+      // Taps on the floor walk there (phones; computers walk with the keys).
+      onEmptySelect: (x, y, pointerType) => {
+        if (pointerType !== 'mouse') this._tapFloor(x, y);
+      },
+      aimPoint: () => (this.mouseLocked ? this._screenCentre() : null),
+      // The click that starts mouse look only starts it; with mouse look on but no
+      // pointer lock (it was refused), clicking works with the cursor as usual.
+      canSelect: () => {
+        const walker = this.controller.walker;
+        if (!this.controller.walking || !walker.mouseLook || walker.lockFailed) return true;
+        return walker.pressWasLocked;
+      },
     });
     engine.renderer.compile(this.scene, this.camera);
     onProgress?.(1);
@@ -511,6 +525,16 @@ export class RoomScene {
     point.y = 0;
     const free = this.walkMap.nearestFree(point.x, point.z, 1.2);
     return free ? new THREE.Vector3(free.x, 0, free.z) : null;
+  }
+
+  /** True while the mouse is looking around (pointer locked to the room). */
+  get mouseLocked() {
+    return Boolean(this.controller?.walking && this.controller.walker.locked);
+  }
+
+  _screenCentre() {
+    const rect = this.engine.canvas.getBoundingClientRect();
+    return { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 };
   }
 
   _tapFloor(clientX, clientY) {
